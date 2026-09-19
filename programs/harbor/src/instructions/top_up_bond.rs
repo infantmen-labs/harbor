@@ -47,6 +47,6 @@ pub fn handler(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
 
     let bond = &mut ctx.accounts.bond;
     bond.amount = bond.amount.checked_add(amount).unwrap();
-    bond.last_change_epoch = Clock::get()?.epoch;
+    bond.last_change_slot = Clock::get()?.slot;
     Ok(())
 }

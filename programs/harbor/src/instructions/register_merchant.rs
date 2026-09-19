@@ -41,7 +41,7 @@ pub fn handler(
     bond.sla_bps = sla_bps;
     bond.challenge_slots = challenge_slots;
     bond.open_disputes = 0;
-    bond.last_change_epoch = Clock::get()?.epoch;
+    bond.last_change_slot = Clock::get()?.slot;
     bond.bump = ctx.bumps.bond;
 
     emit!(MerchantRegistered {

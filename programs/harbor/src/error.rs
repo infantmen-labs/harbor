@@ -20,4 +20,20 @@ pub enum HarborError {
     InvalidChallengeWindow,
     #[msg("Amount must be greater than zero")]
     ZeroAmount,
+    #[msg("Receipt proof failed")]
+    BadReceiptProof,
+    #[msg("Nonce already recorded")]
+    Replay,
+    #[msg("Receipt expired")]
+    Expired,
+    #[msg("Dispute window has not elapsed")]
+    DisputeNotMature,
+    #[msg("Vault is not empty")]
+    VaultNotEmpty,
+    #[msg("Bond still holds funds")]
+    BondNotEmpty,
+    #[msg("Delivery receipt exists; timeout slash unavailable")]
+    AlreadyDelivered,
+    #[msg("No delivery receipt for this nonce")]
+    NoDelivery,
 }

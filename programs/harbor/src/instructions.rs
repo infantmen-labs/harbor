@@ -1,11 +1,19 @@
 pub mod bind_channel;
+pub mod open_dispute;
 pub mod post_bond;
+pub mod refund_unused;
 pub mod register_merchant;
+pub mod resolve_dispute;
+pub mod submit_receipt;
 pub mod top_up_bond;
 pub mod withdraw_bond;
 
 pub use bind_channel::*;
+pub use open_dispute::*;
 pub use post_bond::*;
+pub use refund_unused::*;
 pub use register_merchant::*;
+pub use resolve_dispute::*;
+pub use submit_receipt::*;
 pub use top_up_bond::*;
 pub use withdraw_bond::*;

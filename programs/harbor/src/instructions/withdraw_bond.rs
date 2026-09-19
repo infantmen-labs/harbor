@@ -35,7 +35,13 @@ pub fn handler(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
         HarborError::DisputeOpen
     );
     require!(
-        Clock::get()?.epoch > ctx.accounts.bond.last_change_epoch,
+        Clock::get()?.slot
+            > ctx
+                .accounts
+                .bond
+                .last_change_slot
+                .checked_add(WITHDRAW_DELAY_SLOTS)
+                .unwrap(),
         HarborError::TimelockNotPassed
     );
     require!(
@@ -67,6 +73,6 @@ pub fn handler(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
 
     let bond = &mut ctx.accounts.bond;
     bond.amount = bond.amount.checked_sub(amount).unwrap();
-    bond.last_change_epoch = Clock::get()?.epoch;
+    bond.last_change_slot = Clock::get()?.slot;
     Ok(())
 }
