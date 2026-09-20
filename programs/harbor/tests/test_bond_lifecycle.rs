@@ -197,6 +197,7 @@ fn test_bond_lifecycle() {
         vec![Instruction::new_with_bytes(
             program_id,
             &harbor::instruction::BindChannel {
+                channel_program: system_program::ID,
                 max_spend: 250_000,
             }
             .data(),

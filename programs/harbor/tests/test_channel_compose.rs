@@ -1,0 +1,371 @@
+use {
+    anchor_lang::{
+        prelude::Pubkey,
+        solana_program::instruction::{AccountMeta, Instruction},
+        system_program, InstructionData, ToAccountMetas,
+    },
+    litesvm::LiteSVM,
+    litesvm_token::{CreateAssociatedTokenAccount, CreateMint, MintTo, TOKEN_ID},
+    solana_keypair::Keypair,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+const CHANNEL_PROGRAM_ID: &str = "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX";
+const DEPOSIT: u64 = 5_000_000;
+const SALT: u64 = 42;
+
+fn a2p<T: AsRef<[u8]>>(a: &T) -> Pubkey {
+    Pubkey::new_from_array(a.as_ref().try_into().unwrap())
+}
+
+fn token_balance(svm: &LiteSVM, ata: &Pubkey) -> u64 {
+    let acc = svm.get_account(ata).unwrap();
+    u64::from_le_bytes(acc.data[64..72].try_into().unwrap())
+}
+
+fn send(svm: &mut LiteSVM, payer: &Keypair, ixs: Vec<Instruction>) -> Result<(), String> {
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&ixs, Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+    svm.send_transaction(tx)
+        .map(|_| ())
+        .map_err(|e| format!("{e:?}"))
+}
+
+fn meta(key: Pubkey, writable: bool, signer: bool) -> AccountMeta {
+    if writable {
+        AccountMeta::new(key, signer)
+    } else {
+        AccountMeta::new_readonly(key, signer)
+    }
+}
+
+fn ed25519_ix(signer: &Keypair, msg: &[u8]) -> Instruction {
+    let sig = signer.sign_message(msg);
+    let program_id: Pubkey = "Ed25519SigVerify111111111111111111111111111"
+        .parse()
+        .unwrap();
+    let mut data = vec![1u8, 0];
+    data.extend_from_slice(&48u16.to_le_bytes());
+    data.extend_from_slice(&0xFFFFu16.to_le_bytes());
+    data.extend_from_slice(&16u16.to_le_bytes());
+    data.extend_from_slice(&0xFFFFu16.to_le_bytes());
+    data.extend_from_slice(&112u16.to_le_bytes());
+    data.extend_from_slice(&(msg.len() as u16).to_le_bytes());
+    data.extend_from_slice(&0xFFFFu16.to_le_bytes());
+    data.extend_from_slice(signer.pubkey().as_ref());
+    data.extend_from_slice(sig.as_ref());
+    data.extend_from_slice(msg);
+    Instruction {
+        program_id,
+        accounts: vec![],
+        data,
+    }
+}
+
+#[test]
+fn test_channel_compose() {
+    let chnl: Pubkey = CHANNEL_PROGRAM_ID.parse().unwrap();
+    let mut svm = LiteSVM::new();
+    svm.add_program(chnl, include_bytes!("fixtures/payment_channels.so"))
+        .unwrap();
+    svm.add_program(
+        harbor::id(),
+        include_bytes!("../../../target/deploy/harbor.so"),
+    )
+    .unwrap();
+
+    let payer = Keypair::new();
+    let payee = Keypair::new();
+    let auth_signer = Keypair::new();
+    let merchant = Keypair::new();
+    let claimant = Keypair::new();
+    for k in [&payer, &merchant, &claimant] {
+        svm.airdrop(&k.pubkey(), 10_000_000_000).unwrap();
+    }
+    // LiteSVM 0.10 enforces rent on loaded accounts: fund readonly actors too.
+    for k in [&payee, &auth_signer] {
+        svm.airdrop(&k.pubkey(), 10_000_000).unwrap();
+    }
+
+    let mint_addr = CreateMint::new(&mut svm, &payer)
+        .decimals(6)
+        .send()
+        .unwrap();
+    let mint = a2p(&mint_addr);
+    let token_program = a2p(&TOKEN_ID);
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
+
+    let payer_ata_addr =
+        CreateAssociatedTokenAccount::new(&mut svm, &payer, &mint_addr)
+            .send()
+            .unwrap();
+    let payer_ata = a2p(&payer_ata_addr);
+    MintTo::new(&mut svm, &payer, &mint_addr, &payer_ata_addr, DEPOSIT)
+        .send()
+        .unwrap();
+    let merchant_ata_addr =
+        CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
+            .send()
+            .unwrap();
+    let merchant_ata = a2p(&merchant_ata_addr);
+    MintTo::new(&mut svm, &payer, &mint_addr, &merchant_ata_addr, 1_000_000)
+        .send()
+        .unwrap();
+    let claimant_ata_addr =
+        CreateAssociatedTokenAccount::new(&mut svm, &claimant, &mint_addr)
+            .send()
+            .unwrap();
+    let claimant_ata = a2p(&claimant_ata_addr);
+
+    // --- upstream open (discriminator 1, zero recipients) ---
+    let (channel, _) = Pubkey::find_program_address(
+        &[
+            b"channel",
+            payer.pubkey().as_ref(),
+            payee.pubkey().as_ref(),
+            mint.as_ref(),
+            auth_signer.pubkey().as_ref(),
+            &SALT.to_le_bytes(),
+            &0u64.to_le_bytes(),
+        ],
+        &chnl,
+    );
+    let (channel_ata, _) = Pubkey::find_program_address(
+        &[channel.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    );
+    let (event_authority, _) = Pubkey::find_program_address(&[b"event_authority"], &chnl);
+    let rent_sysvar: Pubkey = "SysvarRent111111111111111111111111111111111"
+        .parse()
+        .unwrap();
+
+    let mut open_data = vec![1u8];
+    open_data.extend_from_slice(&SALT.to_le_bytes());
+    open_data.extend_from_slice(&DEPOSIT.to_le_bytes());
+    open_data.extend_from_slice(&7200u32.to_le_bytes());
+    open_data.extend_from_slice(&0u64.to_le_bytes());
+    open_data.extend_from_slice(&0u32.to_le_bytes());
+    send(
+        &mut svm,
+        &payer,
+        vec![Instruction {
+            program_id: chnl,
+            accounts: vec![
+                meta(payer.pubkey(), true, true),
+                meta(payer.pubkey(), true, true),
+                meta(payee.pubkey(), false, false),
+                meta(mint, false, false),
+                meta(auth_signer.pubkey(), false, false),
+                meta(channel, true, false),
+                meta(payer_ata, true, false),
+                meta(channel_ata, true, false),
+                meta(token_program, false, false),
+                meta(system_program::ID, false, false),
+                meta(rent_sysvar, false, false),
+                meta(ata_program, false, false),
+                meta(event_authority, false, false),
+                meta(chnl, false, false),
+            ],
+            data: open_data,
+        }],
+    )
+    .unwrap();
+
+    // Channel exists, owned by the upstream program, escrow funded.
+    assert_eq!(a2p(&svm.get_account(&channel).unwrap().owner), chnl);
+    assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
+
+    // --- upstream settle advances the watermark, moves no funds ---
+    let mut payload = vec![0x56u8, 0x01];
+    payload.extend_from_slice(channel.as_ref());
+    payload.extend_from_slice(&2_000_000u64.to_le_bytes());
+    payload.extend_from_slice(&0i64.to_le_bytes());
+    let ix_sysvar: Pubkey = "Sysvar1nstructions1111111111111111111111111"
+        .parse()
+        .unwrap();
+    send(
+        &mut svm,
+        &payer,
+        vec![
+            ed25519_ix(&auth_signer, &payload),
+            Instruction {
+                program_id: chnl,
+                accounts: vec![
+                    meta(channel, true, false),
+                    meta(ix_sysvar, false, false),
+                ],
+                data: vec![2u8],
+            },
+        ],
+    )
+    .unwrap();
+    assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
+
+    // --- Harbor binds the real channel (ownership gate passes) ---
+    let bond = Pubkey::find_program_address(
+        &[b"bond", merchant.pubkey().as_ref(), mint.as_ref()],
+        &harbor::id(),
+    )
+    .0;
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::RegisterMerchant {
+                sla_bps: 50,
+                challenge_slots: 150,
+            }
+            .data(),
+            harbor::accounts::RegisterMerchant {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::PostBond { amount: 500_000 }.data(),
+            harbor::accounts::PostBond {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                merchant_ata,
+                vault: Pubkey::find_program_address(
+                    &[bond.as_ref(), token_program.as_ref(), mint.as_ref()],
+                    &ata_program,
+                )
+                .0,
+                token_program,
+                associated_token_program: ata_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    let vault = Pubkey::find_program_address(
+        &[bond.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    )
+    .0;
+    let (binding, _) =
+        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
+
+    // Negative: wrong channel program is rejected (seeds match, owner check fires).
+    let (binding2, _) =
+        Pubkey::find_program_address(&[b"binding", merchant_ata.as_ref()], &harbor::id());
+    let bad_bind = send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::BindChannel {
+                channel_program: system_program::ID,
+                max_spend: 250_000,
+            }
+            .data(),
+            harbor::accounts::BindChannel {
+                merchant: merchant.pubkey(),
+                bond,
+                binding: binding2,
+                channel: merchant_ata,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    );
+    assert!(bad_bind.is_err());
+
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::BindChannel {
+                channel_program: chnl,
+                max_spend: 250_000,
+            }
+            .data(),
+            harbor::accounts::BindChannel {
+                merchant: merchant.pubkey(),
+                bond,
+                binding,
+                channel,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+
+    // --- Harbor timeout slash; upstream escrow must be untouched ---
+    let dispute = Pubkey::find_program_address(
+        &[b"dispute", binding.as_ref(), &9u64.to_le_bytes()],
+        &harbor::id(),
+    )
+    .0;
+    send(
+        &mut svm,
+        &claimant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::OpenDispute { nonce: 9, reason: 1 }.data(),
+            harbor::accounts::OpenDispute {
+                claimant: claimant.pubkey(),
+                bond,
+                binding,
+                dispute,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    let receipt = Pubkey::find_program_address(
+        &[b"receipt", binding.as_ref(), &9u64.to_le_bytes()],
+        &harbor::id(),
+    )
+    .0;
+    send(
+        &mut svm,
+        &claimant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::ResolveTimeout { nonce: 9 }.data(),
+            harbor::accounts::ResolveTimeout {
+                resolver: claimant.pubkey(),
+                bond,
+                mint,
+                binding,
+                dispute,
+                claimant: claimant.pubkey(),
+                receipt,
+                vault,
+                claimant_ata,
+                token_program,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+
+    // Slash math: min(500_000, 250_000 * 50 / 10_000) = 1_250.
+    assert_eq!(token_balance(&svm, &claimant_ata), 1_250);
+    assert_eq!(token_balance(&svm, &vault), 500_000 - 1_250);
+    // Upstream escrow intact: no double-pay across the disjoint pools.
+    assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
+}

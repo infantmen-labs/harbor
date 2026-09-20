@@ -5,7 +5,9 @@ Harbor composes with this program. It never forks or modifies it.
 - Repository: `solana-foundation/payment-channels`
 - Pinned commit: `3ffa4d6728ad88e4a9667a76ad9ccd68a302c696`
 - Mainnet program ID: `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`
-- Devnet program ID: UNCONFIRMED — resolve before devnet integration (Phase 3).
+- Devnet/testnet/localnet program ID: same address on every cluster
+  (`declare_id!` is hardcoded; cluster build features only change the
+  treasury owner, never the ID). Verified in program source.
 
 ## Channel model
 

@@ -1,6 +1,7 @@
 pub mod constants;
 pub mod error;
 pub mod instructions;
+pub mod mint_guard;
 pub mod state;
 
 use anchor_lang::prelude::*;
@@ -35,8 +36,16 @@ pub mod harbor {
         withdraw_bond::handler(ctx, amount)
     }
 
-    pub fn bind_channel(ctx: Context<BindChannel>, max_spend: u64) -> Result<()> {
-        bind_channel::handler(ctx, max_spend)
+    pub fn bind_channel(
+        ctx: Context<BindChannel>,
+        channel_program: Pubkey,
+        max_spend: u64,
+    ) -> Result<()> {
+        bind_channel::handler(ctx, channel_program, max_spend)
+    }
+
+    pub fn halt_binding(ctx: Context<HaltBinding>) -> Result<()> {
+        halt_binding::handler(ctx)
     }
 
     pub fn submit_receipt(

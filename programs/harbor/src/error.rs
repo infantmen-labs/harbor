@@ -36,4 +36,8 @@ pub enum HarborError {
     AlreadyDelivered,
     #[msg("No delivery receipt for this nonce")]
     NoDelivery,
+    #[msg("Mint carries a blocked Token-2022 extension")]
+    BlockedMint,
+    #[msg("Binding is halted")]
+    Halted,
 }

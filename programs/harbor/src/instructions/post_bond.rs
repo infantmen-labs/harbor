@@ -38,6 +38,14 @@ pub struct PostBond<'info> {
 
 pub fn handler(ctx: Context<PostBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
+    {
+        let mint_info = ctx.accounts.mint.to_account_info();
+        let data = mint_info.try_borrow_data()?;
+        require!(
+            !crate::mint_guard::mint_blocked(&data, mint_info.owner),
+            HarborError::BlockedMint
+        );
+    }
 
     token_interface::transfer_checked(
         CpiContext::new(

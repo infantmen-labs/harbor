@@ -124,6 +124,7 @@ pub fn handler(
 ) -> Result<()> {
     let slot = Clock::get()?.slot;
     require!(slot <= expiry_slot, HarborError::Expired);
+    require!(!ctx.accounts.binding.halted, HarborError::Halted);
     require!(nonce > ctx.accounts.binding.last_nonce, HarborError::Replay);
     require!(signer == ctx.accounts.merchant.key(), HarborError::Unauthorized);
 

@@ -21,10 +21,14 @@ pub struct BindChannel<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<BindChannel>, max_spend: u64) -> Result<()> {
+pub fn handler(ctx: Context<BindChannel>, channel_program: Pubkey, max_spend: u64) -> Result<()> {
     require!(max_spend > 0, HarborError::ZeroAmount);
     require!(
         ctx.accounts.channel.key() != Pubkey::default(),
+        HarborError::BindingMismatch
+    );
+    require!(
+        *ctx.accounts.channel.owner == channel_program,
         HarborError::BindingMismatch
     );
 
@@ -32,7 +36,11 @@ pub fn handler(ctx: Context<BindChannel>, max_spend: u64) -> Result<()> {
     binding.channel = ctx.accounts.channel.key();
     binding.merchant = ctx.accounts.merchant.key();
     binding.bond = ctx.accounts.bond.key();
+    binding.channel_program = channel_program;
     binding.max_spend = max_spend;
+    binding.last_nonce = 0;
+    binding.last_cumulative_spend = 0;
+    binding.halted = false;
     binding.bump = ctx.bumps.binding;
 
     emit!(ChannelBound {

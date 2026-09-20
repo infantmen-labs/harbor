@@ -1,4 +1,5 @@
 pub mod bind_channel;
+pub mod halt_binding;
 pub mod open_dispute;
 pub mod post_bond;
 pub mod refund_unused;
@@ -9,6 +10,7 @@ pub mod top_up_bond;
 pub mod withdraw_bond;
 
 pub use bind_channel::*;
+pub use halt_binding::*;
 pub use open_dispute::*;
 pub use post_bond::*;
 pub use refund_unused::*;

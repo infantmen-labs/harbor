@@ -26,6 +26,7 @@ pub fn handler(ctx: Context<OpenDispute>, nonce: u64, reason: u8) -> Result<()> 
         ctx.accounts.claimant.key() != ctx.accounts.bond.merchant,
         HarborError::Unauthorized
     );
+    require!(!ctx.accounts.binding.halted, HarborError::Halted);
 
     system_program::transfer(
         CpiContext::new(

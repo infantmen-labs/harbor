@@ -163,6 +163,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
         vec![Instruction::new_with_bytes(
             program_id,
             &harbor::instruction::BindChannel {
+                channel_program: system_program::ID,
                 max_spend: 250_000,
             }
             .data(),
@@ -466,4 +467,65 @@ fn test_delivered_wins_and_full_close() {
     .unwrap();
     assert!(svm.get_account(&s.bond).is_none());
     assert!(svm.get_account(&s.vault).is_none());
+}
+
+#[test]
+fn test_halt_freezes_entries() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+    let far_future = svm.get_sysvar::<Clock>().slot + 100_000;
+
+    // Stranger cannot halt the merchant's binding.
+    let stranger = Keypair::new();
+    svm.airdrop(&stranger.pubkey(), 1_000_000_000).unwrap();
+    let hostile = send(
+        &mut svm,
+        &stranger,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::HaltBinding {}.data(),
+            harbor::accounts::HaltBinding {
+                merchant: stranger.pubkey(),
+                binding: s.binding,
+            }
+            .to_account_metas(None),
+        )],
+    );
+    assert!(hostile.is_err());
+
+    // Merchant halts.
+    send(
+        &mut svm,
+        &s.merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::HaltBinding {}.data(),
+            harbor::accounts::HaltBinding {
+                merchant: s.merchant.pubkey(),
+                binding: s.binding,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+
+    // New receipts and disputes are frozen.
+    assert!(submit(&mut svm, &s, &s.merchant, 1, far_future).is_err());
+    let frozen = send(
+        &mut svm,
+        &s.claimant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::OpenDispute { nonce: 1, reason: 1 }.data(),
+            harbor::accounts::OpenDispute {
+                claimant: s.claimant.pubkey(),
+                bond: s.bond,
+                binding: s.binding,
+                dispute: dispute_pda(&s.binding, 1),
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    );
+    assert!(frozen.is_err());
 }

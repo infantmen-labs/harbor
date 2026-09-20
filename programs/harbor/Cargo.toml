@@ -28,8 +28,8 @@ solana-sha256-hasher = "=3.1.0"
 solana-instructions-sysvar = "=3.0.1"
 
 [dev-dependencies]
-litesvm = { version = "0.10.0", features = ["precompiles"] }
-litesvm-token = "0.10.0"
+litesvm = { version = "0.11", features = ["precompiles"] }
+litesvm-token = "0.11"
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"
 solana-signer = "3.0.0"

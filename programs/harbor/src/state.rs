@@ -19,9 +19,11 @@ pub struct ChannelBinding {
     pub channel: Pubkey,
     pub merchant: Pubkey,
     pub bond: Pubkey,
+    pub channel_program: Pubkey,
     pub max_spend: u64,
     pub last_nonce: u64,
     pub last_cumulative_spend: u64,
+    pub halted: bool,
     pub bump: u8,
 }
 
