@@ -1,4 +1,10 @@
 {
+  "private": true,
+  "workspaces": [
+    "sdk",
+    "server",
+    "agent"
+  ],
   "license": "ISC",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",

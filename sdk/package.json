@@ -1,0 +1,14 @@
+{
+  "name": "harbor-sdk",
+  "version": "0.1.0",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "node --test dist/test/vectors.test.js"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.98.0",
+    "tweetnacl": "^1.0.3"
+  }
+}

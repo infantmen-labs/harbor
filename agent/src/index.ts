@@ -1,0 +1,185 @@
+/**
+ * Harbor agent: opens a payment channel, streams metered requests with
+ * cumulative vouchers, verifies merchant receipts, logs JSONL evidence,
+ * and cooperatively closes via a final settle.
+ *
+ * Env: RPC_URL, SERVER_URL, AGENT_KEYPAIR (path), MERCHANT_PUBKEY,
+ * MINT, DEPOSIT, REQUESTS, BUDGET_PER_REQUEST, SALT, LOG_PATH.
+ */
+import { readFileSync } from "node:fs";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from "@solana/web3.js";
+import {
+  ATA_PROGRAM_ID,
+  CHANNEL_PROGRAM_ID,
+  JsonlLogger,
+  TOKEN_PROGRAM_ID,
+  buildEd25519Ix,
+  channelPda,
+  channelVoucherBytes,
+  receiptMessageBytes,
+  signEd25519,
+  verifyEd25519,
+} from "harbor-sdk";
+import { deriveChannel, openChannelIx, settleIx, topUpIx } from "./channel";
+
+function env(name: string, fallback?: string): string {
+  const v = process.env[name] ?? fallback;
+  if (v === undefined) throw new Error(`${name} required`);
+  return v;
+}
+
+async function postJson(url: string, body: unknown): Promise<{ status: number; json: Record<string, unknown> }> {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: r.status, json: (await r.json()) as Record<string, unknown> };
+}
+
+async function main(): Promise<void> {
+  const connection = new Connection(env("RPC_URL", "https://api.devnet.solana.com"), "confirmed");
+  const serverUrl = env("SERVER_URL", "http://127.0.0.1:3000");
+  const agent = Keypair.fromSecretKey(
+    Uint8Array.from(JSON.parse(readFileSync(env("AGENT_KEYPAIR"), "utf8"))),
+  );
+  const merchant = new PublicKey(env("MERCHANT_PUBKEY"));
+  const mint = new PublicKey(env("MINT"));
+  const deposit = BigInt(env("DEPOSIT", "100000"));
+  const requests = Number(env("REQUESTS", "5"));
+  const budget = BigInt(env("BUDGET_PER_REQUEST", "5000"));
+  const salt = BigInt(env("SALT", `${Date.now() % 1_000_000}`));
+  const log = new JsonlLogger(env("LOG_PATH", "agent-run.jsonl"));
+
+  const payee = Keypair.generate().publicKey;
+  const clockSlot = await connection.getSlot();
+  const { channel } = deriveChannel(
+    agent.publicKey, payee, mint, agent.publicKey, salt, BigInt(clockSlot),
+  );
+  const [channelAta] = (() => {
+    const [a] = PublicKey.findProgramAddressSync(
+      [channel.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      ATA_PROGRAM_ID,
+    );
+    return [a] as const;
+  })();
+  const [eventAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from("event_authority")],
+    CHANNEL_PROGRAM_ID,
+  );
+  const payerAta = (
+    await connection.getParsedTokenAccountsByOwner(agent.publicKey, { mint })
+  ).value[0]?.pubkey;
+  if (payerAta === undefined) throw new Error("agent has no ATA for mint");
+
+  const openTx = new Transaction().add(
+    openChannelIx({
+      payer: agent.publicKey,
+      payee,
+      mint,
+      authorizedSigner: agent.publicKey,
+      channel,
+      payerAta,
+      channelAta,
+      eventAuthority,
+      salt,
+      deposit,
+      gracePeriod: 7200,
+      openSlot: BigInt(clockSlot),
+    }),
+  );
+  await sendAndConfirmTransaction(connection, openTx, [agent]);
+  console.log(`channel ${channel.toBase58()}`);
+
+  const s = await postJson(`${serverUrl}/session`, {
+    channel: channel.toBase58(),
+    channelProgram: CHANNEL_PROGRAM_ID.toBase58(),
+    deposit: deposit.toString(),
+    authorizedSigner: agent.publicKey.toBase58(),
+  });
+  if (s.status !== 200) throw new Error(`session failed: ${JSON.stringify(s.json)}`);
+  const binding = new PublicKey(s.json["binding"] as string);
+
+  let lastSpent = 0n;
+  let lastCumulative = 0n;
+  for (let i = 1; i <= requests; i++) {
+    const nonce = BigInt(i);
+    const cumulative = lastSpent + budget;
+    const msg = channelVoucherBytes(channel, cumulative, 0n);
+    const sig = Buffer.from(signEd25519(agent.secretKey, msg)).toString("base64");
+    const r = await postJson(`${serverUrl}/complete`, {
+      channel: channel.toBase58(),
+      nonce: nonce.toString(),
+      input: `agent request ${i} at ${Date.now()}`,
+      voucherCumulative: cumulative.toString(),
+      voucherSignature: sig,
+    });
+    if (r.status !== 200) {
+      log.log({ nonce: nonce.toString(), ok: false, error: r.json["error"], status: r.status });
+      console.log(`request ${i} failed: ${JSON.stringify(r.json)}`);
+      continue;
+    }
+    const receipt = r.json["receipt"] as Record<string, string>;
+    const rmsg = receiptMessageBytes({
+      merchant,
+      binding,
+      cumulativeSpend: BigInt(receipt["cumulativeSpend"]),
+      meterHash: Buffer.from(receipt["meterHash"], "hex"),
+      outputHash: Buffer.from(receipt["outputHash"], "hex"),
+      status: 0,
+      nonce,
+      expirySlot: BigInt(receipt["expirySlot"]),
+      signer: merchant,
+    });
+    const ok = verifyEd25519(merchant, rmsg, Buffer.from(receipt["signature"], "base64"));
+    lastCumulative = cumulative;
+    lastSpent = BigInt(receipt["cumulativeSpend"]);
+    log.log({
+      nonce: nonce.toString(),
+      ok,
+      tokens: r.json["tokens"],
+      cost: r.json["cost"],
+      voucherCumulative: cumulative.toString(),
+      receiptSignature: receipt["signature"],
+    });
+    console.log(`request ${i}: ok=${ok} cost=${r.json["cost"]}`);
+
+    // Top up the channel when under 25% of the deposit.
+    const info = await connection.getTokenAccountBalance(channelAta).catch(() => null);
+    if (info !== null && BigInt(info.value.amount) < deposit / 4n) {
+      const topTx = new Transaction().add(
+        topUpIx({
+          payer: agent.publicKey,
+          channel,
+          payerAta,
+          channelAta,
+          mint,
+          amount: deposit / 2n,
+        }),
+      );
+      await sendAndConfirmTransaction(connection, topTx, [agent]);
+      console.log("topped up channel");
+    }
+  }
+
+  // Cooperative close: settle the final voucher.
+  const closeMsg = channelVoucherBytes(channel, lastCumulative, 0n);
+  const closeSig = signEd25519(agent.secretKey, closeMsg);
+  const closeTx = new Transaction().add(
+    buildEd25519Ix(agent.publicKey, closeSig, closeMsg),
+    settleIx(channel),
+  );
+  await sendAndConfirmTransaction(connection, closeTx, [agent]);
+  console.log(`settled at ${lastCumulative}`);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

@@ -1,0 +1,191 @@
+import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
+import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
+import {
+  bindChannelIx,
+  bindingPda,
+  bondPda,
+  channelVoucherBytes,
+  receiptMessageBytes,
+  signEd25519,
+  verifyEd25519,
+} from "harbor-sdk";
+import { Config, connectionFor } from "./config";
+import { Session, StoredReceipt, Store, meterTokens, sha256Hex } from "./store";
+
+const EXPIRY_SLOT = (1n << 63n) - 1n;
+
+function json(res: ServerResponse, code: number, body: unknown): void {
+  res.writeHead(code, { "content-type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    let raw = "";
+    req.on("data", (c) => (raw += c));
+    req.on("end", () => {
+      try {
+        resolve(raw.length > 0 ? (JSON.parse(raw) as Record<string, unknown>) : {});
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
+}
+
+export function createApp(cfg: Config, store: Store, conn?: Connection) {
+  async function ensureBinding(session: Session): Promise<void> {
+    if (cfg.skipChain) return;
+    const connection = conn ?? connectionFor(cfg);
+    const [binding] = bindingPda(session.channel);
+    const existing = await connection.getAccountInfo(binding);
+    if (existing !== null) return;
+    const [bond] = bondPda(cfg.merchant.publicKey, cfg.mint);
+    const tx = new Transaction().add(
+      bindChannelIx(
+        cfg.programId,
+        cfg.merchant.publicKey,
+        bond,
+        binding,
+        session.channel,
+        session.channelProgram,
+        session.deposit,
+      ),
+    );
+    await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
+  }
+
+  async function handleSession(body: Record<string, unknown>) {
+    const channel = new PublicKey(body["channel"] as string);
+    const channelProgram = new PublicKey(body["channelProgram"] as string);
+    const deposit = BigInt(body["deposit"] as string);
+    const authorizedSigner = new PublicKey(body["authorizedSigner"] as string);
+    if (deposit <= 0n) throw new Error("deposit must be positive");
+    const key = channel.toBase58();
+    let session = store.get(key);
+    if (session === undefined) {
+      const [binding] = bindingPda(channel);
+      session = {
+        channel,
+        binding,
+        channelProgram,
+        deposit,
+        authorizedSigner,
+        accepted: 0n,
+        spent: 0n,
+        lastNonce: 0n,
+        receipts: new Map(),
+      };
+      store.set(session);
+    }
+    await ensureBinding(session);
+    return { ok: true as const, binding: session.binding.toBase58() };
+  }
+
+  async function handleComplete(body: Record<string, unknown>) {
+    if (store.killed) {
+      return { status: 500 as const, body: { error: "delivery failed: upstream fault injected" } };
+    }
+    const channel = new PublicKey(body["channel"] as string);
+    const session = store.get(channel.toBase58());
+    if (session === undefined) {
+      return { status: 404 as const, body: { error: "unknown session" } };
+    }
+    const nonce = BigInt(body["nonce"] as string);
+    const input = body["input"] as string;
+    const cumulative = BigInt(body["voucherCumulative"] as string);
+    const sig = Buffer.from(body["voucherSignature"] as string, "base64");
+    if (nonce !== session.lastNonce + 1n) {
+      return { status: 400 as const, body: { error: "nonce must advance by exactly one" } };
+    }
+    if (cumulative <= session.accepted) {
+      return {
+        status: 402 as const,
+        body: { error: "voucher must exceed accepted total", accepted: session.accepted.toString() },
+      };
+    }
+    const voucherMsg = channelVoucherBytes(channel, cumulative, 0n);
+    if (!verifyEd25519(session.authorizedSigner, voucherMsg, sig)) {
+      return { status: 402 as const, body: { error: "bad voucher signature" } };
+    }
+    const { output, tokens } = meterTokens(input);
+    const cost = tokens * cfg.pricePerToken;
+    if (cumulative - session.accepted < cost) {
+      return {
+        status: 402 as const,
+        body: { error: "authorized delta too small", cost: cost.toString() },
+      };
+    }
+    const meterHash = Buffer.from(sha256Hex(input), "hex");
+    const outputHash = Buffer.from(sha256Hex(output), "hex");
+    const msg = receiptMessageBytes({
+      merchant: cfg.merchant.publicKey,
+      binding: session.binding,
+      cumulativeSpend: session.spent + cost,
+      meterHash,
+      outputHash,
+      status: 0,
+      nonce,
+      expirySlot: EXPIRY_SLOT,
+      signer: cfg.merchant.publicKey,
+    });
+    const signature = Buffer.from(signEd25519(cfg.merchant.secretKey, msg)).toString("base64");
+    session.accepted = cumulative;
+    session.spent += cost;
+    session.lastNonce = nonce;
+    const receipt: StoredReceipt = {
+      merchant: cfg.merchant.publicKey.toBase58(),
+      binding: session.binding.toBase58(),
+      cumulativeSpend: (session.spent).toString(),
+      meterHash: meterHash.toString("hex"),
+      outputHash: outputHash.toString("hex"),
+      status: 0,
+      nonce: nonce.toString(),
+      expirySlot: EXPIRY_SLOT.toString(),
+      signer: cfg.merchant.publicKey.toBase58(),
+      signature,
+    };
+    session.receipts.set(nonce.toString(), receipt);
+    return {
+      status: 200 as const,
+      body: { output, tokens: tokens.toString(), cost: cost.toString(), receipt },
+    };
+  }
+
+  const server: Server = createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url ?? "/", "http://x");
+      if (req.method === "POST" && url.pathname === "/session") {
+        json(res, 200, await handleSession(await readBody(req)));
+      } else if (req.method === "POST" && url.pathname === "/complete") {
+        const r = await handleComplete(await readBody(req));
+        json(res, r.status, r.body);
+      } else if (req.method === "GET" && url.pathname === "/info") {
+        json(res, 200, {
+          merchant: cfg.merchant.publicKey.toBase58(),
+          pricePerToken: cfg.pricePerToken.toString(),
+          killed: store.killed,
+        });
+      } else if (
+        req.method === "GET" &&
+        url.pathname.startsWith("/receipt/")
+      ) {
+        const [, , channel, nonce] = url.pathname.split("/");
+        const s = channel !== undefined ? store.get(channel) : undefined;
+        const r = s?.receipts.get(nonce ?? "");
+        if (r === undefined) json(res, 404, { error: "no receipt" });
+        else json(res, 200, r);
+      } else if (req.method === "POST" && url.pathname === "/admin/kill") {
+        const body = await readBody(req);
+        store.killed = body["killed"] !== false;
+        json(res, 200, { killed: store.killed });
+      } else {
+        json(res, 404, { error: "not found" });
+      }
+    } catch (e) {
+      json(res, 400, { error: e instanceof Error ? e.message : "bad request" });
+    }
+  });
+
+  return server;
+}
