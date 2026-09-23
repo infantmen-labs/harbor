@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 
 export const HARBOR_PROGRAM_ID = new PublicKey(
-  "6EawHaUrwSBpAHJ8eqQo2Lf9nAwJKZ54mfgSjFiUsjyQ",
+  "BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H",
 );
 export const CHANNEL_PROGRAM_ID = new PublicKey(
   "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",

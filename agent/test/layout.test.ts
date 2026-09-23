@@ -6,8 +6,10 @@ import { openChannelIx, settleIx, topUpIx } from "../src/channel";
 const K = () => Keypair.generate().publicKey;
 
 describe("upstream instruction layouts", () => {
+  const PROGRAM = K();
   it("open carries discriminator 1 with 14 accounts", () => {
     const ix = openChannelIx({
+      programId: PROGRAM,
       payer: K(),
       payee: K(),
       mint: K(),
@@ -29,13 +31,14 @@ describe("upstream instruction layouts", () => {
   });
 
   it("settle carries discriminator 2 with channel + sysvar", () => {
-    const ix = settleIx(K());
+    const ix = settleIx(PROGRAM, K());
     assert.deepEqual(Array.from(ix.data), [2]);
     assert.equal(ix.keys.length, 2);
   });
 
   it("top_up carries discriminator 3 and amount", () => {
     const ix = topUpIx({
+      programId: PROGRAM,
       payer: K(),
       channel: K(),
       payerAta: K(),

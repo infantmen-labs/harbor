@@ -50,17 +50,27 @@ async function main(): Promise<void> {
     Uint8Array.from(JSON.parse(readFileSync(env("AGENT_KEYPAIR"), "utf8"))),
   );
   const merchant = new PublicKey(env("MERCHANT_PUBKEY"));
+  const channelProgram = new PublicKey(
+    env("CHANNEL_PROGRAM_ID", CHANNEL_PROGRAM_ID.toBase58()),
+  );
   const mint = new PublicKey(env("MINT"));
   const deposit = BigInt(env("DEPOSIT", "100000"));
   const requests = Number(env("REQUESTS", "5"));
   const budget = BigInt(env("BUDGET_PER_REQUEST", "5000"));
   const salt = BigInt(env("SALT", `${Date.now() % 1_000_000}`));
   const log = new JsonlLogger(env("LOG_PATH", "agent-run.jsonl"));
+  const requestDelayMs = Number(env("REQUEST_DELAY_MS", "0"));
 
   const payee = Keypair.generate().publicKey;
   const clockSlot = await connection.getSlot();
   const { channel } = deriveChannel(
-    agent.publicKey, payee, mint, agent.publicKey, salt, BigInt(clockSlot),
+    channelProgram,
+    agent.publicKey,
+    payee,
+    mint,
+    agent.publicKey,
+    salt,
+    BigInt(clockSlot),
   );
   const [channelAta] = (() => {
     const [a] = PublicKey.findProgramAddressSync(
@@ -71,7 +81,7 @@ async function main(): Promise<void> {
   })();
   const [eventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("event_authority")],
-    CHANNEL_PROGRAM_ID,
+    channelProgram,
   );
   const payerAta = (
     await connection.getParsedTokenAccountsByOwner(agent.publicKey, { mint })
@@ -80,6 +90,7 @@ async function main(): Promise<void> {
 
   const openTx = new Transaction().add(
     openChannelIx({
+      programId: channelProgram,
       payer: agent.publicKey,
       payee,
       mint,
@@ -99,32 +110,71 @@ async function main(): Promise<void> {
 
   const s = await postJson(`${serverUrl}/session`, {
     channel: channel.toBase58(),
-    channelProgram: CHANNEL_PROGRAM_ID.toBase58(),
+    channelProgram: channelProgram.toBase58(),
     deposit: deposit.toString(),
     authorizedSigner: agent.publicKey.toBase58(),
   });
   if (s.status !== 200) throw new Error(`session failed: ${JSON.stringify(s.json)}`);
   const binding = new PublicKey(s.json["binding"] as string);
 
-  let lastSpent = 0n;
-  let lastCumulative = 0n;
-  for (let i = 1; i <= requests; i++) {
-    const nonce = BigInt(i);
-    const cumulative = lastSpent + budget;
+  async function attemptRequest(
+    n: bigint,
+    cumulative: bigint,
+  ): Promise<{ status: number; json: Record<string, unknown>; cumulative: bigint }> {
     const msg = channelVoucherBytes(channel, cumulative, 0n);
     const sig = Buffer.from(signEd25519(agent.secretKey, msg)).toString("base64");
     const r = await postJson(`${serverUrl}/complete`, {
       channel: channel.toBase58(),
-      nonce: nonce.toString(),
-      input: `agent request ${i} at ${Date.now()}`,
+      nonce: n.toString(),
+      input: `agent request ${n} at ${Date.now()}`,
       voucherCumulative: cumulative.toString(),
       voucherSignature: sig,
     });
-    if (r.status !== 200) {
-      log.log({ nonce: nonce.toString(), ok: false, error: r.json["error"], status: r.status });
-      console.log(`request ${i} failed: ${JSON.stringify(r.json)}`);
-      continue;
+    return { status: r.status, json: r.json, cumulative };
+  }
+
+  let lastSpent = 0n;
+  let lastCumulative = 0n;
+  let nonce = 1n;
+  let successes = 0;
+  let ceiling = deposit;
+  while (successes < requests) {
+    if (requestDelayMs > 0) {
+      await new Promise((r) => setTimeout(r, requestDelayMs));
     }
+    const base = lastSpent > lastCumulative ? lastSpent : lastCumulative;
+    // Authorization can never exceed the channel deposit: top up first.
+    if (base + budget > ceiling) {
+      const amount = deposit / 2n;
+      const topTx = new Transaction().add(
+        topUpIx({
+          programId: channelProgram,
+          payer: agent.publicKey,
+          channel,
+          payerAta,
+          channelAta,
+          mint,
+          amount,
+        }),
+      );
+      await sendAndConfirmTransaction(connection, topTx, [agent]);
+      ceiling += amount;
+      console.log(`topped up channel, ceiling=${ceiling}`);
+    }
+    let attempt = await attemptRequest(nonce, base + budget);
+    if (attempt.status === 402 && typeof attempt.json["cost"] === "string") {
+      // Re-authorize higher against the quoted cost and retry the same nonce.
+      attempt = await attemptRequest(
+        nonce,
+        lastCumulative + BigInt(attempt.json["cost"] as string) * 2n,
+      );
+    }
+    if (attempt.status !== 200) {
+      log.log({ nonce: nonce.toString(), ok: false, error: attempt.json["error"], status: attempt.status });
+      console.log(`request ${nonce} failed: ${JSON.stringify(attempt.json)}`);
+      break;
+    }
+    const r = attempt;
     const receipt = r.json["receipt"] as Record<string, string>;
     const rmsg = receiptMessageBytes({
       merchant,
@@ -138,42 +188,31 @@ async function main(): Promise<void> {
       signer: merchant,
     });
     const ok = verifyEd25519(merchant, rmsg, Buffer.from(receipt["signature"], "base64"));
-    lastCumulative = cumulative;
+    lastCumulative = r.cumulative;
     lastSpent = BigInt(receipt["cumulativeSpend"]);
     log.log({
       nonce: nonce.toString(),
       ok,
       tokens: r.json["tokens"],
       cost: r.json["cost"],
-      voucherCumulative: cumulative.toString(),
+      voucherCumulative: r.cumulative.toString(),
       receiptSignature: receipt["signature"],
     });
-    console.log(`request ${i}: ok=${ok} cost=${r.json["cost"]}`);
-
-    // Top up the channel when under 25% of the deposit.
-    const info = await connection.getTokenAccountBalance(channelAta).catch(() => null);
-    if (info !== null && BigInt(info.value.amount) < deposit / 4n) {
-      const topTx = new Transaction().add(
-        topUpIx({
-          payer: agent.publicKey,
-          channel,
-          payerAta,
-          channelAta,
-          mint,
-          amount: deposit / 2n,
-        }),
-      );
-      await sendAndConfirmTransaction(connection, topTx, [agent]);
-      console.log("topped up channel");
-    }
+    console.log(`request ${nonce}: ok=${ok} cost=${r.json["cost"]}`);
+    nonce += 1n;
+    successes += 1;
   }
 
-  // Cooperative close: settle the final voucher.
+  // Cooperative close: settle the final voucher (skip if nothing succeeded).
+  if (successes === 0) {
+    console.log("no successful requests; skipping settle");
+    return;
+  }
   const closeMsg = channelVoucherBytes(channel, lastCumulative, 0n);
   const closeSig = signEd25519(agent.secretKey, closeMsg);
   const closeTx = new Transaction().add(
     buildEd25519Ix(agent.publicKey, closeSig, closeMsg),
-    settleIx(channel),
+    settleIx(channelProgram, channel),
   );
   await sendAndConfirmTransaction(connection, closeTx, [agent]);
   console.log(`settled at ${lastCumulative}`);

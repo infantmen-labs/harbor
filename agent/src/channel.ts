@@ -1,7 +1,6 @@
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
-  CHANNEL_PROGRAM_ID,
   IX_SYSVAR_ID,
   RENT_SYSVAR_ID,
   SYSTEM_PROGRAM_ID,
@@ -11,6 +10,7 @@ import {
 
 /** Upstream `open`. Layout: disc(1) | salt(8) | deposit(8) | grace(4) | slot(8) | recipients u32. */
 export function openChannelIx(args: {
+  programId: PublicKey;
   payer: PublicKey;
   payee: PublicKey;
   mint: PublicKey;
@@ -33,7 +33,7 @@ export function openChannelIx(args: {
     u32(0),
   ]);
   return new TransactionInstruction({
-    programId: CHANNEL_PROGRAM_ID,
+    programId: args.programId,
     keys: [
       m(args.payer, true, true),
       m(args.payer, true, true),
@@ -48,15 +48,15 @@ export function openChannelIx(args: {
       m(RENT_SYSVAR_ID, false, false),
       m(ATA_PROGRAM_ID, false, false),
       m(args.eventAuthority, false, false),
-      m(CHANNEL_PROGRAM_ID, false, false),
+      m(args.programId, false, false),
     ],
     data,
   });
 }
 
-export function settleIx(channel: PublicKey): TransactionInstruction {
+export function settleIx(programId: PublicKey, channel: PublicKey): TransactionInstruction {
   return new TransactionInstruction({
-    programId: CHANNEL_PROGRAM_ID,
+    programId,
     keys: [
       m(channel, true, false),
       m(IX_SYSVAR_ID, false, false),
@@ -67,6 +67,7 @@ export function settleIx(channel: PublicKey): TransactionInstruction {
 
 /** Upstream `top_up`. Layout: disc(3) | amount(8). */
 export function topUpIx(args: {
+  programId: PublicKey;
   payer: PublicKey;
   channel: PublicKey;
   payerAta: PublicKey;
@@ -75,7 +76,7 @@ export function topUpIx(args: {
   amount: bigint;
 }): TransactionInstruction {
   return new TransactionInstruction({
-    programId: CHANNEL_PROGRAM_ID,
+    programId: args.programId,
     keys: [
       m(args.payer, true, true),
       m(args.channel, true, false),
@@ -89,6 +90,7 @@ export function topUpIx(args: {
 }
 
 export function deriveChannel(
+  programId: PublicKey,
   payer: PublicKey,
   payee: PublicKey,
   mint: PublicKey,
@@ -97,7 +99,7 @@ export function deriveChannel(
   openSlot: bigint,
 ): { channel: PublicKey; } {
   const [channel] = channelPda(
-    CHANNEL_PROGRAM_ID,
+    programId,
     payer,
     payee,
     mint,

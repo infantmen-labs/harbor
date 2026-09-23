@@ -208,3 +208,50 @@ export function haltBindingIx(
     { key: binding, w: true },
   ]);
 }
+
+export function resolveTimeoutIx(
+  programId: PublicKey,
+  resolver: PublicKey,
+  bond: PublicKey,
+  mint: PublicKey,
+  binding: PublicKey,
+  dispute: PublicKey,
+  claimant: PublicKey,
+  receipt: PublicKey,
+  vault: PublicKey,
+  claimantAta: PublicKey,
+  nonce: bigint,
+) {
+  return keys(programId, D.resolveTimeout, u64(nonce), [
+    { key: resolver, s: true },
+    { key: bond, w: true },
+    { key: mint },
+    { key: binding },
+    { key: dispute, w: true },
+    { key: claimant, w: true },
+    { key: receipt },
+    { key: vault, w: true },
+    { key: claimantAta, w: true },
+    { key: TOKEN_PROGRAM_ID },
+  ]);
+}
+
+export function resolveDeliveredIx(
+  programId: PublicKey,
+  resolver: PublicKey,
+  bond: PublicKey,
+  merchant: PublicKey,
+  binding: PublicKey,
+  dispute: PublicKey,
+  receipt: PublicKey,
+  nonce: bigint,
+) {
+  return keys(programId, D.resolveDelivered, u64(nonce), [
+    { key: resolver, s: true },
+    { key: bond, w: true },
+    { key: merchant, w: true },
+    { key: binding },
+    { key: dispute, w: true },
+    { key: receipt },
+  ]);
+}

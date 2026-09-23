@@ -6,7 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-harbor = "6EawHaUrwSBpAHJ8eqQo2Lf9nAwJKZ54mfgSjFiUsjyQ"
+harbor = "BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H"
+
+[programs.devnet]
+harbor = "BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H"
 
 [provider]
 cluster = "localnet"
