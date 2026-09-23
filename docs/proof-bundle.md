@@ -1,4 +1,20 @@
-# Proof Bundle — full loop on localnet
+# Proof Bundle — full loop on localnet + devnet deployment
+
+## Devnet deployment (live)
+
+- Program `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`, deployed slot
+  503109261, 370,464 bytes, upgrade authority
+  `GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ`.
+- Deploy sig `64x8VfdoYR7kbQitj1kBHTbSakuh3nyxHzcGwDdpBkanpcGgs4bV9A`.
+- IDL published via the Program Metadata Program
+  (`anchor idl init`, verified with `anchor idl fetch`).
+- Upload path that worked: custom resumable uploader
+  (`server/scripts/upload-buffer.ts`) — sliced reads (QuickNode 413s
+  full-account fetches), bincode Write layout, InitializeBuffer on fresh
+  buffers, DeployWithMaxDataLen finalize. Stock tooling failed on both
+  public RPC (write attrition) and QuickNode (413s).
+
+## Localnet loop
 
 Validator: `solana-test-validator` (Agave 3.1.14), reset before the run.
 Program ID: `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`
