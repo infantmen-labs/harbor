@@ -8,7 +8,7 @@ import {
   resolveDeliveredIx,
   resolveTimeoutIx,
 } from "harbor-sdk";
-import { DISPUTE_DISC, decide, parseBond, parseDispute } from "./accounts";
+import { DISPUTE_DISC, bindingChannelProgram, decide, parseBond, parseDispute } from "./accounts";
 import { KeeperConfig } from "./config";
 
 function vaultAta(bond: PublicKey, mint: PublicKey): PublicKey {
@@ -86,7 +86,18 @@ export async function consider(
 
   const bindingInfo = await conn.getAccountInfo(d.binding);
   if (bindingInfo === null) throw new Error("binding not found");
-  const bondKey = bindingBond(Buffer.from(bindingInfo.data));
+  const bindingData = Buffer.from(bindingInfo.data);
+  // Upstream pin: never touch bindings pointed at unknown channel programs.
+  const channelProgram = bindingChannelProgram(bindingData).toBase58();
+  if (!cfg.channelProgramAllowlist.includes(channelProgram)) {
+    log.log({
+      dispute: disputeKey.toBase58(),
+      action: "skipped-untrusted-channel-program",
+      channelProgram,
+    });
+    return "pending";
+  }
+  const bondKey = bindingBond(bindingData);
   const bondInfo = await conn.getAccountInfo(bondKey);
   if (bondInfo === null) throw new Error("bond not found");
   const bond = parseBond(Buffer.from(bondInfo.data));

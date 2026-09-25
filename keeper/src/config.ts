@@ -10,6 +10,7 @@ export interface KeeperConfig {
   live: boolean;
   logPath: string;
   runOnce: boolean;
+  channelProgramAllowlist: string[];
 }
 
 export function loadKeeperConfig(env: NodeJS.ProcessEnv = process.env): KeeperConfig {
@@ -24,5 +25,7 @@ export function loadKeeperConfig(env: NodeJS.ProcessEnv = process.env): KeeperCo
     live: env["MODE"] === "live",
     logPath: env["LOG_PATH"] ?? "keeper.log.jsonl",
     runOnce: env["RUN_ONCE"] === "1",
+    channelProgramAllowlist: (env["UPSTREAM_PROGRAM_ALLOWLIST"] ??
+      "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX").split(","),
   };
 }

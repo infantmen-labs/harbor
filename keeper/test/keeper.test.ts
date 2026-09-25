@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { PublicKey } from "@solana/web3.js";
-import { decide, parseBond, parseDispute, type Dispute } from "../src/accounts";
+import { bindingChannelProgram, decide, parseBond, parseDispute, type Dispute } from "../src/accounts";
 
 const K = (n: number) => new PublicKey(Buffer.alloc(32, n));
 
@@ -62,5 +62,11 @@ describe("account parsers", () => {
     assert.equal(d.reason, 2);
     assert.ok(d.claimant.equals(K(2)));
     assert.equal(d.deadlineSlot, 1000n);
+  });
+
+  it("reads the channel program from a binding", () => {
+    const buf = Buffer.alloc(8 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 1 + 1);
+    K(9).toBuffer().copy(buf, 104);
+    assert.ok(bindingChannelProgram(buf).equals(K(9)));
   });
 });

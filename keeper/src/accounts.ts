@@ -49,6 +49,11 @@ export function parseDispute(data: Buffer): Dispute {
   };
 }
 
+/** Binding layout: disc(8) + channel(32) + merchant(32) + bond(32) + channel_program(32) + ... */
+export function bindingChannelProgram(data: Buffer): PublicKey {
+  return new PublicKey(data.subarray(8 + 32 + 32 + 32, 8 + 32 + 32 + 32 + 32));
+}
+
 export type Action =
   | { kind: "resolve-timeout" }
   | { kind: "resolve-delivered" }
