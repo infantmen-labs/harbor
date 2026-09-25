@@ -1,0 +1,1364 @@
+{
+  "address": "BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H",
+  "metadata": {
+    "name": "harbor",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "bind_channel",
+      "discriminator": [
+        56,
+        13,
+        116,
+        192,
+        54,
+        234,
+        8,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond"
+        },
+        {
+          "name": "binding",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  105,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "channel"
+              }
+            ]
+          }
+        },
+        {
+          "name": "channel",
+          "docs": [
+            "devnet integration; until then the binding key commits to this address."
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "channel_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "max_spend",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "halt_binding",
+      "discriminator": [
+        253,
+        79,
+        175,
+        71,
+        63,
+        49,
+        108,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "binding"
+          ]
+        },
+        {
+          "name": "binding",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "open_dispute",
+      "discriminator": [
+        137,
+        25,
+        99,
+        119,
+        23,
+        223,
+        161,
+        42
+      ],
+      "accounts": [
+        {
+          "name": "claimant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "bond",
+          "writable": true
+        },
+        {
+          "name": "binding"
+        },
+        {
+          "name": "dispute",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "binding"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "reason",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "post_bond",
+      "discriminator": [
+        168,
+        151,
+        202,
+        119,
+        163,
+        58,
+        147,
+        247
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "merchant_ata",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "before creation/use. Manual creation (not `init`) so the mint gate",
+            "provably runs before any vault CPI. `mut` for CPI writability only;",
+            "key and creation are enforced in the handler."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "refund_unused",
+      "discriminator": [
+        239,
+        108,
+        1,
+        110,
+        2,
+        81,
+        44,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "merchant_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_merchant",
+      "discriminator": [
+        238,
+        245,
+        77,
+        132,
+        161,
+        88,
+        216,
+        248
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "sla_bps",
+          "type": "u16"
+        },
+        {
+          "name": "challenge_slots",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_delivered",
+      "discriminator": [
+        103,
+        223,
+        10,
+        163,
+        175,
+        200,
+        192,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "resolver",
+          "signer": true
+        },
+        {
+          "name": "bond",
+          "writable": true
+        },
+        {
+          "name": "merchant",
+          "writable": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "binding"
+        },
+        {
+          "name": "dispute",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "binding"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "receipt"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_timeout",
+      "discriminator": [
+        149,
+        55,
+        89,
+        144,
+        121,
+        143,
+        48,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "resolver",
+          "signer": true
+        },
+        {
+          "name": "bond",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "binding"
+        },
+        {
+          "name": "dispute",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  112,
+                  117,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "binding"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimant",
+          "writable": true
+        },
+        {
+          "name": "receipt"
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "claimant_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "submit_receipt",
+      "discriminator": [
+        172,
+        84,
+        119,
+        35,
+        195,
+        154,
+        214,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond",
+            "binding"
+          ]
+        },
+        {
+          "name": "bond"
+        },
+        {
+          "name": "binding",
+          "writable": true
+        },
+        {
+          "name": "receipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "binding"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ix_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cumulative_spend",
+          "type": "u64"
+        },
+        {
+          "name": "meter_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "output_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "status",
+          "type": "u8"
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "expiry_slot",
+          "type": "u64"
+        },
+        {
+          "name": "signer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "top_up_bond",
+      "discriminator": [
+        110,
+        37,
+        8,
+        119,
+        210,
+        231,
+        202,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "merchant_ata",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_bond",
+      "discriminator": [
+        222,
+        199,
+        141,
+        31,
+        188,
+        93,
+        155,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "merchant",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "bond",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "bond"
+          ]
+        },
+        {
+          "name": "merchant_ata",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ChannelBinding",
+      "discriminator": [
+        4,
+        64,
+        155,
+        13,
+        241,
+        105,
+        116,
+        241
+      ]
+    },
+    {
+      "name": "Dispute",
+      "discriminator": [
+        36,
+        49,
+        241,
+        67,
+        40,
+        36,
+        241,
+        74
+      ]
+    },
+    {
+      "name": "MerchantBond",
+      "discriminator": [
+        9,
+        89,
+        5,
+        121,
+        153,
+        205,
+        65,
+        181
+      ]
+    },
+    {
+      "name": "ReceiptLog",
+      "discriminator": [
+        28,
+        105,
+        182,
+        63,
+        212,
+        2,
+        230,
+        57
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BindingHalted",
+      "discriminator": [
+        23,
+        43,
+        192,
+        189,
+        239,
+        233,
+        178,
+        14
+      ]
+    },
+    {
+      "name": "BondClosed",
+      "discriminator": [
+        227,
+        55,
+        88,
+        183,
+        234,
+        17,
+        203,
+        66
+      ]
+    },
+    {
+      "name": "BondPosted",
+      "discriminator": [
+        39,
+        196,
+        2,
+        142,
+        202,
+        74,
+        107,
+        205
+      ]
+    },
+    {
+      "name": "BondSlashed",
+      "discriminator": [
+        59,
+        7,
+        252,
+        195,
+        234,
+        156,
+        42,
+        54
+      ]
+    },
+    {
+      "name": "ChannelBound",
+      "discriminator": [
+        186,
+        51,
+        40,
+        60,
+        32,
+        39,
+        41,
+        79
+      ]
+    },
+    {
+      "name": "DisputeOpened",
+      "discriminator": [
+        239,
+        222,
+        102,
+        235,
+        193,
+        85,
+        1,
+        214
+      ]
+    },
+    {
+      "name": "DisputeResolved",
+      "discriminator": [
+        121,
+        64,
+        249,
+        153,
+        139,
+        128,
+        236,
+        187
+      ]
+    },
+    {
+      "name": "MerchantRegistered",
+      "discriminator": [
+        202,
+        61,
+        140,
+        95,
+        139,
+        239,
+        17,
+        83
+      ]
+    },
+    {
+      "name": "ReceiptSubmitted",
+      "discriminator": [
+        31,
+        197,
+        41,
+        7,
+        67,
+        165,
+        35,
+        15
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientBond",
+      "msg": "Bond too small for requested slash"
+    },
+    {
+      "code": 6001,
+      "name": "BindingMismatch",
+      "msg": "Channel binding does not match"
+    },
+    {
+      "code": 6002,
+      "name": "BadMint",
+      "msg": "Unexpected mint"
+    },
+    {
+      "code": 6003,
+      "name": "Unauthorized",
+      "msg": "Unauthorized signer"
+    },
+    {
+      "code": 6004,
+      "name": "TimelockNotPassed",
+      "msg": "Bond timelock has not passed"
+    },
+    {
+      "code": 6005,
+      "name": "DisputeOpen",
+      "msg": "Bond has open disputes"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidSla",
+      "msg": "SLA out of range"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidChallengeWindow",
+      "msg": "Challenge window out of range"
+    },
+    {
+      "code": 6008,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6009,
+      "name": "BadReceiptProof",
+      "msg": "Receipt proof failed"
+    },
+    {
+      "code": 6010,
+      "name": "Replay",
+      "msg": "Nonce already recorded"
+    },
+    {
+      "code": 6011,
+      "name": "Expired",
+      "msg": "Receipt expired"
+    },
+    {
+      "code": 6012,
+      "name": "DisputeNotMature",
+      "msg": "Dispute window has not elapsed"
+    },
+    {
+      "code": 6013,
+      "name": "VaultNotEmpty",
+      "msg": "Vault is not empty"
+    },
+    {
+      "code": 6014,
+      "name": "BondNotEmpty",
+      "msg": "Bond still holds funds"
+    },
+    {
+      "code": 6015,
+      "name": "AlreadyDelivered",
+      "msg": "Delivery receipt exists; timeout slash unavailable"
+    },
+    {
+      "code": 6016,
+      "name": "NoDelivery",
+      "msg": "No delivery receipt for this nonce"
+    },
+    {
+      "code": 6017,
+      "name": "UnsupportedMint",
+      "msg": "Only classic Tokenkeg mints are supported as bond collateral"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidVault",
+      "msg": "Vault is not the canonical bond ATA"
+    },
+    {
+      "code": 6019,
+      "name": "Halted",
+      "msg": "Binding is halted"
+    }
+  ],
+  "types": [
+    {
+      "name": "BindingHalted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BondClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BondPosted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BondSlashed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "claimant",
+            "type": "pubkey"
+          },
+          {
+            "name": "slash",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelBinding",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "channel",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "bond",
+            "type": "pubkey"
+          },
+          {
+            "name": "channel_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_spend",
+            "type": "u64"
+          },
+          {
+            "name": "last_nonce",
+            "type": "u64"
+          },
+          {
+            "name": "last_cumulative_spend",
+            "type": "u64"
+          },
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelBound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "channel",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "bond",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_spend",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Dispute",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          },
+          {
+            "name": "claimant",
+            "type": "pubkey"
+          },
+          {
+            "name": "deadline_slot",
+            "type": "u64"
+          },
+          {
+            "name": "stake_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          },
+          {
+            "name": "claimant",
+            "type": "pubkey"
+          },
+          {
+            "name": "deadline_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "slashed",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MerchantBond",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "sla_bps",
+            "type": "u16"
+          },
+          {
+            "name": "challenge_slots",
+            "type": "u64"
+          },
+          {
+            "name": "open_disputes",
+            "type": "u64"
+          },
+          {
+            "name": "last_change_slot",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MerchantRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "sla_bps",
+            "type": "u16"
+          },
+          {
+            "name": "challenge_slots",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReceiptLog",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "receipt_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "cumulative_spend",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReceiptSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "cumulative_spend",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

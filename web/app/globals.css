@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--harbor-background);
+  --color-background-secondary: var(--harbor-background-secondary);
+  --color-surface: var(--harbor-surface);
+  --color-surface-hover: var(--harbor-surface-hover);
+  --color-foreground: var(--harbor-foreground);
+  --color-foreground-secondary: var(--harbor-foreground-secondary);
+  --color-muted: var(--harbor-muted);
+  --color-border: var(--harbor-border);
+  --color-border-subtle: var(--harbor-border-subtle);
+  --color-accent: var(--harbor-accent);
+  --color-accent-hover: var(--harbor-accent-hover);
+  --color-success: var(--harbor-success);
+  --color-warning: var(--harbor-warning);
+  --color-warning-bg: var(--harbor-warning-bg);
+  --color-error: var(--harbor-error);
+  --color-error-bg: var(--harbor-error-bg);
+  --color-ink-inverse: var(--harbor-ink-inverse);
+  --color-ink-bg: var(--harbor-ink-bg);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+:root {
+  --harbor-background: #f5f5fa;
+  --harbor-background-secondary: #ffffff;
+  --harbor-surface: #ffffff;
+  --harbor-surface-hover: #f0f0f6;
+  --harbor-foreground: #101014;
+  --harbor-foreground-secondary: #373642;
+  --harbor-muted: #626070;
+  --harbor-border: #d9d8e3;
+  --harbor-border-subtle: #e7e6ee;
+  --harbor-accent: #0f9d7e;
+  --harbor-accent-hover: #0b7d64;
+  --harbor-success: #0f9d7e;
+  --harbor-warning: #d99b00;
+  --harbor-warning-bg: #fff2cf;
+  --harbor-error: #c93a2e;
+  --harbor-error-bg: #fdecea;
+  --harbor-ink-inverse: #e6edf3;
+  --harbor-ink-bg: #101014;
+}
+
+body {
+  background: var(--harbor-background);
+  color: var(--harbor-foreground);
+}
+
+/* Feed entry + countdown pulse. Only motion in the app. */
+@keyframes harbor-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes harbor-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
