@@ -41,7 +41,7 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
       const [bondKey] = bondPda(publicKey, mintKey);
       return fetchBond(getConn(), bondKey);
     }, [publicKey, mint]),
-    4000,
+    6000,
   );
 
   const { data: bindings } = usePoll(
@@ -49,7 +49,7 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
       if (bond === null) return [];
       return listBindingsForBond(getConn(), new PublicKey(bond.address));
     }, [bond]),
-    4000,
+    6000,
   );
 
   async function send(ixs: TransactionInstruction[]) {

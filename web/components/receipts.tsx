@@ -38,7 +38,7 @@ export function useReceipts(channel: string | null, active: boolean): Receipt[] 
       const have = new Set(seen.current);
       while (have.has(String(top))) top += 1;
       next = top;
-    }, 2000);
+    }, 3000);
     return () => {
       stop = true;
       clearInterval(id);

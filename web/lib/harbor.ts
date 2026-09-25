@@ -8,11 +8,17 @@ const programs = new Map<string, InstanceType<typeof Program>>();
 let connection: Connection | null = null;
 
 export function getConnection(url: string = RPC_URL): Connection {
+  const opts = {
+    commitment: "confirmed" as const,
+    // Our usePoll hook owns retry/backoff. The client default retries
+    // rate-limited calls internally, which multiplies load into a storm.
+    disableRetryOnRateLimit: true,
+  };
   if (url === RPC_URL) {
-    if (connection === null) connection = new Connection(url, "confirmed");
+    if (connection === null) connection = new Connection(url, opts);
     return connection;
   }
-  return new Connection(url, "confirmed");
+  return new Connection(url, opts);
 }
 
 export function getProgram(conn: Connection): InstanceType<typeof Program> {

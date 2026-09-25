@@ -57,7 +57,7 @@ export default function Live() {
       if (bondKey === null) return null;
       return fetchBond(conn, new PublicKey(bondKey));
     }, [conn, mock, bondKey]),
-    4000,
+    6000,
     mock || bondKey !== null,
   );
 
@@ -67,7 +67,7 @@ export default function Live() {
       if (mock || bond === null) return [];
       return listBindingsForBond(conn, new PublicKey(bond.address));
     }, [conn, mock, bond]),
-    4000,
+    6000,
     !mock && bond !== null,
   );
   const binding = useMemo(
@@ -95,7 +95,7 @@ export default function Live() {
       if (mock || binding === null || slot === null) return [];
       return listDisputesForBinding(conn, new PublicKey(binding.address), slot);
     }, [conn, mock, binding, slot]),
-    4000,
+    6000,
     !mock && binding !== null && slot !== null,
   );
   const dispute = mock ? MOCK_DISPUTE : (disputesQuery.data?.[0] ?? null);
@@ -122,7 +122,7 @@ export default function Live() {
       }
       return entries;
     }, [conn, mock, bond]),
-    8000,
+    15000,
     bond !== null,
   );
 
