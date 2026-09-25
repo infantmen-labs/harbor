@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RENT_SYSVAR_ID = exports.ATA_PROGRAM_ID = exports.TOKEN_PROGRAM_ID = exports.SYSTEM_PROGRAM_ID = exports.IX_SYSVAR_ID = exports.ED25519_PROGRAM_ID = exports.CHANNEL_PROGRAM_ID = exports.HARBOR_PROGRAM_ID = void 0;
+const web3_js_1 = require("@solana/web3.js");
+exports.HARBOR_PROGRAM_ID = new web3_js_1.PublicKey("BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H");
+exports.CHANNEL_PROGRAM_ID = new web3_js_1.PublicKey("CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX");
+exports.ED25519_PROGRAM_ID = new web3_js_1.PublicKey("Ed25519SigVerify111111111111111111111111111");
+exports.IX_SYSVAR_ID = new web3_js_1.PublicKey("Sysvar1nstructions1111111111111111111111111");
+exports.SYSTEM_PROGRAM_ID = new web3_js_1.PublicKey("11111111111111111111111111111111");
+exports.TOKEN_PROGRAM_ID = new web3_js_1.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+exports.ATA_PROGRAM_ID = new web3_js_1.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+exports.RENT_SYSVAR_ID = new web3_js_1.PublicKey("SysvarRent111111111111111111111111111111111");

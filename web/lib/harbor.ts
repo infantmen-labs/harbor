@@ -68,6 +68,27 @@ export async function fetchBond(
   };
 }
 
+export async function listBonds(conn: Connection): Promise<BondStatus[]> {
+  const program = getProgram(conn);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const all = (await (program.account as any).merchantBond.all().catch(
+    (): unknown[] => [],
+  )) as Array<{ publicKey: PublicKey; account: unknown }>;
+  return all.map(({ publicKey, account }) => {
+    const a = asRec(account);
+    return {
+      address: publicKey.toBase58(),
+      merchant: pk(a["merchant"]),
+      mint: pk(a["mint"]),
+      amount: big(a["amount"]),
+      slaBps: Number(a["sla_bps"]),
+      challengeSlots: big(a["challenge_slots"]),
+      openDisputes: big(a["open_disputes"]),
+      lastChangeSlot: big(a["last_change_slot"]),
+    };
+  });
+}
+
 export async function listBindingsForBond(
   conn: Connection,
   bond: PublicKey,

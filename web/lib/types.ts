@@ -62,5 +62,5 @@ export type TxState =
 export interface ProofEntry {
   label: string;
   value: string;
-  kind: "address" | "amount" | "signature" | "text";
+  kind: "address" | "amount" | "tx" | "text";
 }

@@ -1,0 +1,170 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.registerMerchantIx = registerMerchantIx;
+exports.postBondIx = postBondIx;
+exports.topUpBondIx = topUpBondIx;
+exports.withdrawBondIx = withdrawBondIx;
+exports.bindChannelIx = bindChannelIx;
+exports.submitReceiptIx = submitReceiptIx;
+exports.openDisputeIx = openDisputeIx;
+exports.haltBindingIx = haltBindingIx;
+exports.resolveTimeoutIx = resolveTimeoutIx;
+exports.resolveDeliveredIx = resolveDeliveredIx;
+const web3_js_1 = require("@solana/web3.js");
+const ids_1 = require("./ids");
+const D = {
+    registerMerchant: [238, 245, 77, 132, 161, 88, 216, 248],
+    postBond: [168, 151, 202, 119, 163, 58, 147, 247],
+    topUpBond: [110, 37, 8, 119, 210, 231, 202, 197],
+    withdrawBond: [222, 199, 141, 31, 188, 93, 155, 40],
+    bindChannel: [56, 13, 116, 192, 54, 234, 8, 201],
+    haltBinding: [253, 79, 175, 71, 63, 49, 108, 135],
+    submitReceipt: [172, 84, 119, 35, 195, 154, 214, 176],
+    openDispute: [137, 25, 99, 119, 23, 223, 161, 42],
+    resolveTimeout: [149, 55, 89, 144, 121, 143, 48, 210],
+    resolveDelivered: [103, 223, 10, 163, 175, 200, 192, 62],
+    refundUnused: [239, 108, 1, 110, 2, 81, 44, 174],
+};
+function u8(v) {
+    const b = Buffer.alloc(1);
+    b.writeUInt8(v);
+    return b;
+}
+function u16(v) {
+    const b = Buffer.alloc(2);
+    b.writeUInt16LE(v);
+    return b;
+}
+function u64(v) {
+    const b = Buffer.alloc(8);
+    b.writeBigUInt64LE(v);
+    return b;
+}
+function pk(k) {
+    return k.toBuffer();
+}
+function bytes32(b) {
+    if (b.length !== 32)
+        throw new Error("expected 32 bytes");
+    return Buffer.from(b);
+}
+function keys(programId, disc, data, metas) {
+    return new web3_js_1.TransactionInstruction({
+        programId,
+        keys: metas.map((m) => {
+            var _a, _b;
+            return ({
+                pubkey: m.key,
+                isWritable: (_a = m.w) !== null && _a !== void 0 ? _a : false,
+                isSigner: (_b = m.s) !== null && _b !== void 0 ? _b : false,
+            });
+        }),
+        data: Buffer.concat([Buffer.from(disc), data]),
+    });
+}
+function registerMerchantIx(programId, merchant, bond, mint, slaBps, challengeSlots) {
+    return keys(programId, D.registerMerchant, Buffer.concat([u16(slaBps), u64(challengeSlots)]), [
+        { key: merchant, w: true, s: true },
+        { key: bond, w: true },
+        { key: mint },
+        { key: ids_1.SYSTEM_PROGRAM_ID },
+    ]);
+}
+function postBondIx(programId, merchant, bond, mint, merchantAta, vault, amount) {
+    return keys(programId, D.postBond, u64(amount), [
+        { key: merchant, w: true, s: true },
+        { key: bond, w: true },
+        { key: mint },
+        { key: merchantAta, w: true },
+        { key: vault, w: true },
+        { key: ids_1.TOKEN_PROGRAM_ID },
+        { key: ids_1.ATA_PROGRAM_ID },
+        { key: ids_1.SYSTEM_PROGRAM_ID },
+    ]);
+}
+function topUpBondIx(programId, merchant, bond, mint, merchantAta, vault, amount) {
+    return keys(programId, D.topUpBond, u64(amount), [
+        { key: merchant, w: true, s: true },
+        { key: bond, w: true },
+        { key: mint },
+        { key: merchantAta, w: true },
+        { key: vault, w: true },
+        { key: ids_1.TOKEN_PROGRAM_ID },
+    ]);
+}
+function withdrawBondIx(programId, merchant, bond, mint, merchantAta, vault, amount) {
+    return keys(programId, D.withdrawBond, u64(amount), [
+        { key: merchant, w: true, s: true },
+        { key: bond, w: true },
+        { key: mint },
+        { key: merchantAta, w: true },
+        { key: vault, w: true },
+        { key: ids_1.TOKEN_PROGRAM_ID },
+    ]);
+}
+function bindChannelIx(programId, merchant, bond, binding, channel, channelProgram, maxSpend) {
+    return keys(programId, D.bindChannel, Buffer.concat([pk(channelProgram), u64(maxSpend)]), [
+        { key: merchant, w: true, s: true },
+        { key: bond },
+        { key: binding, w: true },
+        { key: channel },
+        { key: ids_1.SYSTEM_PROGRAM_ID },
+    ]);
+}
+function submitReceiptIx(programId, merchant, bond, binding, receipt, args) {
+    return keys(programId, D.submitReceipt, Buffer.concat([
+        u64(args.cumulativeSpend),
+        bytes32(args.meterHash),
+        bytes32(args.outputHash),
+        u8(args.status),
+        u64(args.nonce),
+        u64(args.expirySlot),
+        pk(args.signer),
+    ]), [
+        { key: merchant, w: true, s: true },
+        { key: bond },
+        { key: binding, w: true },
+        { key: receipt, w: true },
+        { key: ids_1.IX_SYSVAR_ID },
+        { key: ids_1.SYSTEM_PROGRAM_ID },
+    ]);
+}
+function openDisputeIx(programId, claimant, bond, binding, dispute, nonce, reason) {
+    return keys(programId, D.openDispute, Buffer.concat([u64(nonce), u8(reason)]), [
+        { key: claimant, w: true, s: true },
+        { key: bond, w: true },
+        { key: binding },
+        { key: dispute, w: true },
+        { key: ids_1.SYSTEM_PROGRAM_ID },
+    ]);
+}
+function haltBindingIx(programId, merchant, binding) {
+    return keys(programId, D.haltBinding, Buffer.alloc(0), [
+        { key: merchant, w: true, s: true },
+        { key: binding, w: true },
+    ]);
+}
+function resolveTimeoutIx(programId, resolver, bond, mint, binding, dispute, claimant, receipt, vault, claimantAta, nonce) {
+    return keys(programId, D.resolveTimeout, u64(nonce), [
+        { key: resolver, s: true },
+        { key: bond, w: true },
+        { key: mint },
+        { key: binding },
+        { key: dispute, w: true },
+        { key: claimant, w: true },
+        { key: receipt },
+        { key: vault, w: true },
+        { key: claimantAta, w: true },
+        { key: ids_1.TOKEN_PROGRAM_ID },
+    ]);
+}
+function resolveDeliveredIx(programId, resolver, bond, merchant, binding, dispute, receipt, nonce) {
+    return keys(programId, D.resolveDelivered, u64(nonce), [
+        { key: resolver, s: true },
+        { key: bond, w: true },
+        { key: merchant, w: true },
+        { key: binding },
+        { key: dispute, w: true },
+        { key: receipt },
+    ]);
+}

@@ -35,12 +35,12 @@ export function buildCreateAtaIx(
   return createAssociatedTokenAccountInstruction(payer, ata, owner, mint);
 }
 
-export async function buildRegisterIx(
+export function buildRegisterIx(
   merchant: PublicKey,
   mint: PublicKey,
   slaBps: number,
   challengeSlots: bigint,
-): Promise<{ ix: TransactionInstruction; bond: PublicKey }> {
+): { ix: TransactionInstruction; bond: PublicKey } {
   const [bond] = bondPda(merchant, mint);
   return {
     ix: registerMerchantIx(PROGRAM, merchant, bond, mint, slaBps, challengeSlots),
@@ -64,24 +64,24 @@ export async function buildPostBondIx(
   return { ixs, vault };
 }
 
-export async function buildTopUpIx(
+export function buildTopUpIx(
   merchant: PublicKey,
   bond: PublicKey,
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
   amount: bigint,
-): Promise<TransactionInstruction> {
+): TransactionInstruction {
   return topUpBondIx(PROGRAM, merchant, bond, mint, merchantAta, vault, amount);
 }
 
-export async function buildBindIx(
+export function buildBindIx(
   merchant: PublicKey,
   bond: PublicKey,
   channel: PublicKey,
   channelProgram: PublicKey,
   maxSpend: bigint,
-): Promise<{ ix: TransactionInstruction; binding: PublicKey }> {
+): { ix: TransactionInstruction; binding: PublicKey } {
   const [binding] = bindingPda(channel);
   return {
     ix: bindChannelIx(PROGRAM, merchant, bond, binding, channel, channelProgram, maxSpend),
@@ -89,31 +89,31 @@ export async function buildBindIx(
   };
 }
 
-export async function buildHaltIx(
+export function buildHaltIx(
   merchant: PublicKey,
   binding: PublicKey,
-): Promise<TransactionInstruction> {
+): TransactionInstruction {
   return haltBindingIx(PROGRAM, merchant, binding);
 }
 
-export async function buildWithdrawIx(
+export function buildWithdrawIx(
   merchant: PublicKey,
   bond: PublicKey,
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
   amount: bigint,
-): Promise<TransactionInstruction> {
+): TransactionInstruction {
   return withdrawBondIx(PROGRAM, merchant, bond, mint, merchantAta, vault, amount);
 }
 
-export async function buildOpenDisputeIx(
+export function buildOpenDisputeIx(
   claimant: PublicKey,
   bond: PublicKey,
   binding: PublicKey,
   nonce: bigint,
   reason: number,
-): Promise<{ ix: TransactionInstruction; dispute: PublicKey }> {
+): { ix: TransactionInstruction; dispute: PublicKey } {
   const [dispute] = disputePda(binding, nonce);
   return {
     ix: openDisputeIx(PROGRAM, claimant, bond, binding, dispute, nonce, reason),

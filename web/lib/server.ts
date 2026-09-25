@@ -1,9 +1,11 @@
-import { SERVER_URL } from "./env";
 import type { Receipt } from "./types";
+
+// Same-origin proxy (see next.config.ts rewrites): no CORS needed.
+const BASE = "/api";
 
 async function get<T>(path: string): Promise<T | null> {
   try {
-    const r = await fetch(`${SERVER_URL}${path}`);
+    const r = await fetch(`${BASE}${path}`);
     if (!r.ok) return null;
     return (await r.json()) as T;
   } catch {
@@ -12,7 +14,7 @@ async function get<T>(path: string): Promise<T | null> {
 }
 
 async function post<T>(path: string, body: unknown): Promise<{ status: number; json: T }> {
-  const r = await fetch(`${SERVER_URL}${path}`, {
+  const r = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),

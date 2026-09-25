@@ -1,69 +1,118 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+export default function Landing() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main>
+      <section className="mx-auto w-full max-w-[1280px] px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
+        <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
+          Surety for machine payments
+        </p>
+        <h1 className="mt-4 max-w-[16ch] font-display text-[48px] font-medium leading-[100%] tracking-[-0.02em] md:text-[88px]">
+          Agents pay. Merchants prove delivery — or pay up.
+        </h1>
+        <p className="mt-6 max-w-[52ch] text-[17px] leading-[150%] text-foreground-secondary md:text-[18px]">
+          Harbor is a surety and clearing layer for metered APIs. Merchants
+          post a bond, agents pay through payment channels, and funds
+          release against signed delivery receipts. Miss the SLA and the
+          bond slashes to the agent — no chargebacks, no accounts, no trust.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/live"
+            className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
+          >
+            Watch the 60-second demo
+          </Link>
+          <Link
+            href="/merchant"
+            className="rounded-[8px] border border-border bg-surface px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+          >
+            Become a merchant
+          </Link>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-background-secondary">
+        <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
+          <HowMetric label="Mechanism" value="Bond → receipt → slash" />
+          <HowMetric label="Settlement" value="Payment channels" />
+          <HowMetric label="Challenge window" value="150 slots" />
+          <HowMetric label="Trust model" value="Zero" />
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+        <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
+          How it works
+        </p>
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
+          <HowCard
+            n="01"
+            title="Bond"
+            body="The merchant locks stablecoin collateral sized to its SLA. The bond is the performance guarantee — no legal contract, no account."
+          />
+          <HowCard
+            n="02"
+            title="Pay against receipts"
+            body="The agent streams cumulative vouchers through a payment channel. Every served unit returns a signed delivery receipt the UI verifies."
+          />
+          <HowCard
+            n="03"
+            title="Slash on failure"
+            body="A missed deadline opens a dispute. Nobody judges it: an empty receipt log past the challenge window slashes automatically."
+          />
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28">
+        <div className="rounded-[16px] border border-border bg-surface p-6 md:p-10">
+          <h2 className="font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
+            Built for the adversarial case first.
+          </h2>
+          <p className="mt-3 max-w-[60ch] text-[16px] text-foreground-secondary">
+            Every other agent-payments demo shows the happy path. Harbor
+            starts with the failure: kill the API mid-job and watch the
+            bond make the agent whole.
           </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/live"
+              className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
+            >
+              Open mission control
+            </Link>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-[8px] border border-border px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+            >
+              Read the code
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
+    </main>
+  );
+}
+
+function HowMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
+        {label}
+      </p>
+      <p className="mt-2 font-display text-[24px] font-medium md:text-[30px]">{value}</p>
+    </div>
+  );
+}
+
+function HowCard({ n, title, body }: { n: string; title: string; body: string }) {
+  return (
+    <div className="rounded-[12px] border border-border bg-surface p-6">
+      <p className="font-mono text-[13px] text-muted">{n}</p>
+      <h3 className="mt-3 font-display text-[24px] font-medium">{title}</h3>
+      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">{body}</p>
     </div>
   );
 }
