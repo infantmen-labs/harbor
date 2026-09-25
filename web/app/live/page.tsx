@@ -87,7 +87,7 @@ export default function Live() {
   const receipts = useReceipts(channel, !mock && channel !== null);
   const shownReceipts = mock ? MOCK_RECEIPTS : receipts;
 
-  const slotQuery = usePoll(useCallback(async () => getSlot(conn), [conn]), 2000, !mock);
+  const slotQuery = usePoll(useCallback(async () => getSlot(conn), [conn]), 4000, !mock);
   const slot = mock ? MOCK_SLOT : slotQuery.data;
 
   const disputesQuery = usePoll(
