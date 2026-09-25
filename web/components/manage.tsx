@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
@@ -17,9 +17,7 @@ import { usePoll } from "@/lib/hooks";
 import { Card, EmptyState } from "./primitives";
 import { ExplorerLink } from "./explorer";
 import { TxStatus } from "./status";
-
-const inputCls =
-  "h-10 w-full rounded-[8px] border border-border bg-surface px-3 font-mono text-[14px] placeholder:text-muted";
+import { inputCls, parseAmount, parseKey } from "@/lib/forms";
 
 function vaultFor(bond: PublicKey, mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
@@ -35,16 +33,24 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
   const [amount, setAmount] = useState("100000");
   const [state, setState] = useState<TxState>({ status: "idle" });
 
-  const { data: bond } = usePoll(async (): Promise<BondStatus | null> => {
-    if (publicKey === null || mint.trim() === "") return null;
-    const [bondKey] = bondPda(publicKey, new PublicKey(mint.trim()));
-    return fetchBond(getConn(), bondKey);
-  }, 4000);
+  const { data: bond } = usePoll(
+    useCallback(async (): Promise<BondStatus | null> => {
+      if (publicKey === null || mint.trim() === "") return null;
+      const mintKey = parseKey(mint);
+      if (mintKey === null) return null;
+      const [bondKey] = bondPda(publicKey, mintKey);
+      return fetchBond(getConn(), bondKey);
+    }, [publicKey, mint]),
+    4000,
+  );
 
-  const { data: bindings } = usePoll(async (): Promise<BindingStatus[]> => {
-    if (bond === null) return [];
-    return listBindingsForBond(getConn(), new PublicKey(bond.address));
-  }, 4000);
+  const { data: bindings } = usePoll(
+    useCallback(async (): Promise<BindingStatus[]> => {
+      if (bond === null) return [];
+      return listBindingsForBond(getConn(), new PublicKey(bond.address));
+    }, [bond]),
+    4000,
+  );
 
   async function send(ixs: TransactionInstruction[]) {
     if (publicKey === null || signTransaction === undefined) return;
@@ -53,7 +59,12 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
 
   async function topUp() {
     if (publicKey === null || bond === null) return;
-    const mintKey = new PublicKey(mint.trim());
+    const mintKey = parseKey(mint);
+    const value = parseAmount(amount);
+    if (mintKey === null || value === null) {
+      setState({ status: "failed", error: "Enter a valid mint and a positive amount." });
+      return;
+    }
     const merchantAta = await getAssociatedTokenAddress(mintKey, publicKey);
     await send([
       buildTopUpIx(
@@ -62,7 +73,7 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
         mintKey,
         merchantAta,
         vaultFor(new PublicKey(bond.address), mintKey),
-        BigInt(amount),
+        value,
       ),
     ]);
   }
@@ -74,7 +85,12 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
 
   async function withdraw() {
     if (publicKey === null || bond === null) return;
-    const mintKey = new PublicKey(mint.trim());
+    const mintKey = parseKey(mint);
+    const value = parseAmount(amount);
+    if (mintKey === null || value === null) {
+      setState({ status: "failed", error: "Enter a valid mint and a positive amount." });
+      return;
+    }
     const merchantAta = await getAssociatedTokenAddress(mintKey, publicKey);
     await send([
       buildWithdrawIx(
@@ -83,7 +99,7 @@ export function ManageBond({ defaultMint }: { defaultMint: string }) {
         mintKey,
         merchantAta,
         vaultFor(new PublicKey(bond.address), mintKey),
-        BigInt(amount),
+        value,
       ),
     ]);
   }

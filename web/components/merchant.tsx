@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { TransactionInstruction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import {
@@ -15,9 +15,7 @@ import { sendWalletTx } from "@/lib/tx";
 import type { TxState } from "@/lib/types";
 import { Card, EmptyState } from "./primitives";
 import { TxStatus } from "./status";
-
-const inputCls =
-  "h-10 w-full rounded-[8px] border border-border bg-surface px-3 font-mono text-[14px] placeholder:text-muted";
+import { inputCls, parseAmount, parseKey } from "@/lib/forms";
 
 export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
   const { connection } = useConnection();
@@ -44,7 +42,12 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
   async function run() {
     const wallet = publicKey;
     if (wallet === null || signTransaction === undefined) return;
-    const mintKey = new PublicKey(mint);
+    const mintKey = parseKey(mint);
+    const bondAmount = parseAmount(amount);
+    if (mintKey === null || bondAmount === null) {
+      setState({ status: "failed", error: "Enter a valid mint and a positive amount." });
+      return;
+    }
     const [bond] = bondPda(wallet, mintKey);
     const merchantAta = await getAssociatedTokenAddress(mintKey, wallet);
     const ixs: TransactionInstruction[] = [];
@@ -54,16 +57,17 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
     }
     const reg = await buildRegisterIx(wallet, mintKey, 50, 150n);
     ixs.push(reg.ix);
-    const post = await buildPostBondIx(wallet, bond, mintKey, BigInt(amount));
+    const post = await buildPostBondIx(wallet, bond, mintKey, bondAmount);
     ixs.push(...post.ixs);
     if (channel.trim() !== "") {
-      const bind = await buildBindIx(
-        wallet,
-        bond,
-        new PublicKey(channel.trim()),
-        new PublicKey(channelProgram.trim()),
-        BigInt(maxSpend),
-      );
+      const channelKey = parseKey(channel);
+      const programKey = parseKey(channelProgram);
+      const spend = parseAmount(maxSpend);
+      if (channelKey === null || programKey === null || spend === null) {
+        setState({ status: "failed", error: "Binding needs a valid channel, program, and max spend." });
+        return;
+      }
+      const bind = await buildBindIx(wallet, bond, channelKey, programKey, spend);
       ixs.push(bind.ix);
     }
     await sendWalletTx(

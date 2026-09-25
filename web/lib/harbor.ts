@@ -1,10 +1,10 @@
-import { Connection, PublicKey } from "@solana/web3.js";
-import { Program } from "@anchor-lang/core";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { AnchorProvider, Program, Wallet } from "@anchor-lang/core";
 import idl from "./idl.json";
-import { PROGRAM_ID, RPC_URL } from "./env";
+import { RPC_URL } from "./env";
 import type { BindingStatus, BondStatus, DisputeStatus } from "./types";
 
-let program: InstanceType<typeof Program> | null = null;
+const programs = new Map<string, InstanceType<typeof Program>>();
 let connection: Connection | null = null;
 
 export function getConnection(url: string = RPC_URL): Connection {
@@ -16,10 +16,15 @@ export function getConnection(url: string = RPC_URL): Connection {
 }
 
 export function getProgram(conn: Connection): InstanceType<typeof Program> {
-  if (program === null) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    program = new Program(idl as any, { connection } as any);
-  }
+  const key = conn.rpcEndpoint;
+  const cached = programs.get(key);
+  if (cached !== undefined) return cached;
+  const provider = new AnchorProvider(conn, new Wallet(Keypair.generate()), {
+    commitment: "confirmed",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const program = new Program(idl as any, provider);
+  programs.set(key, program);
   return program;
 }
 
@@ -28,7 +33,12 @@ function pk(v: unknown): string {
   return (v as { toBase58(): string }).toBase58();
 }
 
-/** Anchor coder returns BN objects; String(BN) is decimal. */
+/**
+ * The anchor account client (`.all()`/`.fetch()`) returns camelCase keys
+ * with u64s as BN objects (String(BN) is decimal), small ints as numbers,
+ * and pubkeys as PublicKey objects. (Raw `coder.decode` instead yields
+ * snake_case keys — see the coder test. Verified live against localnet.)
+ */
 function big(v: unknown): bigint {
   if (typeof v === "bigint") return v;
   if (typeof v === "number") return BigInt(v);
@@ -37,7 +47,9 @@ function big(v: unknown): bigint {
 
 /** JSON APIs carry decimal strings. */
 export function bigDec(v: unknown): bigint {
-  return big(v);
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") return BigInt(v);
+  return BigInt(String(v));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,19 +73,20 @@ export async function fetchBond(
     merchant: pk(a["merchant"]),
     mint: pk(a["mint"]),
     amount: big(a["amount"]),
-    slaBps: Number(a["sla_bps"]),
-    challengeSlots: big(a["challenge_slots"]),
-    openDisputes: big(a["open_disputes"]),
-    lastChangeSlot: big(a["last_change_slot"]),
+    slaBps: Number(a["slaBps"]),
+    challengeSlots: big(a["challengeSlots"]),
+    openDisputes: big(a["openDisputes"]),
+    lastChangeSlot: big(a["lastChangeSlot"]),
   };
 }
 
 export async function listBonds(conn: Connection): Promise<BondStatus[]> {
   const program = getProgram(conn);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const all = (await (program.account as any).merchantBond.all().catch(
-    (): unknown[] => [],
-  )) as Array<{ publicKey: PublicKey; account: unknown }>;
+  const all = (await (program.account as any).merchantBond.all()) as Array<{
+    publicKey: PublicKey;
+    account: unknown;
+  }>;
   return all.map(({ publicKey, account }) => {
     const a = asRec(account);
     return {
@@ -81,10 +94,10 @@ export async function listBonds(conn: Connection): Promise<BondStatus[]> {
       merchant: pk(a["merchant"]),
       mint: pk(a["mint"]),
       amount: big(a["amount"]),
-      slaBps: Number(a["sla_bps"]),
-      challengeSlots: big(a["challenge_slots"]),
-      openDisputes: big(a["open_disputes"]),
-      lastChangeSlot: big(a["last_change_slot"]),
+      slaBps: Number(a["slaBps"]),
+      challengeSlots: big(a["challengeSlots"]),
+      openDisputes: big(a["openDisputes"]),
+      lastChangeSlot: big(a["lastChangeSlot"]),
     };
   });
 }
@@ -97,7 +110,7 @@ export async function listBindingsForBond(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const all = (await (program.account as any).channelBinding.all([
     { memcmp: { offset: 8 + 32 + 32, bytes: bond.toBase58() } },
-  ]).catch((): unknown[] => [])) as Array<{ publicKey: PublicKey; account: unknown }>;
+  ])) as Array<{ publicKey: PublicKey; account: unknown }>;
   return all.map(({ publicKey, account }) => {
     const a = asRec(account);
     return {
@@ -105,9 +118,9 @@ export async function listBindingsForBond(
       channel: pk(a["channel"]),
       merchant: pk(a["merchant"]),
       bond: pk(a["bond"]),
-      channelProgram: pk(a["channel_program"]),
-      maxSpend: big(a["max_spend"]),
-      lastNonce: big(a["last_nonce"]),
+      channelProgram: pk(a["channelProgram"]),
+      maxSpend: big(a["maxSpend"]),
+      lastNonce: big(a["lastNonce"]),
       halted: Boolean(a["halted"]),
     };
   });
@@ -122,10 +135,10 @@ export async function listDisputesForBinding(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const all = (await (program.account as any).dispute.all([
     { memcmp: { offset: 8, bytes: binding.toBase58() } },
-  ]).catch((): unknown[] => [])) as Array<{ publicKey: PublicKey; account: unknown }>;
+  ])) as Array<{ publicKey: PublicKey; account: unknown }>;
   return all.map(({ publicKey, account }) => {
     const a = asRec(account);
-    const deadline = big(a["deadline_slot"]);
+    const deadline = big(a["deadlineSlot"]);
     return {
       address: publicKey.toBase58(),
       binding: pk(a["binding"]),
