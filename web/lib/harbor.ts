@@ -1,5 +1,5 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { AnchorProvider, Program, Wallet } from "@anchor-lang/core";
+import { AnchorProvider, Program } from "@anchor-lang/core";
 import idl from "./idl.json";
 import { RPC_URL } from "./env";
 import type { BindingStatus, BondStatus, DisputeStatus } from "./types";
@@ -19,7 +19,11 @@ export function getProgram(conn: Connection): InstanceType<typeof Program> {
   const key = conn.rpcEndpoint;
   const cached = programs.get(key);
   if (cached !== undefined) return cached;
-  const provider = new AnchorProvider(conn, new Wallet(Keypair.generate()), {
+  // Read-only provider: the wallet adapter signs user transactions
+  // separately; reads need nothing but a publicKey stub.
+  const provider = new AnchorProvider(conn, {
+    publicKey: Keypair.generate().publicKey,
+  } as never, {
     commitment: "confirmed",
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
