@@ -21,7 +21,7 @@ pub struct OpenDispute<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<OpenDispute>, nonce: u64, reason: u8) -> Result<()> {
+pub fn handle_open_dispute(ctx: Context<OpenDispute>, nonce: u64, reason: u8) -> Result<()> {
     require!(
         ctx.accounts.claimant.key() != ctx.accounts.bond.merchant,
         HarborError::Unauthorized

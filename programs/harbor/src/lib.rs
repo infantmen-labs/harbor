@@ -21,19 +21,19 @@ pub mod harbor {
         sla_bps: u16,
         challenge_slots: u64,
     ) -> Result<()> {
-        register_merchant::handler(ctx, sla_bps, challenge_slots)
+        register_merchant::handle_register_merchant(ctx, sla_bps, challenge_slots)
     }
 
     pub fn post_bond(ctx: Context<PostBond>, amount: u64) -> Result<()> {
-        post_bond::handler(ctx, amount)
+        post_bond::handle_post_bond(ctx, amount)
     }
 
     pub fn top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
-        top_up_bond::handler(ctx, amount)
+        top_up_bond::handle_top_up_bond(ctx, amount)
     }
 
     pub fn withdraw_bond(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
-        withdraw_bond::handler(ctx, amount)
+        withdraw_bond::handle_withdraw_bond(ctx, amount)
     }
 
     pub fn bind_channel(
@@ -41,11 +41,11 @@ pub mod harbor {
         channel_program: Pubkey,
         max_spend: u64,
     ) -> Result<()> {
-        bind_channel::handler(ctx, channel_program, max_spend)
+        bind_channel::handle_bind_channel(ctx, channel_program, max_spend)
     }
 
     pub fn halt_binding(ctx: Context<HaltBinding>) -> Result<()> {
-        halt_binding::handler(ctx)
+        halt_binding::handle_halt_binding(ctx)
     }
 
     pub fn submit_receipt(
@@ -58,7 +58,7 @@ pub mod harbor {
         expiry_slot: u64,
         signer: Pubkey,
     ) -> Result<()> {
-        submit_receipt::handler(
+        submit_receipt::handle_submit_receipt(
             ctx,
             cumulative_spend,
             meter_hash,
@@ -71,18 +71,18 @@ pub mod harbor {
     }
 
     pub fn open_dispute(ctx: Context<OpenDispute>, nonce: u64, reason: u8) -> Result<()> {
-        open_dispute::handler(ctx, nonce, reason)
+        open_dispute::handle_open_dispute(ctx, nonce, reason)
     }
 
     pub fn resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Result<()> {
-        resolve_dispute::resolve_timeout(ctx, nonce)
+        resolve_dispute::handle_resolve_timeout(ctx, nonce)
     }
 
     pub fn resolve_delivered(ctx: Context<ResolveDelivered>, nonce: u64) -> Result<()> {
-        resolve_dispute::resolve_delivered(ctx, nonce)
+        resolve_dispute::handle_resolve_delivered(ctx, nonce)
     }
 
     pub fn refund_unused(ctx: Context<RefundUnused>) -> Result<()> {
-        refund_unused::handler(ctx)
+        refund_unused::handle_refund_unused(ctx)
     }
 }

@@ -21,7 +21,7 @@ pub struct BindChannel<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<BindChannel>, channel_program: Pubkey, max_spend: u64) -> Result<()> {
+pub fn handle_bind_channel(ctx: Context<BindChannel>, channel_program: Pubkey, max_spend: u64) -> Result<()> {
     require!(max_spend > 0, HarborError::ZeroAmount);
     require!(
         ctx.accounts.channel.key() != Pubkey::default(),

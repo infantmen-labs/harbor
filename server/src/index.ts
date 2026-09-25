@@ -1,5 +1,5 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
-import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import {
   bindChannelIx,
   bindingPda,

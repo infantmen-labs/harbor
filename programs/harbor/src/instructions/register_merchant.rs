@@ -1,9 +1,6 @@
 use crate::{constants::*, error::HarborError, state::*};
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{self, Mint, TokenAccount, TokenInterface},
-};
+use anchor_spl::token_interface::Mint;
 
 #[derive(Accounts)]
 pub struct RegisterMerchant<'info> {
@@ -21,7 +18,7 @@ pub struct RegisterMerchant<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(
+pub fn handle_register_merchant(
     ctx: Context<RegisterMerchant>,
     sla_bps: u16,
     challenge_slots: u64,

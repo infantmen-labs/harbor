@@ -53,7 +53,7 @@ pub struct ResolveTimeout<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Result<()> {
+pub fn handle_resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Result<()> {
     require!(
         ctx.accounts.receipt.key() == expected_receipt_key(&ctx.accounts.binding.key(), nonce),
         HarborError::BindingMismatch
@@ -134,7 +134,7 @@ pub struct ResolveDelivered<'info> {
     pub receipt: UncheckedAccount<'info>,
 }
 
-pub fn resolve_delivered(ctx: Context<ResolveDelivered>, nonce: u64) -> Result<()> {
+pub fn handle_resolve_delivered(ctx: Context<ResolveDelivered>, nonce: u64) -> Result<()> {
     require!(
         ctx.accounts.receipt.key() == expected_receipt_key(&ctx.accounts.binding.key(), nonce),
         HarborError::BindingMismatch

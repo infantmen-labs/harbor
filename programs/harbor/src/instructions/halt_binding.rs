@@ -12,7 +12,7 @@ pub struct HaltBinding<'info> {
     pub binding: Account<'info, ChannelBinding>,
 }
 
-pub fn handler(ctx: Context<HaltBinding>) -> Result<()> {
+pub fn handle_halt_binding(ctx: Context<HaltBinding>) -> Result<()> {
     ctx.accounts.binding.halted = true;
     emit!(BindingHalted {
         binding: ctx.accounts.binding.key(),

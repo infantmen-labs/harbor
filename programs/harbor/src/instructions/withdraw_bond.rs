@@ -28,7 +28,7 @@ pub struct WithdrawBond<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handler(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
+pub fn handle_withdraw_bond(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
     require!(
         ctx.accounts.bond.open_disputes == 0,

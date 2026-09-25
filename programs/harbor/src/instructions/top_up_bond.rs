@@ -28,7 +28,7 @@ pub struct TopUpBond<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handler(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
+pub fn handle_top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
 
     token_interface::transfer_checked(

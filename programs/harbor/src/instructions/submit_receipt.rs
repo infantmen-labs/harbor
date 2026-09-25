@@ -112,7 +112,7 @@ pub struct SubmitReceipt<'info> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn handler(
+pub fn handle_submit_receipt(
     ctx: Context<SubmitReceipt>,
     cumulative_spend: u64,
     meter_hash: [u8; 32],

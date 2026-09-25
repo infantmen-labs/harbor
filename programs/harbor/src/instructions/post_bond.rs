@@ -39,7 +39,7 @@ pub struct PostBond<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<PostBond>, amount: u64) -> Result<()> {
+pub fn handle_post_bond(ctx: Context<PostBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
     // Mint gate runs before any vault CPI (field constraints cannot be
     // relied on to order before init CPIs).

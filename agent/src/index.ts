@@ -20,7 +20,6 @@ import {
   JsonlLogger,
   TOKEN_PROGRAM_ID,
   buildEd25519Ix,
-  channelPda,
   channelVoucherBytes,
   receiptMessageBytes,
   signEd25519,

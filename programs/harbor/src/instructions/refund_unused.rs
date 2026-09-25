@@ -38,7 +38,7 @@ pub struct RefundUnused<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handler(ctx: Context<RefundUnused>) -> Result<()> {
+pub fn handle_refund_unused(ctx: Context<RefundUnused>) -> Result<()> {
     require!(
         Clock::get()?.slot
             > ctx
