@@ -1,0 +1,147 @@
+import { Connection, PublicKey } from "@solana/web3.js";
+import { Program } from "@anchor-lang/core";
+import idl from "./idl.json";
+import { PROGRAM_ID, RPC_URL } from "./env";
+import type { BindingStatus, BondStatus, DisputeStatus } from "./types";
+
+let program: InstanceType<typeof Program> | null = null;
+let connection: Connection | null = null;
+
+export function getConnection(url: string = RPC_URL): Connection {
+  if (url === RPC_URL) {
+    if (connection === null) connection = new Connection(url, "confirmed");
+    return connection;
+  }
+  return new Connection(url, "confirmed");
+}
+
+export function getProgram(conn: Connection): InstanceType<typeof Program> {
+  if (program === null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    program = new Program(idl as any, { connection } as any);
+  }
+  return program;
+}
+
+function pk(v: unknown): string {
+  if (typeof v === "string") return v;
+  return (v as { toBase58(): string }).toBase58();
+}
+
+/** Anchor coder returns BN objects; String(BN) is decimal. */
+function big(v: unknown): bigint {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") return BigInt(v);
+  return BigInt(String(v));
+}
+
+/** JSON APIs carry decimal strings. */
+export function bigDec(v: unknown): bigint {
+  return big(v);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function asRec(v: any): Record<string, any> {
+  return v as Record<string, any>;
+}
+
+export async function fetchBond(
+  conn: Connection,
+  address: PublicKey,
+): Promise<BondStatus | null> {
+  const program = getProgram(conn);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const acc = await (program.account as any).merchantBond
+    .fetchNullable(address)
+    .catch(() => null);
+  if (acc === null || acc === undefined) return null;
+  const a = asRec(acc);
+  return {
+    address: address.toBase58(),
+    merchant: pk(a["merchant"]),
+    mint: pk(a["mint"]),
+    amount: big(a["amount"]),
+    slaBps: Number(a["sla_bps"]),
+    challengeSlots: big(a["challenge_slots"]),
+    openDisputes: big(a["open_disputes"]),
+    lastChangeSlot: big(a["last_change_slot"]),
+  };
+}
+
+export async function listBindingsForBond(
+  conn: Connection,
+  bond: PublicKey,
+): Promise<BindingStatus[]> {
+  const program = getProgram(conn);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const all = (await (program.account as any).channelBinding.all([
+    { memcmp: { offset: 8 + 32 + 32, bytes: bond.toBase58() } },
+  ]).catch((): unknown[] => [])) as Array<{ publicKey: PublicKey; account: unknown }>;
+  return all.map(({ publicKey, account }) => {
+    const a = asRec(account);
+    return {
+      address: publicKey.toBase58(),
+      channel: pk(a["channel"]),
+      merchant: pk(a["merchant"]),
+      bond: pk(a["bond"]),
+      channelProgram: pk(a["channel_program"]),
+      maxSpend: big(a["max_spend"]),
+      lastNonce: big(a["last_nonce"]),
+      halted: Boolean(a["halted"]),
+    };
+  });
+}
+
+export async function listDisputesForBinding(
+  conn: Connection,
+  binding: PublicKey,
+  currentSlot: bigint,
+): Promise<DisputeStatus[]> {
+  const program = getProgram(conn);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const all = (await (program.account as any).dispute.all([
+    { memcmp: { offset: 8, bytes: binding.toBase58() } },
+  ]).catch((): unknown[] => [])) as Array<{ publicKey: PublicKey; account: unknown }>;
+  return all.map(({ publicKey, account }) => {
+    const a = asRec(account);
+    const deadline = big(a["deadline_slot"]);
+    return {
+      address: publicKey.toBase58(),
+      binding: pk(a["binding"]),
+      nonce: big(a["nonce"]),
+      reason: Number(a["reason"]),
+      claimant: pk(a["claimant"]),
+      deadlineSlot: deadline,
+      state: currentSlot >= deadline ? "matured" : "open",
+    };
+  });
+}
+
+export async function getTokenBalance(
+  conn: Connection,
+  address: PublicKey,
+): Promise<bigint | null> {
+  try {
+    const r = await conn.getTokenAccountBalance(address);
+    return BigInt(r.value.amount);
+  } catch {
+    return null;
+  }
+}
+
+export async function getSignatures(
+  conn: Connection,
+  address: PublicKey,
+  limit = 10,
+): Promise<string[]> {
+  try {
+    const sigs = await conn.getSignaturesForAddress(address, { limit });
+    return sigs.map((s) => s.signature);
+  } catch {
+    return [];
+  }
+}
+
+export async function getSlot(conn: Connection): Promise<bigint> {
+  return BigInt(await conn.getSlot());
+}

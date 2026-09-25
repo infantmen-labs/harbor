@@ -97,6 +97,25 @@ export function postBondIx(
   ]);
 }
 
+export function topUpBondIx(
+  programId: PublicKey,
+  merchant: PublicKey,
+  bond: PublicKey,
+  mint: PublicKey,
+  merchantAta: PublicKey,
+  vault: PublicKey,
+  amount: bigint,
+) {
+  return keys(programId, D.topUpBond, u64(amount), [
+    { key: merchant, w: true, s: true },
+    { key: bond, w: true },
+    { key: mint },
+    { key: merchantAta, w: true },
+    { key: vault, w: true },
+    { key: TOKEN_PROGRAM_ID },
+  ]);
+}
+
 export function withdrawBondIx(
   programId: PublicKey,
   merchant: PublicKey,
