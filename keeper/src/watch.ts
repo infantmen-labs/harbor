@@ -2,12 +2,12 @@ import bs58 from "bs58";
 import { Connection, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
-  JsonlLogger,
   TOKEN_PROGRAM_ID,
   receiptPda,
   resolveDeliveredIx,
   resolveTimeoutIx,
 } from "harbor-sdk";
+import { JsonlLogger } from "harbor-log";
 import { DISPUTE_DISC, bindingChannelProgram, decide, parseBond, parseDispute } from "./accounts";
 import { KeeperConfig } from "./config";
 

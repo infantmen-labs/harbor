@@ -17,7 +17,6 @@ import {
 import {
   ATA_PROGRAM_ID,
   CHANNEL_PROGRAM_ID,
-  JsonlLogger,
   TOKEN_PROGRAM_ID,
   buildEd25519Ix,
   channelVoucherBytes,
@@ -25,6 +24,7 @@ import {
   signEd25519,
   verifyEd25519,
 } from "harbor-sdk";
+import { JsonlLogger } from "harbor-log";
 import { deriveChannel, openChannelIx, settleIx, topUpIx } from "./channel";
 
 function env(name: string, fallback?: string): string {

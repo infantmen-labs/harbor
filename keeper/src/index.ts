@@ -4,7 +4,7 @@
  * Dry-run by default; MODE=live sends transactions.
  */
 import { Connection } from "@solana/web3.js";
-import { JsonlLogger } from "harbor-sdk";
+import { JsonlLogger } from "harbor-log";
 import { loadKeeperConfig } from "./config";
 import { pass } from "./watch";
 
