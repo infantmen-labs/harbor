@@ -5,6 +5,8 @@ target
 node_modules
 dist
 dist-test
+# compiled JS beside TS sources (repo is TS-only; configs use .mjs)
+**/*.js
 test-ledger
 .yarn
 .surfpool
