@@ -79,13 +79,21 @@ async function finalize(so: Buffer): Promise<void> {
       console.log("created program account");
     }
   }
+  // Deploy (fresh) or upgrade (existing) based on program account state.
+  const progInfo = await connection.getAccountInfo(program.publicKey, "processed");
+  const isDeployed = progInfo !== null && progInfo.data.length > 36;
   const RENT = new PublicKey("SysvarRent111111111111111111111111111111111");
   const CLOCK = new PublicKey("SysvarC1ock11111111111111111111111111111111");
-  const data = Buffer.alloc(12);
-  data.writeUInt32LE(2, 0); // DeployWithMaxDataLen
-  data.writeBigUInt64LE(BigInt(so.length), 4);
-  const sig = await sendIx(
-    [
+  let data: Buffer;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let keys: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let signers: any[];
+  if (!isDeployed) {
+    data = Buffer.alloc(12);
+    data.writeUInt32LE(2, 0); // DeployWithMaxDataLen
+    data.writeBigUInt64LE(BigInt(so.length), 4);
+    keys = [
       { pubkey: authority.publicKey, isWritable: true, isSigner: true },
       { pubkey: programdata, isWritable: true, isSigner: false },
       { pubkey: program.publicKey, isWritable: true, isSigner: true },
@@ -94,10 +102,25 @@ async function finalize(so: Buffer): Promise<void> {
       { pubkey: CLOCK, isWritable: false, isSigner: false },
       { pubkey: SystemProgram.programId, isWritable: false, isSigner: false },
       { pubkey: authority.publicKey, isWritable: false, isSigner: true },
-    ],
-    data,
-    [authority, program],
-  );
+    ];
+    signers = [authority, program];
+  } else {
+    // Upgrade layout (7 accounts, no separate payer): programdata, program,
+    // buffer, spill, rent, clock, authority.
+    data = Buffer.alloc(4);
+    data.writeUInt32LE(3, 0); // Upgrade
+    keys = [
+      { pubkey: programdata, isWritable: true, isSigner: false },
+      { pubkey: program.publicKey, isWritable: true, isSigner: false },
+      { pubkey: buffer.publicKey, isWritable: true, isSigner: false },
+      { pubkey: authority.publicKey, isWritable: true, isSigner: false },
+      { pubkey: RENT, isWritable: false, isSigner: false },
+      { pubkey: CLOCK, isWritable: false, isSigner: false },
+      { pubkey: authority.publicKey, isWritable: false, isSigner: true },
+    ];
+    signers = [authority];
+  }
+  const sig = await sendIx(keys, data, signers);
   console.log(`DEPLOYED program=${program.publicKey.toBase58()} sig=${sig}`);
 }
 
@@ -157,6 +180,27 @@ async function main(): Promise<void> {
 
   const total = HEADER_LEN + so.length;
 
+  // Create the buffer account on first run (system-owned until Assigned).
+  {
+    const existing = await connection.getAccountInfo(buffer.publicKey, "processed");
+    if (existing === null) {
+      const rent = await connection.getMinimumBalanceForRentExemption(total);
+      const tx = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: authority.publicKey,
+          newAccountPubkey: buffer.publicKey,
+          lamports: rent,
+          space: total,
+          programId: BPF_LOADER,
+        }),
+      );
+      await sendAndConfirmTransaction(connection, tx, [authority, buffer], {
+        commitment: "confirmed",
+      });
+      console.log(`created buffer ${buffer.publicKey.toBase58()} rent=${rent}`);
+    }
+  }
+
   // Initialize fresh (zeroed) buffers: InitializeBuffer sets the authority.
   {
     const head = await readSlice(0, HEADER_LEN);
@@ -179,27 +223,6 @@ async function main(): Promise<void> {
         commitment: "confirmed",
       });
       console.log("initialized buffer");
-    }
-  }
-
-  // Create the buffer account on first run (system-owned until Assigned).
-  {
-    const existing = await connection.getAccountInfo(buffer.publicKey, "processed");
-    if (existing === null) {
-      const rent = await connection.getMinimumBalanceForRentExemption(total);
-      const tx = new Transaction().add(
-        SystemProgram.createAccount({
-          fromPubkey: authority.publicKey,
-          newAccountPubkey: buffer.publicKey,
-          lamports: rent,
-          space: total,
-          programId: BPF_LOADER,
-        }),
-      );
-      await sendAndConfirmTransaction(connection, tx, [authority, buffer], {
-        commitment: "confirmed",
-      });
-      console.log(`created buffer ${buffer.publicKey.toBase58()} rent=${rent}`);
     }
   }
 
