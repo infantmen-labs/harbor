@@ -6,8 +6,13 @@
   503109261, 370,464 bytes, upgrade authority
   `GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ`.
 - Deploy sig `64x8VfdoYR7kbQitj1kBHTbSakuh3nyxHzcGwDdpBkanpcGgs4bV9A`.
+- Upgraded to the hardened build (manual vault creation, Tokenkeg-only
+  gate) at a later slot, sig
+  `3Eu28zcSpuyKdMMzFjapFvRWS2zBGARRJz3pL5sr7P6dB1HUBTAzejb6iGf7vq3ahg46tjSXbTi34eNpXsYM3xHz`
+  (programdata head byte-verified against the new binary).
 - IDL published via the Program Metadata Program
-  (`anchor idl init`, verified with `anchor idl fetch`).
+  (`anchor idl init`, verified with `anchor idl fetch`, upgraded after
+  hardening).
 - Upload path that worked: custom resumable uploader
   (`server/scripts/upload-buffer.ts`) — sliced reads (QuickNode 413s
   full-account fetches), bincode Write layout, InitializeBuffer on fresh
