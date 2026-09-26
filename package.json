@@ -8,7 +8,7 @@
     "keeper",
     "web"
   ],
-  "license": "ISC",
+  "license": "MIT",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
