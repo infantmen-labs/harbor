@@ -22,7 +22,13 @@ import {
   listBonds,
   listDisputesForBinding,
 } from "@/lib/harbor";
-import { MOCK_BOND, MOCK_DISPUTE, MOCK_RECEIPTS, MOCK_SLASH, MOCK_SLOT } from "@/lib/mock";
+import {
+  MOCK_BOND,
+  MOCK_DISPUTE,
+  MOCK_RECEIPTS,
+  MOCK_SLASH,
+  MOCK_SLOT,
+} from "@/lib/mock";
 import type { ProofEntry } from "@/lib/types";
 
 function vaultFor(bond: string, mint: string): PublicKey {
@@ -32,7 +38,7 @@ function vaultFor(bond: string, mint: string): PublicKey {
       TOKEN_PROGRAM_ID.toBuffer(),
       new PublicKey(mint).toBuffer(),
     ],
-    ATA_PROGRAM_ID,
+    ATA_PROGRAM_ID
   )[0];
 }
 
@@ -47,7 +53,7 @@ export default function Live() {
       return bonds.length > 0 ? bonds[0].address : null;
     }, [conn, mock]),
     8000,
-    !mock,
+    !mock
   );
 
   const bondKey = mock ? MOCK_BOND.address : liveBondKey.data;
@@ -58,7 +64,7 @@ export default function Live() {
       return fetchBond(conn, new PublicKey(bondKey));
     }, [conn, mock, bondKey]),
     6000,
-    mock || bondKey !== null,
+    mock || bondKey !== null
   );
 
   const bond = mock ? MOCK_BOND : bondQuery.data;
@@ -68,26 +74,33 @@ export default function Live() {
       return listBindingsForBond(conn, new PublicKey(bond.address));
     }, [conn, mock, bond]),
     6000,
-    !mock && bond !== null,
+    !mock && bond !== null
   );
   const binding = useMemo(
     () =>
       mock
-        ? { address: "HuzLMKJZeboM1vEKGnrMg4PAoqj8i6JcbQzwLqaxRi1X", channel: "mock-channel" }
+        ? {
+            address: "HuzLMKJZeboM1vEKGnrMg4PAoqj8i6JcbQzwLqaxRi1X",
+            channel: "mock-channel",
+          }
         : bindingsQuery.data !== null && bindingsQuery.data.length > 0
-          ? {
-              address: bindingsQuery.data[0].address,
-              channel: bindingsQuery.data[0].channel,
-            }
-          : null,
-    [mock, bindingsQuery.data],
+        ? {
+            address: bindingsQuery.data[0].address,
+            channel: bindingsQuery.data[0].channel,
+          }
+        : null,
+    [mock, bindingsQuery.data]
   );
 
-  const channel = mock ? "mock-channel" : (binding?.channel ?? null);
+  const channel = mock ? "mock-channel" : binding?.channel ?? null;
   const receipts = useReceipts(channel, !mock && channel !== null);
   const shownReceipts = mock ? MOCK_RECEIPTS : receipts;
 
-  const slotQuery = usePoll(useCallback(async () => getSlot(conn), [conn]), 4000, !mock);
+  const slotQuery = usePoll(
+    useCallback(async () => getSlot(conn), [conn]),
+    4000,
+    !mock
+  );
   const slot = mock ? MOCK_SLOT : slotQuery.data;
 
   const disputesQuery = usePoll(
@@ -96,25 +109,41 @@ export default function Live() {
       return listDisputesForBinding(conn, new PublicKey(binding.address), slot);
     }, [conn, mock, binding, slot]),
     6000,
-    !mock && binding !== null && slot !== null,
+    !mock && binding !== null && slot !== null
   );
-  const dispute = mock ? MOCK_DISPUTE : (disputesQuery.data?.[0] ?? null);
+  const dispute = mock ? MOCK_DISPUTE : disputesQuery.data?.[0] ?? null;
 
   const proofQuery = usePoll(
     useCallback(async (): Promise<ProofEntry[]> => {
       if (bond === null) return [];
       if (mock) {
         return [
-          { label: "Vault before", value: MOCK_SLASH.before.toString(), kind: "amount" },
-          { label: "Slash", value: MOCK_SLASH.slash.toString(), kind: "amount" },
-          { label: "Vault after", value: MOCK_SLASH.after.toString(), kind: "amount" },
+          {
+            label: "Vault before",
+            value: MOCK_SLASH.before.toString(),
+            kind: "amount",
+          },
+          {
+            label: "Slash",
+            value: MOCK_SLASH.slash.toString(),
+            kind: "amount",
+          },
+          {
+            label: "Vault after",
+            value: MOCK_SLASH.after.toString(),
+            kind: "amount",
+          },
         ];
       }
       const entries: ProofEntry[] = [];
       const vault = vaultFor(bond.address, bond.mint);
       const bal = await getTokenBalance(conn, vault);
       if (bal !== null) {
-        entries.push({ label: "Vault balance", value: bal.toString(), kind: "amount" });
+        entries.push({
+          label: "Vault balance",
+          value: bal.toString(),
+          kind: "amount",
+        });
       }
       const sigs = await getSignatures(conn, new PublicKey(bond.address), 5);
       for (const [i, s] of sigs.entries()) {
@@ -123,13 +152,11 @@ export default function Live() {
       return entries;
     }, [conn, mock, bond]),
     15000,
-    bond !== null,
+    bond !== null
   );
 
   const nextNonce =
-    bond === null
-      ? 1n
-      : (bindingsQuery.data?.[0]?.lastNonce ?? 0n) + 1n;
+    bond === null ? 1n : (bindingsQuery.data?.[0]?.lastNonce ?? 0n) + 1n;
 
   return (
     <main className="pb-20">
@@ -160,6 +187,7 @@ export default function Live() {
             <BondCard
               bond={bond}
               error={bondQuery.error}
+              loaded={bondQuery.updatedAt !== null}
               onRetry={() => window.location.reload()}
             />
             <ProofPanel entries={proofQuery.data ?? []} />

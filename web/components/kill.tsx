@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { setKilled } from "@/lib/server";
+import { useEffect, useState } from "react";
+import { fetchInfo, setKilled } from "@/lib/server";
 
-export function KillButton({ onChanged }: { onChanged?: (killed: boolean) => void }) {
+export function KillButton({
+  onChanged,
+}: {
+  onChanged?: (killed: boolean) => void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [killed, setKilledState] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let stop = false;
+    void fetchInfo().then((info) => {
+      if (!stop && info !== null) setKilledState(info.killed);
+    });
+    return () => {
+      stop = true;
+    };
+  }, []);
 
   async function flip(next: boolean) {
     setBusy(true);
@@ -23,7 +37,9 @@ export function KillButton({ onChanged }: { onChanged?: (killed: boolean) => voi
     <div className="rounded-[12px] bg-ink-bg p-5 text-ink-inverse md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="font-display text-[20px] font-medium">Failure injection</h3>
+          <h3 className="font-display text-[20px] font-medium">
+            Failure injection
+          </h3>
           <p className="mt-1 text-[14px] opacity-70">
             {killed
               ? "Delivery is failing. Open a dispute before the deadline."
@@ -64,6 +80,8 @@ export function KillButton({ onChanged }: { onChanged?: (killed: boolean) => voi
 
 export function DangerCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[12px] bg-ink-bg p-5 text-ink-inverse md:p-6">{children}</div>
+    <div className="rounded-[12px] bg-ink-bg p-5 text-ink-inverse md:p-6">
+      {children}
+    </div>
   );
 }

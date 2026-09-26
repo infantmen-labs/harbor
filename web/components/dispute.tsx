@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { buildOpenDisputeIx } from "@/lib/dispute";
 import { sendWalletTx } from "@/lib/tx";
@@ -56,7 +56,11 @@ export function DisputeCard({
       <div className="mt-2">
         <Countdown
           label="Deadline"
-          value={slot === null ? "…" : countdownToDeadline(dispute.deadlineSlot, slot)}
+          value={
+            slot === null
+              ? "…"
+              : countdownToDeadline(dispute.deadlineSlot, slot)
+          }
         />
       </div>
       {dispute.winner !== undefined && (
@@ -95,14 +99,14 @@ export function OpenDisputeButton({
       new PublicKey(bond),
       new PublicKey(binding),
       nextNonce,
-      reason,
+      reason
     );
     await sendWalletTx(
       connection,
       publicKey,
       async (tx: Transaction) => signTransaction(tx),
-      [ix] as TransactionInstruction[],
-      setState,
+      [ix],
+      setState
     );
   }
 

@@ -12,6 +12,7 @@ import {
 } from "@/lib/dispute";
 import { bondPda } from "harbor-sdk";
 import { sendWalletTx } from "@/lib/tx";
+import { CHANNEL_PROGRAM_ID } from "@/lib/env";
 import type { TxState } from "@/lib/types";
 import { Card, EmptyState } from "./primitives";
 import { TxStatus } from "./status";
@@ -24,9 +25,7 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
   const [amount, setAmount] = useState("500000");
   const [maxSpend, setMaxSpend] = useState("250000");
   const [channel, setChannel] = useState("");
-  const [channelProgram, setChannelProgram] = useState(
-    "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",
-  );
+  const [channelProgram, setChannelProgram] = useState(CHANNEL_PROGRAM_ID);
   const [state, setState] = useState<TxState>({ status: "idle" });
   const [done, setDone] = useState<string | null>(null);
 
@@ -45,7 +44,10 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
     const mintKey = parseKey(mint);
     const bondAmount = parseAmount(amount);
     if (mintKey === null || bondAmount === null) {
-      setState({ status: "failed", error: "Enter a valid mint and a positive amount." });
+      setState({
+        status: "failed",
+        error: "Enter a valid mint and a positive amount.",
+      });
       return;
     }
     const [bond] = bondPda(wallet, mintKey);
@@ -64,10 +66,19 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
       const programKey = parseKey(channelProgram);
       const spend = parseAmount(maxSpend);
       if (channelKey === null || programKey === null || spend === null) {
-        setState({ status: "failed", error: "Binding needs a valid channel, program, and max spend." });
+        setState({
+          status: "failed",
+          error: "Binding needs a valid channel, program, and max spend.",
+        });
         return;
       }
-      const bind = await buildBindIx(wallet, bond, channelKey, programKey, spend);
+      const bind = await buildBindIx(
+        wallet,
+        bond,
+        channelKey,
+        programKey,
+        spend
+      );
       ixs.push(bind.ix);
     }
     await sendWalletTx(
@@ -75,25 +86,39 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
       wallet,
       async (tx) => signTransaction(tx),
       ixs,
-      setState,
+      setState
     );
     setDone(bond.toBase58());
   }
 
   return (
     <Card>
-      <h3 className="mb-4 font-display text-[20px] font-medium">Become a merchant</h3>
+      <h3 className="mb-4 font-display text-[20px] font-medium">
+        Become a merchant
+      </h3>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-[14px]">
           <span className="mb-1 block text-muted">Mint</span>
-          <input value={mint} onChange={(e) => setMint(e.target.value)} className={inputCls} />
+          <input
+            value={mint}
+            onChange={(e) => setMint(e.target.value)}
+            className={inputCls}
+          />
         </label>
         <label className="block text-[14px]">
-          <span className="mb-1 block text-muted">Bond amount (base units)</span>
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} />
+          <span className="mb-1 block text-muted">
+            Bond amount (base units)
+          </span>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={inputCls}
+          />
         </label>
         <label className="block text-[14px]">
-          <span className="mb-1 block text-muted">Channel to bind (optional)</span>
+          <span className="mb-1 block text-muted">
+            Channel to bind (optional)
+          </span>
           <input
             value={channel}
             onChange={(e) => setChannel(e.target.value)}
@@ -103,7 +128,11 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
         </label>
         <label className="block text-[14px]">
           <span className="mb-1 block text-muted">Max spend per channel</span>
-          <input value={maxSpend} onChange={(e) => setMaxSpend(e.target.value)} className={inputCls} />
+          <input
+            value={maxSpend}
+            onChange={(e) => setMaxSpend(e.target.value)}
+            className={inputCls}
+          />
         </label>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -116,7 +145,9 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
         <TxStatus state={state} />
       </div>
       {done !== null && (
-        <p className="mt-3 font-mono text-[13px] text-success">bonded: {done}</p>
+        <p className="mt-3 font-mono text-[13px] text-success">
+          bonded: {done}
+        </p>
       )}
     </Card>
   );

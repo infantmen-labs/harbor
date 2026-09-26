@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PROGRAM_ID, CHANNEL_PROGRAM_ID } from "@/lib/env";
+import { explorerUrl, shorten } from "@/lib/explorer";
 
 export default function Landing() {
   return (
@@ -11,17 +13,17 @@ export default function Landing() {
           Agents pay. Merchants prove delivery — or pay up.
         </h1>
         <p className="mt-6 max-w-[52ch] text-[17px] leading-[150%] text-foreground-secondary md:text-[18px]">
-          Harbor is a surety and clearing layer for metered APIs. Merchants
-          post a bond, agents pay through payment channels, and funds
-          release against signed delivery receipts. Miss the SLA and the
-          bond slashes to the agent — no chargebacks, no accounts, no trust.
+          Harbor is a surety and clearing layer for metered APIs. Merchants post
+          a bond, agents pay through payment channels, and funds release against
+          signed delivery receipts. Miss the SLA and the bond slashes to the
+          agent — no chargebacks, no accounts, no trust.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/live"
             className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
           >
-            Watch the 60-second demo
+            See it fail live
           </Link>
           <Link
             href="/merchant"
@@ -70,10 +72,34 @@ export default function Landing() {
             Built for the adversarial case first.
           </h2>
           <p className="mt-3 max-w-[60ch] text-[16px] text-foreground-secondary">
-            Every other agent-payments demo shows the happy path. Harbor
-            starts with the failure: kill the API mid-job and watch the
-            bond make the agent whole.
+            Every other agent-payments demo shows the happy path. Harbor starts
+            with the failure: kill the API mid-job and watch the bond make the
+            agent whole.
           </p>
+          <div className="mt-6 grid gap-3 font-mono text-[13px] text-muted md:grid-cols-2">
+            <p>
+              program{" "}
+              <a
+                href={explorerUrl("address", PROGRAM_ID)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline underline-offset-2"
+              >
+                {shorten(PROGRAM_ID, 8)}
+              </a>
+            </p>
+            <p>
+              channels{" "}
+              <a
+                href={explorerUrl("address", CHANNEL_PROGRAM_ID)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline underline-offset-2"
+              >
+                {shorten(CHANNEL_PROGRAM_ID, 8)}
+              </a>
+            </p>
+          </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/live"
@@ -81,14 +107,6 @@ export default function Landing() {
             >
               Open mission control
             </Link>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-border px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
-            >
-              Read the code
-            </a>
           </div>
         </div>
       </section>
@@ -102,17 +120,29 @@ function HowMetric({ label, value }: { label: string; value: string }) {
       <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
         {label}
       </p>
-      <p className="mt-2 font-display text-[24px] font-medium md:text-[30px]">{value}</p>
+      <p className="mt-2 font-display text-[24px] font-medium md:text-[30px]">
+        {value}
+      </p>
     </div>
   );
 }
 
-function HowCard({ n, title, body }: { n: string; title: string; body: string }) {
+function HowCard({
+  n,
+  title,
+  body,
+}: {
+  n: string;
+  title: string;
+  body: string;
+}) {
   return (
     <div className="rounded-[12px] border border-border bg-surface p-6">
       <p className="font-mono text-[13px] text-muted">{n}</p>
       <h3 className="mt-3 font-display text-[24px] font-medium">{title}</h3>
-      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">{body}</p>
+      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">
+        {body}
+      </p>
     </div>
   );
 }
