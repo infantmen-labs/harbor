@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "yarn install --frozen-lockfile && yarn workspace harbor-sdk build && yarn workspace harbor-log build && yarn workspace harbor-server build && yarn workspace harbor-keeper build"
+  },
+  "deploy": {
+    "startCommand": "sh -c 'echo \"$MERCHANT_KEYPAIR_B64\" | base64 -d > /tmp/merchant.json && MERCHANT_KEYPAIR=/tmp/merchant.json yarn workspace harbor-server start'",
+    "healthcheckPath": "/info",
+    "healthcheckTimeout": 60,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

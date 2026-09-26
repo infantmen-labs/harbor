@@ -1,4 +1,4 @@
-# Proof Bundle — full loop on localnet + devnet deployment
+# Proof Bundle — full loop on localnet + devnet deployment + devnet loop
 
 ## Devnet deployment (live)
 
@@ -76,10 +76,50 @@ re-addressed with a hex patch — build from source for non-canonical IDs.
 - Upstream escrow untouched by Harbor paths (proven in
   `test_channel_compose` with escrow-intact assertion).
 
+## Devnet loop (live, canonical programs)
+
+Programs: Harbor `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`,
+upstream channels `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`
+(deployed on devnet, executable). Demo served by a local
+`server/dist/src/serve.js` pointed at devnet (Railway deploy per
+`docs/deploy.md` reuses the same env contract).
+
+- Mint `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` (6 decimals,
+  tUSDC, mint authority = merchant).
+- Merchant fund sig
+  `5m6PsT5aLSejeNUikReqrrty6PAcaGC7NwgEHkqp98HTXYUezfRfHsx93b3B3LxuM2hT5iD49EhCPZ4kYfMQyAvK`,
+  agent fund sig
+  `5vwMc1saiS6rFoKvg3kxCBKK7wE7puFpcba25s29wfpUkCrs6qAG7YKeCaqtCP3ap7iSEZZ6nw8DH4bGLBbQRqg3`,
+  claimant fund sig
+  `9BDHotz8yKxd1XHeNYjJb92KdsY2xcY5ocgSqv2tWTzUrawUkEGiLTdHR1ncmn4VzpS9fQeimxtXg8NHJcDNv2v`
+  (2,000,000,000 base units each).
+- Bond `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP`, vault
+  `3qJzdUXWvxcgUMCRnzhXmNYDDxsSDtBukWCvrtTfPmdj` — `register` + 500,000
+  `post_bond` via `server/scripts/setup.js` (SLA 50 bps, 150 slots).
+- Happy path: channel `926gYcXXimwoeQgfWvHHu6FsgtiiWR5r8L9gqSB7UBUP`, 3
+  metered completions, cooperative upstream `settle` at 15000. Receipt
+  nonce 2: binding `97NFfTgR6gBJzHzDvmSvJ5exR2iStNdAsAKPYMnEMsw`,
+  cumulativeSpend 2930, served live from the demo server log.
+- Fail path: channel `BU9h83GSWLR2nL9TzKvEUK12Liz6ufK6Zn4HeG94Myss`,
+  request 1 → `500 {"error":"delivery failed: upstream fault injected"}`,
+  no receipt stored (404), settle skipped.
+- Dispute `Bp8vPmPy5q4XmykNnek2nWdRqi82opKew91Cpc8kYaoK` (nonce 1,
+  TIMEOUT), open sig
+  `4S4U8mrkVRS5th3eMEfhjdANrLWjAEt9gzco8bDZXMLSHpjQmoTBnmevsD3vKq3poi7E3C7jg9vCArdHWNvTsnVJ`.
+- Keeper live `RUN_ONCE=1` with dedicated fee-payer operator
+  `5gRRZXP18ZzUHB9Ud6vnnsAApgYXRVQxzXa2Uuf4f8en` →
+  `resolve-timeout`, sig
+  `4XTq8V3aGSZSXygDGVM9cMdFv7cYH841dGg1KwxowXJ7wLS95F3McVEkdSUVTZESXNHr5CboUQ5PwhSYsheQqY3Z`
+  (slot 504490251, past the 150-slot window).
+- Settlement math: slash = min(500,000, 200,000 × 50 / 10,000) = 1,000.
+  Bond `2G19xBTW…`: 499,000, 0 open disputes. Claimant ATA
+  `9KAVa6wtTnL8ZgHfvPM66B9M4tJJazdUfPERHJNhyF96`: 2,000,001,000
+  (2,000,000,000 minted + 1,000 slash).
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past
   signatures are proven by broadcast receipts + live state, not by
   re-query. Re-run the video pass with history enabled.
-- Devnet program deploy is pending (public RPC write instability; see
-  roadmap). All flows above are RPC-independent and replay 1:1 on devnet.
+- The devnet loop above replays the localnet flows 1:1 against the
+  canonical programs; hosting runbook is `docs/deploy.md`.
