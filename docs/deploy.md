@@ -43,7 +43,7 @@ macOS: `base64 -i <file> | tr -d '\n'`.
 
 | Var | Value |
 |---|---|
-| `RPC_URL` | `<QUICKNODE_DEVNET_URL>` |
+| `RPC_URL` | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value; the local copy lives in `web/.env.local`, gitignored) |
 | `MINT` | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` |
 | `PRICE_PER_TOKEN` | `10` |
 | `MERCHANT_KEYPAIR_B64` | base64 of the merchant keypair (see §0) |
