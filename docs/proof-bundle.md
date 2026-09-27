@@ -116,6 +116,37 @@ upstream channels `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`
   `9KAVa6wtTnL8ZgHfvPM66B9M4tJJazdUfPERHJNhyF96`: 2,000,001,000
   (2,000,000,000 minted + 1,000 slash).
 
+## v0.2.0 upgrade — claim-staked optimistic refunds (live)
+
+Adjudication was redesigned: `resolve_delivered` removed (merchant-signed
+receipts can never acquit), disputes lock the claim size, timeout resolve
+refunds the claim minus 5% fee plus a 2x bond penalty to the backstop
+treasury. Full spec in `docs/ui-contracts.md` Amendments (v0.2.0).
+
+- Upgrade sig `mBoAh5w9JowXzFrusvqWW1A53qRta3xA9KoZJuY4gqp4hMmUTCWwpkwARZn3zuGiNNttrVRFXBGtvxsxVHbmaT8`
+  (programdata head byte-verified against the new 363,248-byte binary;
+  IDL republished and fetch-verified).
+- Migration (no state carry-over by design): old devnet bond withdrawn
+  + `refund_unused` closed (`2u2NkK8HPheREVQuRdrw9cM2dHryDugBXybgnuQLS6UgzZ6RgpkLYDyXLBGXtRGY5RHjL33BwEKoDcoAe2VNKV45`),
+  then re-registered + 500,000 re-posted to the same PDA
+  `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP`.
+- v0.2 devnet loop: happy channel `3rD2hFGgyED4xuhaggWGWXFKCqReposwUUGvUiaNR99H`
+  (3 receipts, settled 15000) → kill → fail channel
+  `EhZv4fhkpCC8cPnmJUyrH3QmAxf4HK7NMHCDuhe3hZVp` → dispute
+  `2BwogBLcY1z7T7V1PMzrBXYC1DPMu1NLjXFGU9PK4QCZ` (claim 3,000, open sig
+  `3sC59qjNWpmWh9XZYWhbdemQCpyWhkzhWkGQkPqSHG6pbdhcff7LTMDMhnLAGwqZHeFNcPdX3d45kmJ6tepQ8wpW`)
+  → keeper `resolve-timeout` sig
+  `5MywkY1tkaTXbRTD3YUx37gqiwJXzT3HB5ai5D8En35tqLsSAMRxodtDUo4FVSPDiDKpA1U96LVbwVQmUUpg1oeW`
+  (slot 504603399).
+- Settlement math: fee = 150, refund = 2,850, penalty = 6,000.
+  Bond `2G19xBTW…`: 494,000, reserved 0, 0 open disputes. Claimant ATA
+  `9KAVa6wt…`: 2,000,000,850 (−150 net = the fee). Treasury
+  `6150 = 150 + 6,000` (first treasury funding on any cluster).
+- v0.2 localnet loop mirrored on the upgraded validator (bond
+  `BFJL3aFj…` migrated the same way): claim 2,000 → bond 496,000,
+  claimant +1,900 net, treasury 4,100, resolve sig
+  `3LScqXLsRmKTSANuG4F1dV1SfDS9Dcm9s2xHaDew9PvWMBRQSNaaxZZiBYo7FWNkxMvNmStNnrdShhUai7HePuc7`.
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past

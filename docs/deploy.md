@@ -100,8 +100,10 @@ open https://<web>/live                                       # bond 2G19xBTW…
 ```
 
 Then the live loop: agent happy run → receipts `signed ✓` →
-Kill delivery → agent fails → open dispute (claimant wallet) →
-keeper resolves → bond drops 1,000 (SLA 0.50%).
+Kill delivery → agent fails → open dispute with a locked claim
+(claimant wallet needs the tokens) → keeper resolves → claimant gets
+~95% back, bond drops `2×claim + fee` (penalty to the backstop
+treasury). Example: claim 3,670 → refund 3,487, penalty 7,340.
 
 ## 5. Ops notes
 
