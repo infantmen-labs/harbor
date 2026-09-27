@@ -1,29 +1,22 @@
 use crate::{constants::*, error::HarborError, state::*};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
+use anchor_spl::{
+    associated_token::{self, AssociatedToken},
+    token_interface::{self, Mint, TokenAccount, TokenInterface},
+};
 
-fn expected_receipt_key(binding: &Pubkey, nonce: u64) -> Pubkey {
-    Pubkey::find_program_address(
-        &[RECEIPT_SEED, binding.as_ref(), &nonce.to_le_bytes()],
-        &crate::ID,
-    )
-    .0
-}
-
-fn receipt_exists(receipt: &UncheckedAccount) -> bool {
-    receipt
-        .try_borrow_data()
-        .map(|d| !d.is_empty())
-        .unwrap_or(false)
+fn expected_treasury_key(mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[TREASURY_SEED, mint.as_ref()], &crate::ID).0
 }
 
 #[derive(Accounts)]
 #[instruction(nonce: u64)]
 pub struct ResolveTimeout<'info> {
+    #[account(mut)]
     pub resolver: Signer<'info>,
     #[account(mut, has_one = mint @ HarborError::BadMint)]
-    pub bond: Account<'info, MerchantBond>,
-    pub mint: InterfaceAccount<'info, Mint>,
+    pub bond: Box<Account<'info, MerchantBond>>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(constraint = binding.bond == bond.key() @ HarborError::BindingMismatch)]
     pub binding: Account<'info, ChannelBinding>,
     #[account(
@@ -33,48 +26,91 @@ pub struct ResolveTimeout<'info> {
         bump = dispute.bump,
         constraint = dispute.binding == binding.key() @ HarborError::BindingMismatch,
     )]
-    pub dispute: Account<'info, Dispute>,
+    pub dispute: Box<Account<'info, Dispute>>,
     #[account(mut, constraint = claimant.key() == dispute.claimant @ HarborError::Unauthorized)]
     pub claimant: SystemAccount<'info>,
-    /// CHECK: key verified in handler; must be empty for a timeout slash.
-    pub receipt: UncheckedAccount<'info>,
+    /// CHECK: key verified in handler; the treasury PDA itself is
+    /// deliberately never funded — funds live in its ATA below.
+    pub treasury: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = vault.owner == bond.key() @ HarborError::BindingMismatch,
         constraint = vault.mint == mint.key() @ HarborError::BadMint,
     )]
-    pub vault: InterfaceAccount<'info, TokenAccount>,
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: verified as the canonical treasury ATA in the handler
+    /// before creation/use. Manual creation (not `init`) mirroring the
+    /// vault pattern in post_bond; rent paid by the resolver.
+    #[account(mut)]
+    pub treasury_ata: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = claimant_ata.owner == dispute.claimant @ HarborError::Unauthorized,
         constraint = claimant_ata.mint == mint.key() @ HarborError::BadMint,
     )]
-    pub claimant_ata: InterfaceAccount<'info, TokenAccount>,
+    pub claimant_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
 }
 
+/// Resolves a matured dispute: refund the locked claim minus the
+/// protocol fee, and drain the penalty from the bond. Both fee and
+/// penalty land in the per-mint treasury ATA (program-controlled
+/// backstop). This is the ONLY resolve path — there is no acquittal:
+/// receipts are merchant-signed liveness attestations and are never
+/// evidence against a claim.
 pub fn handle_resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Result<()> {
     require!(
-        ctx.accounts.receipt.key() == expected_receipt_key(&ctx.accounts.binding.key(), nonce),
+        ctx.accounts.treasury.key() == expected_treasury_key(&ctx.accounts.mint.key()),
         HarborError::BindingMismatch
     );
-    require!(
-        !receipt_exists(&ctx.accounts.receipt),
-        HarborError::AlreadyDelivered
+    // Canonical treasury ATA commits to (treasury, token program, mint).
+    let (expected_ata, _) = Pubkey::find_program_address(
+        &[
+            ctx.accounts.treasury.key().as_ref(),
+            ctx.accounts.token_program.key().as_ref(),
+            ctx.accounts.mint.key().as_ref(),
+        ],
+        &ctx.accounts.associated_token_program.key(),
     );
+    require!(
+        ctx.accounts.treasury_ata.key() == expected_ata,
+        HarborError::BindingMismatch
+    );
+    if ctx.accounts.treasury_ata.lamports() == 0 {
+        associated_token::create_idempotent(CpiContext::new(
+            ctx.accounts.associated_token_program.key(),
+            associated_token::Create {
+                payer: ctx.accounts.resolver.to_account_info(),
+                associated_token: ctx.accounts.treasury_ata.to_account_info(),
+                authority: ctx.accounts.treasury.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+            },
+        ))?;
+    }
+
     require!(
         Clock::get()?.slot > ctx.accounts.dispute.deadline_slot,
         HarborError::DisputeNotMature
     );
-    require!(ctx.accounts.bond.amount > 0, HarborError::InsufficientBond);
 
-    let cap = (ctx.accounts.binding.max_spend as u128)
-        .checked_mul(ctx.accounts.bond.sla_bps as u128)
+    let claim = ctx.accounts.dispute.claim_spend;
+    let fee = claim
+        .checked_mul(CLAIM_FEE_BPS)
         .unwrap()
-        .checked_div(BPS_DENOMINATOR as u128)
-        .unwrap() as u64;
-    let slash = ctx.accounts.bond.amount.min(cap);
-    require!(slash > 0, HarborError::ZeroAmount);
+        .checked_div(BPS_DENOMINATOR)
+        .unwrap();
+    let refund = claim.checked_sub(fee).unwrap();
+    let penalty = claim.checked_mul(PENALTY_MULT).unwrap();
+    let outflow = refund
+        .checked_add(fee)
+        .unwrap()
+        .checked_add(penalty)
+        .unwrap();
+    require!(outflow > 0, HarborError::ZeroAmount);
 
     let merchant_key = ctx.accounts.bond.merchant;
     let mint_key = ctx.accounts.mint.key();
@@ -95,62 +131,43 @@ pub fn handle_resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Resul
             },
             &[seeds],
         ),
-        slash,
+        refund,
+        ctx.accounts.mint.decimals,
+    )?;
+    token_interface::transfer_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.key(),
+            token_interface::TransferChecked {
+                from: ctx.accounts.vault.to_account_info(),
+                to: ctx.accounts.treasury_ata.to_account_info(),
+                authority: ctx.accounts.bond.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+            },
+            &[seeds],
+        ),
+        fee.checked_add(penalty).unwrap(),
         ctx.accounts.mint.decimals,
     )?;
 
     let bond = &mut ctx.accounts.bond;
-    bond.amount = bond.amount.checked_sub(slash).unwrap();
+    // The fee comes out of the claimant's locked principal; only the
+    // penalty hits the bond. Invariant: vault == amount + open claims.
+    bond.amount = bond.amount.checked_sub(penalty).unwrap();
+    bond.reserved = bond.reserved.checked_sub(outflow).unwrap();
     bond.open_disputes = bond.open_disputes.checked_sub(1).unwrap();
 
     emit!(BondSlashed {
         binding: ctx.accounts.binding.key(),
         nonce,
         claimant: ctx.accounts.dispute.claimant,
-        slash,
+        slash: penalty,
     });
-    Ok(())
-}
-
-#[derive(Accounts)]
-#[instruction(nonce: u64)]
-pub struct ResolveDelivered<'info> {
-    pub resolver: Signer<'info>,
-    #[account(mut, has_one = merchant @ HarborError::Unauthorized)]
-    pub bond: Account<'info, MerchantBond>,
-    #[account(mut)]
-    pub merchant: SystemAccount<'info>,
-    #[account(constraint = binding.bond == bond.key() @ HarborError::BindingMismatch)]
-    pub binding: Account<'info, ChannelBinding>,
-    #[account(
-        mut,
-        close = merchant,
-        seeds = [DISPUTE_SEED, binding.key().as_ref(), &nonce.to_le_bytes()],
-        bump = dispute.bump,
-        constraint = dispute.binding == binding.key() @ HarborError::BindingMismatch,
-    )]
-    pub dispute: Account<'info, Dispute>,
-    /// CHECK: key verified in handler; must hold a receipt for this path.
-    pub receipt: UncheckedAccount<'info>,
-}
-
-pub fn handle_resolve_delivered(ctx: Context<ResolveDelivered>, nonce: u64) -> Result<()> {
-    require!(
-        ctx.accounts.receipt.key() == expected_receipt_key(&ctx.accounts.binding.key(), nonce),
-        HarborError::BindingMismatch
-    );
-    require!(
-        receipt_exists(&ctx.accounts.receipt),
-        HarborError::NoDelivery
-    );
-
-    ctx.accounts.bond.open_disputes = ctx.accounts.bond.open_disputes.checked_sub(1).unwrap();
-
-    emit!(DisputeResolved {
+    emit!(ClaimRefunded {
         binding: ctx.accounts.binding.key(),
         nonce,
-        winner: ctx.accounts.merchant.key(),
-        slashed: false,
+        claimant: ctx.accounts.dispute.claimant,
+        refund,
+        fee,
     });
     Ok(())
 }
@@ -164,9 +181,10 @@ pub struct BondSlashed {
 }
 
 #[event]
-pub struct DisputeResolved {
+pub struct ClaimRefunded {
     pub binding: Pubkey,
     pub nonce: u64,
-    pub winner: Pubkey,
-    pub slashed: bool,
+    pub claimant: Pubkey,
+    pub refund: u64,
+    pub fee: u64,
 }

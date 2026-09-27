@@ -81,11 +81,12 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     MintTo::new(svm, &merchant, &mint_addr, &merchant_ata_addr, 1_000_000)
         .send()
         .unwrap();
-    let claimant_ata = a2p(
-        &CreateAssociatedTokenAccount::new(svm, &claimant, &mint_addr)
-            .send()
-            .unwrap(),
-    );
+    let claimant_ata_addr =
+        CreateAssociatedTokenAccount::new(svm, &claimant, &mint_addr).send().unwrap();
+    let claimant_ata = a2p(&claimant_ata_addr);
+    MintTo::new(svm, &merchant, &mint_addr, &claimant_ata_addr, 100_000)
+        .send()
+        .unwrap();
 
     let bond = Pubkey::find_program_address(
         &[b"bond", merchant.pubkey().as_ref(), mint.as_ref()],
@@ -168,18 +169,46 @@ fn dispute_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
     .0
 }
 
-fn open_dispute(svm: &mut LiteSVM, s: &Setup, nonce: u64, reason: u8) -> Result<(), String> {
+fn treasury_of(mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0
+}
+
+fn treasury_ata_of(treasury: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Pubkey {
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".parse().unwrap();
+    Pubkey::find_program_address(
+        &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    )
+    .0
+}
+
+fn open_dispute(
+    svm: &mut LiteSVM,
+    s: &Setup,
+    nonce: u64,
+    reason: u8,
+    claim: u64,
+) -> Result<(), String> {
     send(
         svm,
         &s.claimant,
         vec![Instruction::new_with_bytes(
             harbor::id(),
-            &harbor::instruction::OpenDispute { nonce, reason }.data(),
+            &harbor::instruction::OpenDispute {
+                nonce,
+                reason,
+                claim_spend: claim,
+            }
+            .data(),
             harbor::accounts::OpenDispute {
                 claimant: s.claimant.pubkey(),
                 bond: s.bond,
                 binding: s.binding,
                 dispute: dispute_pda(&s.binding, nonce),
+                mint: s.mint,
+                claimant_ata: s.claimant_ata,
+                vault: s.vault,
+                token_program: s.token_program,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
@@ -188,11 +217,7 @@ fn open_dispute(svm: &mut LiteSVM, s: &Setup, nonce: u64, reason: u8) -> Result<
 }
 
 fn resolve_timeout(svm: &mut LiteSVM, s: &Setup, nonce: u64) -> Result<(), String> {
-    let receipt = Pubkey::find_program_address(
-        &[b"receipt", s.binding.as_ref(), &nonce.to_le_bytes()],
-        &harbor::id(),
-    )
-    .0;
+    let treasury = treasury_of(&s.mint);
     send(
         svm,
         &s.claimant,
@@ -206,10 +231,15 @@ fn resolve_timeout(svm: &mut LiteSVM, s: &Setup, nonce: u64) -> Result<(), Strin
                 binding: s.binding,
                 dispute: dispute_pda(&s.binding, nonce),
                 claimant: s.claimant.pubkey(),
-                receipt,
+                treasury,
                 vault: s.vault,
+                treasury_ata: treasury_ata_of(&treasury, &s.mint, &s.token_program),
                 claimant_ata: s.claimant_ata,
+                associated_token_program: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+                    .parse()
+                    .unwrap(),
                 token_program: s.token_program,
+                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )],
@@ -246,19 +276,23 @@ fn test_concurrent_disputes_gate_withdraw() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
 
-    open_dispute(&mut svm, &s, 5, 1).unwrap();
-    open_dispute(&mut svm, &s, 6, 2).unwrap();
+    open_dispute(&mut svm, &s, 5, 1, 1_000).unwrap();
+    open_dispute(&mut svm, &s, 6, 2, 1_000).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 2);
 
     svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
     resolve_timeout(&mut svm, &s, 5).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 1);
 
-    // One dispute still open: withdrawals stay blocked.
-    assert!(withdraw(&mut svm, &s, 1_000).is_err());
+    // One dispute still open: only the unreserved remainder withdraws.
+    // Claim 1_000 -> resolved penalty 2_000 hit the bond (498_000 left);
+    // the live dispute reserves 3_000 -> 495_000 free.
+    assert!(withdraw(&mut svm, &s, 495_001).is_err());
+    withdraw(&mut svm, &s, 495_000).unwrap();
 
     resolve_timeout(&mut svm, &s, 6).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 0);
+    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
     withdraw(&mut svm, &s, 1_000).unwrap();
 }
 
@@ -310,12 +344,21 @@ fn test_unauthorized_matrix() {
         &s.merchant,
         vec![Instruction::new_with_bytes(
             program_id,
-            &harbor::instruction::OpenDispute { nonce: 1, reason: 1 }.data(),
+            &harbor::instruction::OpenDispute {
+                nonce: 1,
+                reason: 1,
+                claim_spend: 1_000,
+            }
+            .data(),
             harbor::accounts::OpenDispute {
                 claimant: s.merchant.pubkey(),
                 bond: s.bond,
                 binding: s.binding,
                 dispute: dispute_pda(&s.binding, 1),
+                mint: s.mint,
+                claimant_ata: s.merchant_ata,
+                vault: s.vault,
+                token_program: s.token_program,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
@@ -344,12 +387,8 @@ fn test_unauthorized_matrix() {
     assert!(withdraw(&mut svm, &s, 999_999_999).is_err());
 
     // Early resolve paths reject: immature timeout, undelivered delivery.
-    open_dispute(&mut svm, &s, 7, 1).unwrap();
-    let receipt = Pubkey::find_program_address(
-        &[b"receipt", s.binding.as_ref(), &7u64.to_le_bytes()],
-        &program_id,
-    )
-    .0;
+    open_dispute(&mut svm, &s, 7, 1, 1_000).unwrap();
+    let treasury = treasury_of(&s.mint);
     let early = send(
         &mut svm,
         &s.claimant,
@@ -363,33 +402,20 @@ fn test_unauthorized_matrix() {
                 binding: s.binding,
                 dispute: dispute_pda(&s.binding, 7),
                 claimant: s.claimant.pubkey(),
-                receipt,
+                treasury,
                 vault: s.vault,
+                treasury_ata: treasury_ata_of(&treasury, &s.mint, &s.token_program),
                 claimant_ata: s.claimant_ata,
+                associated_token_program: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+                    .parse()
+                    .unwrap(),
                 token_program: s.token_program,
+                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )],
     );
     assert!(early.is_err());
-    let undelivered = send(
-        &mut svm,
-        &s.claimant,
-        vec![Instruction::new_with_bytes(
-            program_id,
-            &harbor::instruction::ResolveDelivered { nonce: 7 }.data(),
-            harbor::accounts::ResolveDelivered {
-                resolver: s.claimant.pubkey(),
-                bond: s.bond,
-                merchant: s.merchant.pubkey(),
-                binding: s.binding,
-                dispute: dispute_pda(&s.binding, 7),
-                receipt,
-            }
-            .to_account_metas(None),
-        )],
-    );
-    assert!(undelivered.is_err());
 }
 
 /// Crafted Token-2022 mint: 82-byte base + AccountType byte + TLV extensions.

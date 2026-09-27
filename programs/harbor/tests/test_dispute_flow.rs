@@ -98,6 +98,9 @@ fn setup(svm: &mut LiteSVM) -> Setup {
             .send()
             .unwrap(),
     );
+    MintTo::new(svm, &merchant, &mint_addr, &claimant_ata, 100_000)
+        .send()
+        .unwrap();
 
     let bond = Pubkey::find_program_address(
         &[b"bond", merchant.pubkey().as_ref(), mint.as_ref()],
@@ -208,6 +211,116 @@ fn dispute_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
     .0
 }
 
+fn treasury_of(mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0
+}
+
+fn treasury_ata_of(treasury: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Pubkey {
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
+    Pubkey::find_program_address(
+        &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    )
+    .0
+}
+
+#[allow(clippy::too_many_arguments)]
+fn open(
+    svm: &mut LiteSVM,
+    s: &Setup,
+    nonce: u64,
+    reason: u8,
+    claim: u64,
+) -> Result<(), String> {
+    send(
+        svm,
+        &s.claimant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::OpenDispute {
+                nonce,
+                reason,
+                claim_spend: claim,
+            }
+            .data(),
+            harbor::accounts::OpenDispute {
+                claimant: s.claimant.pubkey(),
+                bond: s.bond,
+                binding: s.binding,
+                dispute: dispute_pda(&s.binding, nonce),
+                mint: s.mint,
+                claimant_ata: s.claimant_ata,
+                vault: s.vault,
+                token_program: s.token_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+}
+
+fn resolve(
+    svm: &mut LiteSVM,
+    s: &Setup,
+    nonce: u64,
+    resolver: &Keypair,
+) -> Result<(), String> {
+    let treasury = treasury_of(&s.mint);
+    send(
+        svm,
+        resolver,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::ResolveTimeout { nonce }.data(),
+            harbor::accounts::ResolveTimeout {
+                resolver: resolver.pubkey(),
+                bond: s.bond,
+                mint: s.mint,
+                binding: s.binding,
+                dispute: dispute_pda(&s.binding, nonce),
+                claimant: s.claimant.pubkey(),
+                treasury,
+                vault: s.vault,
+                treasury_ata: treasury_ata_of(&treasury, &s.mint, &s.token_program),
+                claimant_ata: s.claimant_ata,
+                associated_token_program: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+                    .parse()
+                    .unwrap(),
+                token_program: s.token_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+}
+
+fn withdraw(svm: &mut LiteSVM, s: &Setup, amount: u64) -> Result<(), String> {
+    send(
+        svm,
+        &s.merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::WithdrawBond { amount }.data(),
+            harbor::accounts::WithdrawBond {
+                merchant: s.merchant.pubkey(),
+                bond: s.bond,
+                mint: s.mint,
+                merchant_ata: s.merchant_ata,
+                vault: s.vault,
+                token_program: s.token_program,
+            }
+            .to_account_metas(None),
+        )],
+    )
+}
+
+fn bond_field(svm: &LiteSVM, bond: &Pubkey, f: impl Fn(&harbor::MerchantBond) -> u64) -> u64 {
+    let acc = svm.get_account(bond).unwrap();
+    f(&harbor::MerchantBond::try_deserialize(&mut acc.data.as_slice()).unwrap())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn submit(
     svm: &mut LiteSVM,
@@ -293,160 +406,98 @@ fn test_receipt_proofs() {
 }
 
 #[test]
-fn test_timeout_slash() {
+fn test_timeout_refund_slash() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
 
-    // Dispute with no delivery behind it.
-    send(
-        &mut svm,
-        &s.claimant,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::OpenDispute { nonce: 2, reason: 1 }.data(),
-            harbor::accounts::OpenDispute {
-                claimant: s.claimant.pubkey(),
-                bond: s.bond,
-                binding: s.binding,
-                dispute: dispute_pda(&s.binding, 2),
-                system_program: system_program::ID,
-            }
-            .to_account_metas(None),
-        )],
-    )
-    .unwrap();
+    // Claim with no delivery behind it: claimant locks the claim size.
+    open(&mut svm, &s, 2, 1, 10_000).unwrap();
+    assert_eq!(token_balance(&svm, &s.claimant_ata), 90_000);
+    assert_eq!(token_balance(&svm, &s.vault), 510_000);
 
-    // Slash math: min(500_000, 250_000 * 50 / 10_000) = 1_250.
     svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
-    send(
-        &mut svm,
-        &s.claimant,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::ResolveTimeout { nonce: 2 }.data(),
-            harbor::accounts::ResolveTimeout {
-                resolver: s.claimant.pubkey(),
-                bond: s.bond,
-                mint: s.mint,
-                binding: s.binding,
-                dispute: dispute_pda(&s.binding, 2),
-                claimant: s.claimant.pubkey(),
-                receipt: receipt_pda(&s.binding, 2),
-                vault: s.vault,
-                claimant_ata: s.claimant_ata,
-                token_program: s.token_program,
-            }
-            .to_account_metas(None),
-        )],
-    )
-    .unwrap();
 
-    assert_eq!(token_balance(&svm, &s.claimant_ata), 1_250);
-    assert_eq!(token_balance(&svm, &s.vault), 500_000 - 1_250);
+    // Resolution is permissionless: any funded keypair can fire it.
+    let keeper = Keypair::new();
+    svm.airdrop(&keeper.pubkey(), 1_000_000_000).unwrap();
+    resolve(&mut svm, &s, 2, &keeper).unwrap();
+
+    // Refund math: fee = 10_000 * 500 / 10_000 = 500; refund = 9_500;
+    // penalty = 20_000 to treasury. Only the penalty hits the bond.
+    assert_eq!(token_balance(&svm, &s.claimant_ata), 100_000 - 500);
+    let treasury = treasury_of(&s.mint);
+    assert_eq!(
+        token_balance(&svm, &treasury_ata_of(&treasury, &s.mint, &s.token_program)),
+        20_500
+    );
+    assert_eq!(token_balance(&svm, &s.vault), 480_000);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.amount), 480_000);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.reserved), 0);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.open_disputes), 0);
     assert!(svm.get_account(&dispute_pda(&s.binding, 2)).is_none());
 }
 
 #[test]
-fn test_delivered_wins_and_full_close() {
+fn test_proactive_junk_receipt_irrelevant() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
     let far_future = svm.get_sysvar::<Clock>().slot + 100_000;
 
-    // Deliver first.
+    // The merchant proactively "delivers" the failed request with a
+    // validly-signed junk receipt before any dispute exists.
     submit(&mut svm, &s, &s.merchant, 3, far_future).unwrap();
 
-    // Hostile dispute over delivered work.
-    send(
-        &mut svm,
-        &s.claimant,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::OpenDispute { nonce: 3, reason: 2 }.data(),
-            harbor::accounts::OpenDispute {
-                claimant: s.claimant.pubkey(),
-                bond: s.bond,
-                binding: s.binding,
-                dispute: dispute_pda(&s.binding, 3),
-                system_program: system_program::ID,
-            }
-            .to_account_metas(None),
-        )],
-    )
-    .unwrap();
+    // The dispute opens anyway: receipts are not evidence.
+    open(&mut svm, &s, 3, 1, 5_000).unwrap();
 
-    // Withdraw is blocked while the dispute is open.
-    let blocked = send(
-        &mut svm,
-        &s.merchant,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::WithdrawBond { amount: 1_000 }.data(),
-            harbor::accounts::WithdrawBond {
-                merchant: s.merchant.pubkey(),
-                bond: s.bond,
-                mint: s.mint,
-                merchant_ata: s.merchant_ata,
-                vault: s.vault,
-                token_program: s.token_program,
-            }
-            .to_account_metas(None),
-        )],
-    );
-    assert!(blocked.is_err());
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    resolve(&mut svm, &s, 3, &s.claimant).unwrap();
 
-    // Delivery proof wins: stake goes to the merchant, no slash.
-    let merchant_before = lamports(&svm, &s.merchant.pubkey());
-    let dispute_lamports = lamports(&svm, &dispute_pda(&s.binding, 3));
-    let resolver = Keypair::new();
-    svm.airdrop(&resolver.pubkey(), 1_000_000_000).unwrap();
-    send(
-        &mut svm,
-        &resolver,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::ResolveDelivered { nonce: 3 }.data(),
-            harbor::accounts::ResolveDelivered {
-                resolver: resolver.pubkey(),
-                bond: s.bond,
-                merchant: s.merchant.pubkey(),
-                binding: s.binding,
-                dispute: dispute_pda(&s.binding, 3),
-                receipt: receipt_pda(&s.binding, 3),
-            }
-            .to_account_metas(None),
-        )],
-    )
-    .unwrap();
-    assert_eq!(token_balance(&svm, &s.vault), 500_000);
-    assert_eq!(
-        lamports(&svm, &s.merchant.pubkey()) - merchant_before,
-        dispute_lamports
-    );
-    assert!(svm.get_account(&dispute_pda(&s.binding, 3)).is_none());
+    // Claim still pays out; the junk receipt still sits onchain, ignored.
+    assert_eq!(token_balance(&svm, &s.claimant_ata), 100_000 - 250);
+    assert!(svm.get_account(&receipt_pda(&s.binding, 3)).is_some());
+}
 
-    // Drain the bond in a new epoch, then close everything.
-    svm.warp_to_slot(500_000);
-    send(
-        &mut svm,
-        &s.merchant,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::WithdrawBond { amount: 500_000 }.data(),
-            harbor::accounts::WithdrawBond {
-                merchant: s.merchant.pubkey(),
-                bond: s.bond,
-                mint: s.mint,
-                merchant_ata: s.merchant_ata,
-                vault: s.vault,
-                token_program: s.token_program,
-            }
-            .to_account_metas(None),
-        )],
-    )
-    .unwrap();
+#[test]
+fn test_reserve_gating_and_full_close() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    // Two concurrent claims reserve their full outflow.
+    open(&mut svm, &s, 3, 1, 2_000).unwrap(); // reserves 6_000
+    open(&mut svm, &s, 4, 2, 3_000).unwrap(); // reserves 9_000
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.reserved), 15_000);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.open_disputes), 2);
+
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+
+    // Withdrawals may only touch the unreserved remainder.
+    assert!(withdraw(&mut svm, &s, 486_000).is_err());
+    withdraw(&mut svm, &s, 485_000).unwrap();
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.amount), 15_000);
+
+    // Resolving releases the reserve stepwise (only the penalty hit the
+    // bond: 2_000 claim -> penalty 4_000).
+    resolve(&mut svm, &s, 3, &s.claimant).unwrap();
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.amount), 11_000);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.reserved), 9_000);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.open_disputes), 1);
+
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    assert!(withdraw(&mut svm, &s, 2_001).is_err());
+    withdraw(&mut svm, &s, 2_000).unwrap();
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.amount), 9_000);
+
+    // Last resolve clears the reserve; the bond can be fully drained.
+    resolve(&mut svm, &s, 4, &s.claimant).unwrap();
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.amount), 3_000);
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.reserved), 0);
+
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    withdraw(&mut svm, &s, 3_000).unwrap();
     assert_eq!(token_balance(&svm, &s.vault), 0);
 
-    svm.warp_to_slot(1_000_000);
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
     send(
         &mut svm,
         &s.merchant,
@@ -470,7 +521,7 @@ fn test_delivered_wins_and_full_close() {
 }
 
 #[test]
-fn test_halt_freezes_entries() {
+fn test_halt_then_dispute_succeeds() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
     let far_future = svm.get_sysvar::<Clock>().slot + 100_000;
@@ -493,7 +544,7 @@ fn test_halt_freezes_entries() {
     );
     assert!(hostile.is_err());
 
-    // Merchant halts.
+    // Merchant halts: receipts freeze...
     send(
         &mut svm,
         &s.merchant,
@@ -508,24 +559,27 @@ fn test_halt_freezes_entries() {
         )],
     )
     .unwrap();
-
-    // New receipts and disputes are frozen.
     assert!(submit(&mut svm, &s, &s.merchant, 1, far_future).is_err());
-    let frozen = send(
-        &mut svm,
-        &s.claimant,
-        vec![Instruction::new_with_bytes(
-            harbor::id(),
-            &harbor::instruction::OpenDispute { nonce: 1, reason: 1 }.data(),
-            harbor::accounts::OpenDispute {
-                claimant: s.claimant.pubkey(),
-                bond: s.bond,
-                binding: s.binding,
-                dispute: dispute_pda(&s.binding, 1),
-                system_program: system_program::ID,
-            }
-            .to_account_metas(None),
-        )],
-    );
-    assert!(frozen.is_err());
+
+    // ...but disputes are NEVER blocked by halt: no halt-shaped rug.
+    open(&mut svm, &s, 1, 1, 4_000).unwrap();
+
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    resolve(&mut svm, &s, 1, &s.claimant).unwrap();
+    assert_eq!(token_balance(&svm, &s.claimant_ata), 100_000 - 200);
+}
+
+#[test]
+fn test_fabrication_rejected() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    // Claim above the merchant-declared max_spend is rejected outright.
+    assert!(open(&mut svm, &s, 5, 1, 250_001).is_err());
+    // Zero claims are rejected.
+    assert!(open(&mut svm, &s, 5, 1, 0).is_err());
+    // Claims the claimant cannot fund are rejected by the transfer.
+    assert!(open(&mut svm, &s, 5, 1, 250_000).is_err());
+    // Failed opens leave no dispute account behind (init rolled back).
+    assert!(svm.get_account(&dispute_pda(&s.binding, 5)).is_none());
 }

@@ -1,27 +1,37 @@
 import bs58 from "bs58";
-import { Connection, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  receiptPda,
-  resolveDeliveredIx,
   resolveTimeoutIx,
+  treasuryPda,
 } from "harbor-sdk";
 import { JsonlLogger } from "harbor-log";
-import { DISPUTE_DISC, bindingChannelProgram, decide, parseBond, parseDispute } from "./accounts";
+import {
+  DISPUTE_DISC,
+  bindingChannelProgram,
+  decide,
+  parseBond,
+  parseDispute,
+} from "./accounts";
 import { KeeperConfig } from "./config";
 
 function vaultAta(bond: PublicKey, mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [bond.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ATA_PROGRAM_ID,
+    ATA_PROGRAM_ID
   )[0];
 }
 
 function ataFor(owner: PublicKey, mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ATA_PROGRAM_ID,
+    ATA_PROGRAM_ID
   )[0];
 }
 
@@ -33,7 +43,7 @@ function bindingBond(bindingData: Buffer): PublicKey {
 export async function pass(
   cfg: KeeperConfig,
   conn: Connection,
-  log: JsonlLogger,
+  log: JsonlLogger
 ): Promise<{ resolved: number; pending: number }> {
   let resolved = 0;
   let pending = 0;
@@ -55,7 +65,7 @@ export async function consider(
   conn: Connection,
   disputeKey: PublicKey,
   slot: bigint,
-  log: JsonlLogger,
+  log: JsonlLogger
 ): Promise<"resolved" | "pending"> {
   const info = await conn.getAccountInfo(disputeKey);
   if (info === null) {
@@ -63,10 +73,7 @@ export async function consider(
     return "pending";
   }
   const d = parseDispute(Buffer.from(info.data));
-  const [receipt] = receiptPda(d.binding, d.nonce);
-  const receiptInfo = await conn.getAccountInfo(receipt);
-  const exists = receiptInfo !== null && receiptInfo.data.length > 0;
-  const action = decide(d, exists, slot);
+  const action = decide(d, slot);
   const entry = {
     dispute: disputeKey.toBase58(),
     binding: d.binding.toBase58(),
@@ -103,36 +110,23 @@ export async function consider(
   const bond = parseBond(Buffer.from(bondInfo.data));
 
   const tx = new Transaction();
-  if (action.kind === "resolve-timeout") {
-    tx.add(
-      resolveTimeoutIx(
-        cfg.programId,
-        cfg.operator.publicKey,
-        bondKey,
-        bond.mint,
-        d.binding,
-        disputeKey,
-        d.claimant,
-        receipt,
-        vaultAta(bondKey, bond.mint),
-        ataFor(d.claimant, bond.mint),
-        d.nonce,
-      ),
-    );
-  } else {
-    tx.add(
-      resolveDeliveredIx(
-        cfg.programId,
-        cfg.operator.publicKey,
-        bondKey,
-        bond.merchant,
-        d.binding,
-        disputeKey,
-        receipt,
-        d.nonce,
-      ),
-    );
-  }
+  const [treasury] = treasuryPda(bond.mint);
+  tx.add(
+    resolveTimeoutIx(
+      cfg.programId,
+      cfg.operator.publicKey,
+      bondKey,
+      bond.mint,
+      d.binding,
+      disputeKey,
+      d.claimant,
+      treasury,
+      vaultAta(bondKey, bond.mint),
+      ataFor(treasury, bond.mint),
+      ataFor(d.claimant, bond.mint),
+      d.nonce
+    )
+  );
   const sig = await sendAndConfirmTransaction(conn, tx, [cfg.operator]);
   log.log({ ...entry, signature: sig });
   return "resolved";

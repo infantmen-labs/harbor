@@ -12,6 +12,7 @@ export interface BondStatus {
   challengeSlots: bigint;
   openDisputes: bigint;
   lastChangeSlot: bigint;
+  reserved: bigint;
 }
 
 export interface BindingStatus {
@@ -25,7 +26,7 @@ export interface BindingStatus {
   halted: boolean;
 }
 
-export type DisputeState = "open" | "matured" | "resolved-timeout" | "resolved-delivered";
+export type DisputeState = "open" | "matured" | "resolved-timeout";
 
 export interface DisputeStatus {
   address: string;
@@ -34,6 +35,8 @@ export interface DisputeStatus {
   reason: number;
   claimant: string;
   deadlineSlot: bigint;
+  /** Claimant-locked claim size: max refund is exactly this. */
+  claimSpend: bigint;
   state: DisputeState;
   slash?: bigint;
   winner?: string;

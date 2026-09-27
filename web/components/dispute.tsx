@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { buildOpenDisputeIx } from "@/lib/dispute";
+import { parseAmount } from "@/lib/forms";
 import { sendWalletTx } from "@/lib/tx";
 import { countdownToDeadline } from "@/lib/countdown";
 import type { DisputeStatus, TxState } from "@/lib/types";
@@ -47,6 +48,12 @@ export function DisputeCard({
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-4 py-2">
+          <dt className="text-[14px] text-muted">Locked claim</dt>
+          <dd className="font-mono text-[14px]">
+            {dispute.claimSpend.toString()} base units
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 py-2">
           <dt className="text-[14px] text-muted">Dispute</dt>
           <dd>
             <ExplorerLink kind="address" value={dispute.address} short />
@@ -81,25 +88,35 @@ export function DisputeCard({
 export function OpenDisputeButton({
   bond,
   binding,
+  mint,
   nextNonce,
 }: {
   bond: string;
   binding: string;
+  mint: string;
   nextNonce: bigint;
 }) {
   const { connection } = useConnection();
   const { publicKey, signTransaction } = useWallet();
   const [reason, setReason] = useState(1);
+  const [claim, setClaim] = useState("1000");
   const [state, setState] = useState<TxState>({ status: "idle" });
 
   async function open() {
     if (publicKey === null || signTransaction === undefined) return;
-    const { ix } = await buildOpenDisputeIx(
+    const spend = parseAmount(claim);
+    if (spend === null) {
+      setState({ status: "failed", error: "Enter a positive claim size." });
+      return;
+    }
+    const { ix } = buildOpenDisputeIx(
       publicKey,
       new PublicKey(bond),
       new PublicKey(binding),
+      new PublicKey(mint),
       nextNonce,
-      reason
+      reason,
+      spend
     );
     await sendWalletTx(
       connection,
@@ -139,13 +156,26 @@ export function OpenDisputeButton({
           </option>
         ))}
       </select>
+      <label className="flex h-9 items-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-[14px]">
+        <span className="text-muted">Claim</span>
+        <input
+          value={claim}
+          onChange={(e) => setClaim(e.target.value)}
+          className="w-24 bg-transparent font-mono text-[14px] outline-none"
+          inputMode="numeric"
+        />
+      </label>
       <button
         onClick={() => void open()}
         className="h-9 rounded-[8px] bg-foreground px-4 text-[14px] font-medium text-background hover:opacity-90"
       >
-        Open dispute #{nextNonce.toString()}
+        Lock + open #{nextNonce.toString()}
       </button>
       <TxStatus state={state} />
+      <p className="w-full text-[13px] text-muted">
+        The claim locks from your wallet and caps the refund; fabrication can
+        never pay more than it locks.
+      </p>
     </div>
   );
 }

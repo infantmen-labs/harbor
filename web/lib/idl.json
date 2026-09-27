@@ -159,6 +159,20 @@
           }
         },
         {
+          "name": "mint"
+        },
+        {
+          "name": "claimant_ata",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -171,6 +185,10 @@
         {
           "name": "reason",
           "type": "u8"
+        },
+        {
+          "name": "claim_spend",
+          "type": "u64"
         }
       ]
     },
@@ -366,76 +384,6 @@
       ]
     },
     {
-      "name": "resolve_delivered",
-      "discriminator": [
-        103,
-        223,
-        10,
-        163,
-        175,
-        200,
-        192,
-        62
-      ],
-      "accounts": [
-        {
-          "name": "resolver",
-          "signer": true
-        },
-        {
-          "name": "bond",
-          "writable": true
-        },
-        {
-          "name": "merchant",
-          "writable": true,
-          "relations": [
-            "bond"
-          ]
-        },
-        {
-          "name": "binding"
-        },
-        {
-          "name": "dispute",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  105,
-                  115,
-                  112,
-                  117,
-                  116,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "binding"
-              },
-              {
-                "kind": "arg",
-                "path": "nonce"
-              }
-            ]
-          }
-        },
-        {
-          "name": "receipt"
-        }
-      ],
-      "args": [
-        {
-          "name": "nonce",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "resolve_timeout",
       "discriminator": [
         149,
@@ -450,6 +398,7 @@
       "accounts": [
         {
           "name": "resolver",
+          "writable": true,
           "signer": true
         },
         {
@@ -498,10 +447,21 @@
           "writable": true
         },
         {
-          "name": "receipt"
+          "name": "treasury",
+          "docs": [
+            "deliberately never funded — funds live in its ATA below."
+          ]
         },
         {
           "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "treasury_ata",
+          "docs": [
+            "before creation/use. Manual creation (not `init`) mirroring the",
+            "vault pattern in post_bond; rent paid by the resolver."
+          ],
           "writable": true
         },
         {
@@ -509,7 +469,15 @@
           "writable": true
         },
         {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
           "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -848,6 +816,19 @@
       ]
     },
     {
+      "name": "ClaimRefunded",
+      "discriminator": [
+        159,
+        119,
+        215,
+        150,
+        91,
+        104,
+        67,
+        142
+      ]
+    },
+    {
       "name": "DisputeOpened",
       "discriminator": [
         239,
@@ -858,19 +839,6 @@
         85,
         1,
         214
-      ]
-    },
-    {
-      "name": "DisputeResolved",
-      "discriminator": [
-        121,
-        64,
-        249,
-        153,
-        139,
-        128,
-        236,
-        187
       ]
     },
     {
@@ -978,28 +946,23 @@
     },
     {
       "code": 6015,
-      "name": "AlreadyDelivered",
-      "msg": "Delivery receipt exists; timeout slash unavailable"
-    },
-    {
-      "code": 6016,
-      "name": "NoDelivery",
-      "msg": "No delivery receipt for this nonce"
-    },
-    {
-      "code": 6017,
       "name": "UnsupportedMint",
       "msg": "Only classic Tokenkeg mints are supported as bond collateral"
     },
     {
-      "code": 6018,
+      "code": 6016,
       "name": "InvalidVault",
       "msg": "Vault is not the canonical bond ATA"
     },
     {
-      "code": 6019,
+      "code": 6017,
       "name": "Halted",
       "msg": "Binding is halted"
+    },
+    {
+      "code": 6018,
+      "name": "ClaimTooLarge",
+      "msg": "Dispute claim exceeds binding max spend"
     }
   ],
   "types": [
@@ -1148,6 +1111,34 @@
       }
     },
     {
+      "name": "ClaimRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "binding",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "claimant",
+            "type": "pubkey"
+          },
+          {
+            "name": "refund",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Dispute",
       "type": {
         "kind": "struct",
@@ -1174,6 +1165,14 @@
           },
           {
             "name": "stake_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "claim_spend",
+            "docs": [
+              "Claimant-locked claim size. Max refund is exactly this: fabrication",
+              "can never be profitable (gain <= lock, minus fees, at every scale)."
+            ],
             "type": "u64"
           },
           {
@@ -1212,30 +1211,6 @@
       }
     },
     {
-      "name": "DisputeResolved",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "binding",
-            "type": "pubkey"
-          },
-          {
-            "name": "nonce",
-            "type": "u64"
-          },
-          {
-            "name": "winner",
-            "type": "pubkey"
-          },
-          {
-            "name": "slashed",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "MerchantBond",
       "type": {
         "kind": "struct",
@@ -1266,6 +1241,14 @@
           },
           {
             "name": "last_change_slot",
+            "type": "u64"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Outflow locked by open disputes (refund + fee + penalty).",
+              "Withdrawals may only touch amount - reserved."
+            ],
             "type": "u64"
           },
           {

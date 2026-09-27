@@ -15,6 +15,7 @@ export const MOCK_BOND: BondStatus = {
   challengeSlots: 150n,
   openDisputes: 1n,
   lastChangeSlot: 100n,
+  reserved: 11_010n,
 };
 
 export const MOCK_RECEIPTS: Receipt[] = [1n, 2n, 3n].map((n) => ({
@@ -22,7 +23,8 @@ export const MOCK_RECEIPTS: Receipt[] = [1n, 2n, 3n].map((n) => ({
   binding: "HuzLMKJZeboM1vEKGnrMg4PAoqj8i6JcbQzwLqaxRi1X",
   cumulativeSpend: (Number(n) * 860).toString(),
   meterHash: "001a07ec2542fea4c28893cdbf8f2a36d7e361c1f2bc9f4cdec30baecb5a76b9",
-  outputHash: "15879ccadfc828c6bc091d457b3b02e2ffc93a578ab2b146c81a0b5d8029f069",
+  outputHash:
+    "15879ccadfc828c6bc091d457b3b02e2ffc93a578ab2b146c81a0b5d8029f069",
   status: 0,
   nonce: n.toString(),
   expirySlot: String(2n ** 63n - 1n),
@@ -37,11 +39,15 @@ export const MOCK_DISPUTE: DisputeStatus = {
   reason: 1,
   claimant: "6ssgk8ZjaGJRxT4iPvyAga4fvG8K3X3ersgPd6CTdahi",
   deadlineSlot: MOCK_SLOT - 10n,
+  claimSpend: 3_670n,
   state: "matured",
 };
 
-export const MOCK_SLASH = {
+export const MOCK_RESOLVE = {
   before: 500_000n,
-  slash: 1_000n,
-  after: 499_000n,
+  claim: 3_670n,
+  refund: 3_487n,
+  fee: 183n,
+  penalty: 7_340n,
+  after: 492_660n,
 };

@@ -33,3 +33,30 @@ skipped-untrusted-channel-program`.
 `{ merchant, mint, amount, slaBps, challengeSlots, openDisputes,
 lastChangeSlot }` read from the bond account; health = amount vs open
 exposure across bindings.
+
+## Amendments (v0.2.0) — claim-staked optimistic refunds
+
+Adjudication was redesigned (prior model let the merchant acquit itself
+with self-signed receipts). Frozen sections above are untouched; the
+following changed:
+
+- `open_dispute` takes `claim_spend: u64` and new accounts
+  (`mint`, `claimant_ata`, `vault`, `token_program`). The claimant locks
+  the claim from its own ATA into the vault; `S <= binding.max_spend`;
+  outflow `3*S` is reserved on the bond. Halt no longer gates disputes.
+- `resolve_delivered` is REMOVED (no acquittal path exists anymore).
+- `resolve_timeout` drops the `receipt` account and adds `treasury`
+  (PDA, key-checked) + `treasury_ata` (lazily created, rent by
+  resolver) + `associated_token_program` + `system_program`. Math for
+  claim S: fee = S*500/10_000, refund = S-fee (claimant), penalty = 2*S
+  (treasury). `BondSlashed.slash` now means the penalty; new
+  `ClaimRefunded { binding, nonce, claimant, refund, fee }` event.
+- Account layouts: `MerchantBond` gains `reserved: u64` (after
+  `last_change_slot`); `Dispute` gains `claim_spend: u64` (after
+  `stake_lamports`). Old bond/dispute accounts are NOT forward
+  compatible — migrate by withdraw + refund_unused + re-register.
+- Receipt JSON, keeper log entry, and event names in §Events keep their
+  shapes; `resolve-delivered` never appears in keeper logs anymore.
+- Bond status gains `reserved`; dispute status gains `claimSpend`.
+  Health = (amount - reserved) withdrawable; reserved covers every open
+  claim's full outflow.

@@ -32,14 +32,12 @@ pub enum HarborError {
     VaultNotEmpty,
     #[msg("Bond still holds funds")]
     BondNotEmpty,
-    #[msg("Delivery receipt exists; timeout slash unavailable")]
-    AlreadyDelivered,
-    #[msg("No delivery receipt for this nonce")]
-    NoDelivery,
     #[msg("Only classic Tokenkeg mints are supported as bond collateral")]
     UnsupportedMint,
     #[msg("Vault is not the canonical bond ATA")]
     InvalidVault,
     #[msg("Binding is halted")]
     Halted,
+    #[msg("Dispute claim exceeds binding max spend")]
+    ClaimTooLarge,
 }

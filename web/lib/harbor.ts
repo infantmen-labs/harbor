@@ -27,11 +27,15 @@ export function getProgram(conn: Connection): InstanceType<typeof Program> {
   if (cached !== undefined) return cached;
   // Read-only provider: the wallet adapter signs user transactions
   // separately; reads need nothing but a publicKey stub.
-  const provider = new AnchorProvider(conn, {
-    publicKey: Keypair.generate().publicKey,
-  } as never, {
-    commitment: "confirmed",
-  });
+  const provider = new AnchorProvider(
+    conn,
+    {
+      publicKey: Keypair.generate().publicKey,
+    } as never,
+    {
+      commitment: "confirmed",
+    }
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const program = new Program(idl as any, provider);
   programs.set(key, program);
@@ -69,7 +73,7 @@ function asRec(v: any): Record<string, any> {
 
 export async function fetchBond(
   conn: Connection,
-  address: PublicKey,
+  address: PublicKey
 ): Promise<BondStatus | null> {
   const program = getProgram(conn);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,6 +91,7 @@ export async function fetchBond(
     challengeSlots: big(a["challengeSlots"]),
     openDisputes: big(a["openDisputes"]),
     lastChangeSlot: big(a["lastChangeSlot"]),
+    reserved: big(a["reserved"]),
   };
 }
 
@@ -108,13 +113,14 @@ export async function listBonds(conn: Connection): Promise<BondStatus[]> {
       challengeSlots: big(a["challengeSlots"]),
       openDisputes: big(a["openDisputes"]),
       lastChangeSlot: big(a["lastChangeSlot"]),
+      reserved: big(a["reserved"]),
     };
   });
 }
 
 export async function listBindingsForBond(
   conn: Connection,
-  bond: PublicKey,
+  bond: PublicKey
 ): Promise<BindingStatus[]> {
   const program = getProgram(conn);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -139,7 +145,7 @@ export async function listBindingsForBond(
 export async function listDisputesForBinding(
   conn: Connection,
   binding: PublicKey,
-  currentSlot: bigint,
+  currentSlot: bigint
 ): Promise<DisputeStatus[]> {
   const program = getProgram(conn);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -156,6 +162,7 @@ export async function listDisputesForBinding(
       reason: Number(a["reason"]),
       claimant: pk(a["claimant"]),
       deadlineSlot: deadline,
+      claimSpend: big(a["claimSpend"]),
       state: currentSlot >= deadline ? "matured" : "open",
     };
   });
@@ -163,7 +170,7 @@ export async function listDisputesForBinding(
 
 export async function getTokenBalance(
   conn: Connection,
-  address: PublicKey,
+  address: PublicKey
 ): Promise<bigint | null> {
   try {
     const r = await conn.getTokenAccountBalance(address);
@@ -176,7 +183,7 @@ export async function getTokenBalance(
 export async function getSignatures(
   conn: Connection,
   address: PublicKey,
-  limit = 10,
+  limit = 10
 ): Promise<string[]> {
   try {
     const sigs = await conn.getSignaturesForAddress(address, { limit });

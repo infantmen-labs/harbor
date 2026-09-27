@@ -16,7 +16,6 @@ const D = {
   submitReceipt: [172, 84, 119, 35, 195, 154, 214, 176],
   openDispute: [137, 25, 99, 119, 23, 223, 161, 42],
   resolveTimeout: [149, 55, 89, 144, 121, 143, 48, 210],
-  resolveDelivered: [103, 223, 10, 163, 175, 200, 192, 62],
   refundUnused: [239, 108, 1, 110, 2, 81, 44, 174],
 };
 
@@ -48,7 +47,12 @@ interface Meta {
   w?: boolean;
   s?: boolean;
 }
-function keys(programId: PublicKey, disc: number[], data: Buffer, metas: Meta[]) {
+function keys(
+  programId: PublicKey,
+  disc: number[],
+  data: Buffer,
+  metas: Meta[]
+) {
   return new TransactionInstruction({
     programId,
     keys: metas.map((m) => ({
@@ -66,14 +70,19 @@ export function registerMerchantIx(
   bond: PublicKey,
   mint: PublicKey,
   slaBps: number,
-  challengeSlots: bigint,
+  challengeSlots: bigint
 ) {
-  return keys(programId, D.registerMerchant, Buffer.concat([u16(slaBps), u64(challengeSlots)]), [
-    { key: merchant, w: true, s: true },
-    { key: bond, w: true },
-    { key: mint },
-    { key: SYSTEM_PROGRAM_ID },
-  ]);
+  return keys(
+    programId,
+    D.registerMerchant,
+    Buffer.concat([u16(slaBps), u64(challengeSlots)]),
+    [
+      { key: merchant, w: true, s: true },
+      { key: bond, w: true },
+      { key: mint },
+      { key: SYSTEM_PROGRAM_ID },
+    ]
+  );
 }
 
 export function postBondIx(
@@ -83,7 +92,7 @@ export function postBondIx(
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
-  amount: bigint,
+  amount: bigint
 ) {
   return keys(programId, D.postBond, u64(amount), [
     { key: merchant, w: true, s: true },
@@ -104,7 +113,7 @@ export function topUpBondIx(
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
-  amount: bigint,
+  amount: bigint
 ) {
   return keys(programId, D.topUpBond, u64(amount), [
     { key: merchant, w: true, s: true },
@@ -123,7 +132,7 @@ export function withdrawBondIx(
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
-  amount: bigint,
+  amount: bigint
 ) {
   return keys(programId, D.withdrawBond, u64(amount), [
     { key: merchant, w: true, s: true },
@@ -142,7 +151,7 @@ export function bindChannelIx(
   binding: PublicKey,
   channel: PublicKey,
   channelProgram: PublicKey,
-  maxSpend: bigint,
+  maxSpend: bigint
 ) {
   return keys(
     programId,
@@ -154,7 +163,7 @@ export function bindChannelIx(
       { key: binding, w: true },
       { key: channel },
       { key: SYSTEM_PROGRAM_ID },
-    ],
+    ]
   );
 }
 
@@ -174,7 +183,7 @@ export function submitReceiptIx(
   bond: PublicKey,
   binding: PublicKey,
   receipt: PublicKey,
-  args: SubmitReceiptArgs,
+  args: SubmitReceiptArgs
 ) {
   return keys(
     programId,
@@ -195,7 +204,7 @@ export function submitReceiptIx(
       { key: receipt, w: true },
       { key: IX_SYSVAR_ID },
       { key: SYSTEM_PROGRAM_ID },
-    ],
+    ]
   );
 }
 
@@ -205,22 +214,35 @@ export function openDisputeIx(
   bond: PublicKey,
   binding: PublicKey,
   dispute: PublicKey,
+  mint: PublicKey,
+  claimantAta: PublicKey,
+  vault: PublicKey,
   nonce: bigint,
   reason: number,
+  claimSpend: bigint
 ) {
-  return keys(programId, D.openDispute, Buffer.concat([u64(nonce), u8(reason)]), [
-    { key: claimant, w: true, s: true },
-    { key: bond, w: true },
-    { key: binding },
-    { key: dispute, w: true },
-    { key: SYSTEM_PROGRAM_ID },
-  ]);
+  return keys(
+    programId,
+    D.openDispute,
+    Buffer.concat([u64(nonce), u8(reason), u64(claimSpend)]),
+    [
+      { key: claimant, w: true, s: true },
+      { key: bond, w: true },
+      { key: binding },
+      { key: dispute, w: true },
+      { key: mint },
+      { key: claimantAta, w: true },
+      { key: vault, w: true },
+      { key: TOKEN_PROGRAM_ID },
+      { key: SYSTEM_PROGRAM_ID },
+    ]
+  );
 }
 
 export function haltBindingIx(
   programId: PublicKey,
   merchant: PublicKey,
-  binding: PublicKey,
+  binding: PublicKey
 ) {
   return keys(programId, D.haltBinding, Buffer.alloc(0), [
     { key: merchant, w: true, s: true },
@@ -236,41 +258,25 @@ export function resolveTimeoutIx(
   binding: PublicKey,
   dispute: PublicKey,
   claimant: PublicKey,
-  receipt: PublicKey,
+  treasury: PublicKey,
   vault: PublicKey,
+  treasuryAta: PublicKey,
   claimantAta: PublicKey,
-  nonce: bigint,
+  nonce: bigint
 ) {
   return keys(programId, D.resolveTimeout, u64(nonce), [
-    { key: resolver, s: true },
+    { key: resolver, w: true, s: true },
     { key: bond, w: true },
     { key: mint },
     { key: binding },
     { key: dispute, w: true },
     { key: claimant, w: true },
-    { key: receipt },
+    { key: treasury },
     { key: vault, w: true },
+    { key: treasuryAta, w: true },
     { key: claimantAta, w: true },
+    { key: ATA_PROGRAM_ID },
     { key: TOKEN_PROGRAM_ID },
-  ]);
-}
-
-export function resolveDeliveredIx(
-  programId: PublicKey,
-  resolver: PublicKey,
-  bond: PublicKey,
-  merchant: PublicKey,
-  binding: PublicKey,
-  dispute: PublicKey,
-  receipt: PublicKey,
-  nonce: bigint,
-) {
-  return keys(programId, D.resolveDelivered, u64(nonce), [
-    { key: resolver, s: true },
-    { key: bond, w: true },
-    { key: merchant, w: true },
-    { key: binding },
-    { key: dispute, w: true },
-    { key: receipt },
+    { key: SYSTEM_PROGRAM_ID },
   ]);
 }

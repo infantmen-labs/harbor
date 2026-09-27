@@ -1,5 +1,6 @@
 use crate::{constants::*, error::HarborError, state::*};
 use anchor_lang::{prelude::*, system_program};
+use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
 #[instruction(nonce: u64)]
@@ -18,15 +19,58 @@ pub struct OpenDispute<'info> {
         bump
     )]
     pub dispute: Account<'info, Dispute>,
+    pub mint: InterfaceAccount<'info, Mint>,
+    #[account(
+        mut,
+        constraint = claimant_ata.owner == claimant.key() @ HarborError::Unauthorized,
+        constraint = claimant_ata.mint == bond.mint @ HarborError::BadMint,
+    )]
+    pub claimant_ata: InterfaceAccount<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = vault.owner == bond.key() @ HarborError::BindingMismatch,
+        constraint = vault.mint == bond.mint @ HarborError::BadMint,
+    )]
+    pub vault: InterfaceAccount<'info, TokenAccount>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_open_dispute(ctx: Context<OpenDispute>, nonce: u64, reason: u8) -> Result<()> {
+/// Opens a dispute by locking the claimed spend.
+///
+/// The lock is the claim-size commitment: the max refund is exactly the
+/// locked amount, so fabricated claims can never be profitable (gain <=
+/// lock, minus fees, at every scale). Claims are additionally capped by
+/// the merchant-declared `max_spend` for the binding. Halt does NOT gate
+/// disputes — it gates receipts only — so halt can never shield a
+/// merchant from claims.
+pub fn handle_open_dispute(
+    ctx: Context<OpenDispute>,
+    nonce: u64,
+    reason: u8,
+    claim_spend: u64,
+) -> Result<()> {
     require!(
         ctx.accounts.claimant.key() != ctx.accounts.bond.merchant,
         HarborError::Unauthorized
     );
-    require!(!ctx.accounts.binding.halted, HarborError::Halted);
+    require!(claim_spend > 0, HarborError::ZeroAmount);
+    require!(
+        claim_spend <= ctx.accounts.binding.max_spend,
+        HarborError::ClaimTooLarge
+    );
+    require!(
+        ctx.accounts.mint.key() == ctx.accounts.bond.mint,
+        HarborError::BadMint
+    );
+    let outflow = claim_spend
+        .checked_mul(1 + PENALTY_MULT)
+        .ok_or(HarborError::ZeroAmount)?;
+    require!(
+        outflow
+            <= ctx.accounts.bond.amount.checked_sub(ctx.accounts.bond.reserved).unwrap(),
+        HarborError::InsufficientBond
+    );
 
     system_program::transfer(
         CpiContext::new(
@@ -39,6 +83,20 @@ pub fn handle_open_dispute(ctx: Context<OpenDispute>, nonce: u64, reason: u8) ->
         DISPUTE_STAKE_LAMPORTS,
     )?;
 
+    token_interface::transfer_checked(
+        CpiContext::new(
+            ctx.accounts.token_program.key(),
+            token_interface::TransferChecked {
+                from: ctx.accounts.claimant_ata.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.claimant.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+            },
+        ),
+        claim_spend,
+        ctx.accounts.mint.decimals,
+    )?;
+
     let slot = Clock::get()?.slot;
     let dispute = &mut ctx.accounts.dispute;
     dispute.binding = ctx.accounts.binding.key();
@@ -47,9 +105,12 @@ pub fn handle_open_dispute(ctx: Context<OpenDispute>, nonce: u64, reason: u8) ->
     dispute.claimant = ctx.accounts.claimant.key();
     dispute.deadline_slot = slot.checked_add(ctx.accounts.bond.challenge_slots).unwrap();
     dispute.stake_lamports = DISPUTE_STAKE_LAMPORTS;
+    dispute.claim_spend = claim_spend;
     dispute.bump = ctx.bumps.dispute;
 
-    ctx.accounts.bond.open_disputes = ctx.accounts.bond.open_disputes.checked_add(1).unwrap();
+    let bond = &mut ctx.accounts.bond;
+    bond.open_disputes = bond.open_disputes.checked_add(1).unwrap();
+    bond.reserved = bond.reserved.checked_add(outflow).unwrap();
 
     emit!(DisputeOpened {
         binding: dispute.binding,

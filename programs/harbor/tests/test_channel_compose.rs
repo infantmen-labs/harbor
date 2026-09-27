@@ -121,6 +121,9 @@ fn test_channel_compose() {
             .send()
             .unwrap();
     let claimant_ata = a2p(&claimant_ata_addr);
+    MintTo::new(&mut svm, &payer, &mint_addr, &claimant_ata_addr, 100_000)
+        .send()
+        .unwrap();
 
     // --- upstream open (discriminator 1, zero recipients) ---
     let (channel, _) = Pubkey::find_program_address(
@@ -311,7 +314,7 @@ fn test_channel_compose() {
     )
     .unwrap();
 
-    // --- Harbor timeout slash; upstream escrow must be untouched ---
+    // --- Harbor timeout refund; upstream escrow must be untouched ---
     let dispute = Pubkey::find_program_address(
         &[b"dispute", binding.as_ref(), &9u64.to_le_bytes()],
         &harbor::id(),
@@ -322,12 +325,21 @@ fn test_channel_compose() {
         &claimant,
         vec![Instruction::new_with_bytes(
             harbor::id(),
-            &harbor::instruction::OpenDispute { nonce: 9, reason: 1 }.data(),
+            &harbor::instruction::OpenDispute {
+                nonce: 9,
+                reason: 1,
+                claim_spend: 10_000,
+            }
+            .data(),
             harbor::accounts::OpenDispute {
                 claimant: claimant.pubkey(),
                 bond,
                 binding,
                 dispute,
+                mint,
+                claimant_ata,
+                vault,
+                token_program,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
@@ -335,9 +347,10 @@ fn test_channel_compose() {
     )
     .unwrap();
     svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
-    let receipt = Pubkey::find_program_address(
-        &[b"receipt", binding.as_ref(), &9u64.to_le_bytes()],
-        &harbor::id(),
+    let treasury = Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0;
+    let treasury_ata = Pubkey::find_program_address(
+        &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
     )
     .0;
     send(
@@ -353,19 +366,24 @@ fn test_channel_compose() {
                 binding,
                 dispute,
                 claimant: claimant.pubkey(),
-                receipt,
+                treasury,
                 vault,
+                treasury_ata,
                 claimant_ata,
+                associated_token_program: ata_program,
                 token_program,
+                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )],
     )
     .unwrap();
 
-    // Slash math: min(500_000, 250_000 * 50 / 10_000) = 1_250.
-    assert_eq!(token_balance(&svm, &claimant_ata), 1_250);
-    assert_eq!(token_balance(&svm, &vault), 500_000 - 1_250);
+    // Refund math: fee = 10_000 * 500 / 10_000 = 500; refund = 9_500;
+    // penalty = 20_000. Vault out 30_000 total, bond down 20_500.
+    assert_eq!(token_balance(&svm, &claimant_ata), 100_000 - 10_000 + 9_500);
+    assert_eq!(token_balance(&svm, &treasury_ata), 20_500);
+    assert_eq!(token_balance(&svm, &vault), 500_000 + 10_000 - 30_000);
     // Upstream escrow intact: no double-pay across the disjoint pools.
     assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
 }

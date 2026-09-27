@@ -21,7 +21,10 @@ import { PROGRAM_ID } from "./env";
 
 const PROGRAM = new PublicKey(PROGRAM_ID);
 
-export async function ata(owner: PublicKey, mint: PublicKey): Promise<PublicKey> {
+export async function ata(
+  owner: PublicKey,
+  mint: PublicKey
+): Promise<PublicKey> {
   return getAssociatedTokenAddress(mint, owner);
 }
 
@@ -30,7 +33,7 @@ export function buildCreateAtaIx(
   payer: PublicKey,
   owner: PublicKey,
   mint: PublicKey,
-  ata: PublicKey,
+  ata: PublicKey
 ): TransactionInstruction {
   return createAssociatedTokenAccountInstruction(payer, ata, owner, mint);
 }
@@ -39,11 +42,18 @@ export function buildRegisterIx(
   merchant: PublicKey,
   mint: PublicKey,
   slaBps: number,
-  challengeSlots: bigint,
+  challengeSlots: bigint
 ): { ix: TransactionInstruction; bond: PublicKey } {
   const [bond] = bondPda(merchant, mint);
   return {
-    ix: registerMerchantIx(PROGRAM, merchant, bond, mint, slaBps, challengeSlots),
+    ix: registerMerchantIx(
+      PROGRAM,
+      merchant,
+      bond,
+      mint,
+      slaBps,
+      challengeSlots
+    ),
     bond,
   };
 }
@@ -52,15 +62,17 @@ export async function buildPostBondIx(
   merchant: PublicKey,
   bond: PublicKey,
   mint: PublicKey,
-  amount: bigint,
+  amount: bigint
 ): Promise<{ ixs: TransactionInstruction[]; vault: PublicKey }> {
   const merchantAta = await ata(merchant, mint);
   const [vault] = PublicKey.findProgramAddressSync(
     [bond.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ATA_PROGRAM_ID,
+    ATA_PROGRAM_ID
   );
   const ixs: TransactionInstruction[] = [];
-  ixs.push(postBondIx(PROGRAM, merchant, bond, mint, merchantAta, vault, amount));
+  ixs.push(
+    postBondIx(PROGRAM, merchant, bond, mint, merchantAta, vault, amount)
+  );
   return { ixs, vault };
 }
 
@@ -70,7 +82,7 @@ export function buildTopUpIx(
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
-  amount: bigint,
+  amount: bigint
 ): TransactionInstruction {
   return topUpBondIx(PROGRAM, merchant, bond, mint, merchantAta, vault, amount);
 }
@@ -80,18 +92,26 @@ export function buildBindIx(
   bond: PublicKey,
   channel: PublicKey,
   channelProgram: PublicKey,
-  maxSpend: bigint,
+  maxSpend: bigint
 ): { ix: TransactionInstruction; binding: PublicKey } {
   const [binding] = bindingPda(channel);
   return {
-    ix: bindChannelIx(PROGRAM, merchant, bond, binding, channel, channelProgram, maxSpend),
+    ix: bindChannelIx(
+      PROGRAM,
+      merchant,
+      bond,
+      binding,
+      channel,
+      channelProgram,
+      maxSpend
+    ),
     binding,
   };
 }
 
 export function buildHaltIx(
   merchant: PublicKey,
-  binding: PublicKey,
+  binding: PublicKey
 ): TransactionInstruction {
   return haltBindingIx(PROGRAM, merchant, binding);
 }
@@ -102,21 +122,51 @@ export function buildWithdrawIx(
   mint: PublicKey,
   merchantAta: PublicKey,
   vault: PublicKey,
-  amount: bigint,
+  amount: bigint
 ): TransactionInstruction {
-  return withdrawBondIx(PROGRAM, merchant, bond, mint, merchantAta, vault, amount);
+  return withdrawBondIx(
+    PROGRAM,
+    merchant,
+    bond,
+    mint,
+    merchantAta,
+    vault,
+    amount
+  );
 }
 
 export function buildOpenDisputeIx(
   claimant: PublicKey,
   bond: PublicKey,
   binding: PublicKey,
+  mint: PublicKey,
   nonce: bigint,
   reason: number,
+  claimSpend: bigint
 ): { ix: TransactionInstruction; dispute: PublicKey } {
   const [dispute] = disputePda(binding, nonce);
+  const claimantAta = PublicKey.findProgramAddressSync(
+    [claimant.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ATA_PROGRAM_ID
+  )[0];
+  const vault = PublicKey.findProgramAddressSync(
+    [bond.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ATA_PROGRAM_ID
+  )[0];
   return {
-    ix: openDisputeIx(PROGRAM, claimant, bond, binding, dispute, nonce, reason),
+    ix: openDisputeIx(
+      PROGRAM,
+      claimant,
+      bond,
+      binding,
+      dispute,
+      mint,
+      claimantAta,
+      vault,
+      nonce,
+      reason,
+      claimSpend
+    ),
     dispute,
   };
 }

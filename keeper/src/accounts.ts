@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
 
 export function accountDiscriminator(name: string): Buffer {
-  return createHash("sha256").update(`account:${name}`, "utf8").digest().subarray(0, 8);
+  return createHash("sha256")
+    .update(`account:${name}`, "utf8")
+    .digest()
+    .subarray(0, 8);
 }
 
 export const DISPUTE_DISC = accountDiscriminator("Dispute");
@@ -15,6 +18,7 @@ export interface Bond {
   challengeSlots: bigint;
   openDisputes: bigint;
   lastChangeSlot: bigint;
+  reserved: bigint;
 }
 
 export function parseBond(data: Buffer): Bond {
@@ -26,6 +30,7 @@ export function parseBond(data: Buffer): Bond {
     challengeSlots: data.readBigUInt64LE(82),
     openDisputes: data.readBigUInt64LE(90),
     lastChangeSlot: data.readBigUInt64LE(98),
+    reserved: data.readBigUInt64LE(106),
   };
 }
 
@@ -36,6 +41,7 @@ export interface Dispute {
   claimant: PublicKey;
   deadlineSlot: bigint;
   stakeLamports: bigint;
+  claimSpend: bigint;
 }
 
 export function parseDispute(data: Buffer): Dispute {
@@ -46,6 +52,7 @@ export function parseDispute(data: Buffer): Dispute {
     claimant: new PublicKey(data.subarray(49, 81)),
     deadlineSlot: data.readBigUInt64LE(81),
     stakeLamports: data.readBigUInt64LE(89),
+    claimSpend: data.readBigUInt64LE(97),
   };
 }
 
@@ -56,12 +63,12 @@ export function bindingChannelProgram(data: Buffer): PublicKey {
 
 export type Action =
   | { kind: "resolve-timeout" }
-  | { kind: "resolve-delivered" }
   | { kind: "pending"; why: string };
 
-/** Pure adjudication: delivery proof always wins; past-deadline absence slashes. */
-export function decide(d: Dispute, receiptExists: boolean, slot: bigint): Action {
-  if (receiptExists) return { kind: "resolve-delivered" };
+/** Pure adjudication: every matured dispute resolves as a timeout refund.
+ * There is no delivered path — receipts are merchant-signed liveness
+ * attestations, never evidence against a claim. */
+export function decide(d: Dispute, slot: bigint): Action {
   if (slot > d.deadlineSlot) return { kind: "resolve-timeout" };
   return { kind: "pending", why: "within challenge window" };
 }

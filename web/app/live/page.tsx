@@ -26,7 +26,7 @@ import {
   MOCK_BOND,
   MOCK_DISPUTE,
   MOCK_RECEIPTS,
-  MOCK_SLASH,
+  MOCK_RESOLVE,
   MOCK_SLOT,
 } from "@/lib/mock";
 import type { ProofEntry } from "@/lib/types";
@@ -120,17 +120,22 @@ export default function Live() {
         return [
           {
             label: "Vault before",
-            value: MOCK_SLASH.before.toString(),
+            value: MOCK_RESOLVE.before.toString(),
             kind: "amount",
           },
           {
-            label: "Slash",
-            value: MOCK_SLASH.slash.toString(),
+            label: "Claim refunded",
+            value: MOCK_RESOLVE.refund.toString(),
+            kind: "amount",
+          },
+          {
+            label: "Penalty + fee to backstop",
+            value: (MOCK_RESOLVE.penalty + MOCK_RESOLVE.fee).toString(),
             kind: "amount",
           },
           {
             label: "Vault after",
-            value: MOCK_SLASH.after.toString(),
+            value: MOCK_RESOLVE.after.toString(),
             kind: "amount",
           },
         ];
@@ -179,6 +184,7 @@ export default function Live() {
               <OpenDisputeButton
                 bond={bond.address}
                 binding={binding.address}
+                mint={bond.mint}
                 nextNonce={mock ? 4n : nextNonce}
               />
             )}

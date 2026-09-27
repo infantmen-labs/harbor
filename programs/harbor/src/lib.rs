@@ -70,16 +70,17 @@ pub mod harbor {
         )
     }
 
-    pub fn open_dispute(ctx: Context<OpenDispute>, nonce: u64, reason: u8) -> Result<()> {
-        open_dispute::handle_open_dispute(ctx, nonce, reason)
+    pub fn open_dispute(
+        ctx: Context<OpenDispute>,
+        nonce: u64,
+        reason: u8,
+        claim_spend: u64,
+    ) -> Result<()> {
+        open_dispute::handle_open_dispute(ctx, nonce, reason, claim_spend)
     }
 
     pub fn resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Result<()> {
         resolve_dispute::handle_resolve_timeout(ctx, nonce)
-    }
-
-    pub fn resolve_delivered(ctx: Context<ResolveDelivered>, nonce: u64) -> Result<()> {
-        resolve_dispute::handle_resolve_delivered(ctx, nonce)
     }
 
     pub fn refund_unused(ctx: Context<RefundUnused>) -> Result<()> {

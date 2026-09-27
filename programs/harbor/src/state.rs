@@ -10,6 +10,9 @@ pub struct MerchantBond {
     pub challenge_slots: u64,
     pub open_disputes: u64,
     pub last_change_slot: u64,
+    /// Outflow locked by open disputes (refund + fee + penalty).
+    /// Withdrawals may only touch amount - reserved.
+    pub reserved: u64,
     pub bump: u8,
 }
 
@@ -48,5 +51,8 @@ pub struct Dispute {
     pub claimant: Pubkey,
     pub deadline_slot: u64,
     pub stake_lamports: u64,
+    /// Claimant-locked claim size. Max refund is exactly this: fabrication
+    /// can never be profitable (gain <= lock, minus fees, at every scale).
+    pub claim_spend: u64,
     pub bump: u8,
 }

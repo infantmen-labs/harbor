@@ -1,10 +1,30 @@
 /** Watchtower opens a dispute on behalf of a claimant after a failed delivery. */
-import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import { disputePda, openDisputeIx } from "harbor-sdk";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from "@solana/web3.js";
+import {
+  ATA_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  disputePda,
+  openDisputeIx,
+} from "harbor-sdk";
 import { readFileSync } from "node:fs";
 
 function loadKeypair(path: string): Keypair {
-  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path, "utf8"))));
+  return Keypair.fromSecretKey(
+    Uint8Array.from(JSON.parse(readFileSync(path, "utf8")))
+  );
+}
+
+function ataFor(owner: PublicKey, mint: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ATA_PROGRAM_ID
+  )[0];
 }
 
 async function main(): Promise<void> {
@@ -13,11 +33,25 @@ async function main(): Promise<void> {
   const claimant = loadKeypair(process.env["CLAIMANT_KEYPAIR"] ?? "");
   const bond = new PublicKey(process.env["BOND"] ?? "");
   const binding = new PublicKey(process.env["BINDING"] ?? "");
+  const mint = new PublicKey(process.env["MINT"] ?? "");
   const nonce = BigInt(process.env["NONCE"] ?? "1");
   const reason = Number(process.env["REASON"] ?? 1);
+  const claimSpend = BigInt(process.env["CLAIM_SPEND"] ?? "1000");
   const [dispute] = disputePda(binding, nonce);
   const tx = new Transaction().add(
-    openDisputeIx(programId, claimant.publicKey, bond, binding, dispute, nonce, reason),
+    openDisputeIx(
+      programId,
+      claimant.publicKey,
+      bond,
+      binding,
+      dispute,
+      mint,
+      ataFor(claimant.publicKey, mint),
+      ataFor(bond, mint),
+      nonce,
+      reason,
+      claimSpend
+    )
   );
   const sig = await sendAndConfirmTransaction(connection, tx, [claimant]);
   console.log(`dispute=${dispute.toBase58()} sig=${sig}`);
