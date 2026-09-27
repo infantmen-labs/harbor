@@ -60,7 +60,9 @@ async function main(): Promise<void> {
   const log = new JsonlLogger(env("LOG_PATH", "agent-run.jsonl"));
   const requestDelayMs = Number(env("REQUEST_DELAY_MS", "0"));
 
-  const payee = Keypair.generate().publicKey;
+  // The merchant is the payee: channel escrow settles to them, and the
+  // bond only binds channels that pay the bonded merchant (squat defense).
+  const payee = merchant;
   const clockSlot = await connection.getSlot();
   const { channel } = deriveChannel(
     channelProgram,

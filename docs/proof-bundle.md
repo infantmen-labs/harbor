@@ -147,6 +147,32 @@ treasury. Full spec in `docs/ui-contracts.md` Amendments (v0.2.0).
   claimant +1,900 net, treasury 4,100, resolve sig
   `3LScqXLsRmKTSANuG4F1dV1SfDS9Dcm9s2xHaDew9PvWMBRQSNaaxZZiBYo7FWNkxMvNmStNnrdShhUai7HePuc7`.
 
+## v0.2.1 — payee-verified binding (live on devnet)
+
+`bind_channel` now reads the upstream 256-byte Channel struct and
+requires payee == binder on the bond's mint (first-to-bind squat dead;
+garbage/closed/wrong-mint channels rejected). No account layout change,
+so no state migration. Upgrade sig
+`8GB9KDJrikaMYMG7oXQ1thNHfQNzLC9jG9s2EoL2ex8QnR31EMv4AsnwJsphbHFcsXdFEm2SDKRDVeACw8isn9d`
+(slot 504611556, deep bytes verified, IDL republished).
+
+The new check immediately caught a real demo-flow bug: the agent opened
+channels with a random payee, so settled escrow never reached the
+merchant. Fixed (`agent/src/index.ts`: payee = merchant) — the check
+then passed against a live upstream channel on the next run.
+
+- v0.2.1 devnet loop: happy channel `7WxRafmkZKpdhADgamF5PS1WxqewvkdEraVqqdaRazBg`
+  (3 receipts, settled) → kill → fail channel
+  `5RoJGcUgucWogJ3LCeZSoH98F7PiXRh6rLZntfjrEPX` → dispute
+  `3dizXUwWmZKP5FJF4JLbY5ZY8W9URRukHNNHtjdsDxD8` (claim 2,500, open sig
+  `4BawnxyBjrSNcF32GAJ8r8CoQ4CLzb4YqAP8Tn9M9Z648PGmixfNCpZWrbpX641P5ZyByaQxRpBv7GWSRE8kt3R2`)
+  → keeper `resolve-timeout` sig
+  `5EkvHDZdpB3dyN2FWB8CRQcW2LrHHHBd8Bsd8NR63cXVeoXDk2Np6xzMCRAZXBsdQadU5pEtzF6L4fFzBmyM4wD2`
+  (slot 504613137).
+- Math: fee = 125, refund = 2,375, penalty = 5,000. Bond `2G19xBTW…`:
+  489,000, reserved 0. Claimant: 2,000,000,725 (−125 net). Treasury:
+  11,275 (6,150 + 5,125).
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past
