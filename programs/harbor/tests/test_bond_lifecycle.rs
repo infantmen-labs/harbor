@@ -15,6 +15,23 @@ fn a2p<T: AsRef<[u8]>>(a: &T) -> Pubkey {
     Pubkey::new_from_array(a.as_ref().try_into().unwrap())
 }
 
+/// Test-only mock of the upstream 256-byte Channel struct (pinned layout):
+/// disc(1) + version(1) + status + payee@120 + mint@184.
+fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) -> Pubkey {
+    let channel = Keypair::new();
+    svm.airdrop(&channel.pubkey(), 10_000_000).unwrap();
+    let mut acc = svm.get_account(&channel.pubkey()).unwrap();
+    let mut data = vec![0u8; 256];
+    data[0] = 1;
+    data[1] = 1;
+    data[3] = status;
+    data[120..152].copy_from_slice(payee.as_ref());
+    data[184..216].copy_from_slice(mint.as_ref());
+    acc.data = data;
+    svm.set_account(channel.pubkey(), acc).unwrap();
+    channel.pubkey()
+}
+
 fn token_balance(svm: &LiteSVM, ata: &Pubkey) -> u64 {
     let acc = svm.get_account(ata).unwrap();
     u64::from_le_bytes(acc.data[64..72].try_into().unwrap())
@@ -188,7 +205,7 @@ fn test_bond_lifecycle() {
     assert!(early.is_err());
 
     // bind_channel records the binding.
-    let channel = Keypair::new().pubkey();
+    let channel = mock_channel(&mut svm, &merchant.pubkey(), &mint, 0);
     let (binding, _) =
         Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(

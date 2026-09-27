@@ -31,6 +31,35 @@ pub fn handle_bind_channel(ctx: Context<BindChannel>, channel_program: Pubkey, m
         *ctx.accounts.channel.owner == channel_program,
         HarborError::BindingMismatch
     );
+    // First-to-bind squat defense: read the upstream channel struct and
+    // require the binder to be its payee on the bond's mint. A squatter
+    // binding someone else's channel fails the payee check; a forged
+    // channel account fails the owner check above.
+    let data = ctx
+        .accounts
+        .channel
+        .try_borrow_data()
+        .map_err(|_| HarborError::BindingMismatch)?;
+    require!(
+        data.len() == UPSTREAM_CHANNEL_LEN
+            && data[0] == UPSTREAM_CHANNEL_DISC
+            && data[1] == UPSTREAM_CHANNEL_VERSION,
+        HarborError::BindingMismatch
+    );
+    require!(
+        data[3] == UPSTREAM_CHANNEL_STATUS_OPEN,
+        HarborError::ChannelNotOpen
+    );
+    require!(
+        &data[UPSTREAM_PAYEE_OFFSET..UPSTREAM_PAYEE_OFFSET + 32]
+            == ctx.accounts.merchant.key().as_ref(),
+        HarborError::BindingMismatch
+    );
+    require!(
+        &data[UPSTREAM_MINT_OFFSET..UPSTREAM_MINT_OFFSET + 32]
+            == ctx.accounts.bond.mint.as_ref(),
+        HarborError::BindingMismatch
+    );
 
     let binding = &mut ctx.accounts.binding;
     binding.channel = ctx.accounts.channel.key();

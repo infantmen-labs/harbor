@@ -40,4 +40,6 @@ pub enum HarborError {
     Halted,
     #[msg("Dispute claim exceeds binding max spend")]
     ClaimTooLarge,
+    #[msg("Payment channel is not open")]
+    ChannelNotOpen,
 }

@@ -963,6 +963,11 @@
       "code": 6018,
       "name": "ClaimTooLarge",
       "msg": "Dispute claim exceeds binding max spend"
+    },
+    {
+      "code": 6019,
+      "name": "ChannelNotOpen",
+      "msg": "Payment channel is not open"
     }
   ],
   "types": [

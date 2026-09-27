@@ -13,10 +13,10 @@ export default function Landing() {
           Agents pay. Merchants prove delivery — or pay up.
         </h1>
         <p className="mt-6 max-w-[52ch] text-[17px] leading-[150%] text-foreground-secondary md:text-[18px]">
-          Harbor is a surety and clearing layer for metered APIs. Merchants post
-          a bond, agents pay through payment channels, and funds release against
-          signed delivery receipts. Miss the SLA and the bond slashes to the
-          agent — no chargebacks, no accounts, no trust.
+          Harbor is a bonded-refund layer for metered APIs. Merchants post a
+          bond, agents pay through payment channels, and failed deliveries
+          refund automatically from the bond — plus a penalty to the backstop.
+          No chargebacks, no accounts, no acquittal path.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
@@ -36,10 +36,10 @@ export default function Landing() {
 
       <section className="border-y border-border bg-background-secondary">
         <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
-          <HowMetric label="Mechanism" value="Bond → receipt → slash" />
+          <HowMetric label="Mechanism" value="Bond → claim → refund" />
           <HowMetric label="Settlement" value="Payment channels" />
           <HowMetric label="Challenge window" value="150 slots" />
-          <HowMetric label="Trust model" value="Zero" />
+          <HowMetric label="Trust model" value="Collateral, not trust" />
         </div>
       </section>
 
@@ -60,8 +60,8 @@ export default function Landing() {
           />
           <HowCard
             n="03"
-            title="Slash on failure"
-            body="A missed deadline opens a dispute. Nobody judges it: an empty receipt log past the challenge window slashes automatically."
+            title="Refund on failure"
+            body="A missed deadline opens a dispute backed by a locked claim. Nobody judges it: past the challenge window the claim refunds to the agent and the bond pays a penalty to the backstop."
           />
         </div>
       </section>

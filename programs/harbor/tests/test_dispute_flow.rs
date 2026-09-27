@@ -157,7 +157,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .unwrap();
 
-    let channel = Keypair::new().pubkey();
+    let channel = mock_channel(svm, &merchant.pubkey(), &mint, 0);
     let (binding, _) =
         Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
@@ -201,6 +201,23 @@ fn receipt_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
         &harbor::id(),
     )
     .0
+}
+
+/// Test-only mock of the upstream 256-byte Channel struct (pinned layout):
+/// disc(1) + version(1) + status + payee@120 + mint@184.
+fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) -> Pubkey {
+    let channel = Keypair::new();
+    svm.airdrop(&channel.pubkey(), 10_000_000).unwrap();
+    let mut acc = svm.get_account(&channel.pubkey()).unwrap();
+    let mut data = vec![0u8; 256];
+    data[0] = 1;
+    data[1] = 1;
+    data[3] = status;
+    data[120..152].copy_from_slice(payee.as_ref());
+    data[184..216].copy_from_slice(mint.as_ref());
+    acc.data = data;
+    svm.set_account(channel.pubkey(), acc).unwrap();
+    channel.pubkey()
 }
 
 fn dispute_pda(binding: &Pubkey, nonce: u64) -> Pubkey {

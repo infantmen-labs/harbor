@@ -133,7 +133,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .unwrap();
 
-    let channel = Keypair::new().pubkey();
+    let channel = mock_channel(svm, &merchant.pubkey(), &mint, 0);
     let (binding, _) =
         Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
@@ -159,6 +159,23 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     .unwrap();
 
     Setup { merchant, claimant, mint, merchant_ata, claimant_ata, bond, binding, vault, token_program }
+}
+
+/// Test-only mock of the upstream 256-byte Channel struct (pinned layout):
+/// disc(1) + version(1) + status + payee@120 + mint@184.
+fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) -> Pubkey {
+    let channel = Keypair::new();
+    svm.airdrop(&channel.pubkey(), 10_000_000).unwrap();
+    let mut acc = svm.get_account(&channel.pubkey()).unwrap();
+    let mut data = vec![0u8; 256];
+    data[0] = 1;
+    data[1] = 1;
+    data[3] = status;
+    data[120..152].copy_from_slice(payee.as_ref());
+    data[184..216].copy_from_slice(mint.as_ref());
+    acc.data = data;
+    svm.set_account(channel.pubkey(), acc).unwrap();
+    channel.pubkey()
 }
 
 fn dispute_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
@@ -565,4 +582,70 @@ fn test_blocked_mint_rejected() {
         err.contains("UnsupportedMint"),
         "expected the mint-program gate, got: {err}"
     );
+}
+
+fn bind(svm: &mut LiteSVM, s: &Setup, channel: Pubkey) -> Result<(), String> {
+    let (binding, _) =
+        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
+    send(
+        svm,
+        &s.merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::BindChannel {
+                channel_program: system_program::ID,
+                max_spend: 250_000,
+            }
+            .data(),
+            harbor::accounts::BindChannel {
+                merchant: s.merchant.pubkey(),
+                bond: s.bond,
+                binding,
+                channel,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+}
+
+#[test]
+fn test_squat_binding_rejected() {
+    // Attacker binds a channel whose payee is someone else: first-to-bind
+    // squatting fails the payee check (the honest payee-merchant path is
+    // exercised by every setup in this file).
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+    let victim = Keypair::new().pubkey();
+    let channel = mock_channel(&mut svm, &victim, &s.mint, 0);
+    assert!(bind(&mut svm, &s, channel).is_err());
+}
+
+#[test]
+fn test_wrong_mint_binding_rejected() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+    let other_mint = Keypair::new().pubkey();
+    let channel = mock_channel(&mut svm, &s.merchant.pubkey(), &other_mint, 0);
+    assert!(bind(&mut svm, &s, channel).is_err());
+}
+
+#[test]
+fn test_closed_channel_binding_rejected() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+    let channel = mock_channel(&mut svm, &s.merchant.pubkey(), &s.mint, 1);
+    assert!(bind(&mut svm, &s, channel).is_err());
+}
+
+#[test]
+fn test_garbage_channel_rejected() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+    // Unfunded keypair: no account data at all.
+    assert!(bind(&mut svm, &s, Keypair::new().pubkey()).is_err());
+    // Funded but wrong-sized account.
+    let junk = Keypair::new();
+    svm.airdrop(&junk.pubkey(), 10_000_000).unwrap();
+    assert!(bind(&mut svm, &s, junk.pubkey()).is_err());
 }

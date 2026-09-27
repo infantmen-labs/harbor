@@ -1,8 +1,9 @@
 # Harbor
 
-Surety + attested delivery for metered APIs. Merchants post a bond;
-agents pay through Solana payment channels; funds release against signed
-delivery receipts, or the bond slashes on proven failure.
+Bonded refunds for metered APIs. Merchants post a bond; agents pay
+through Solana payment channels; failed deliveries refund automatically
+from the bond, plus a penalty to the backstop — no chargebacks, no
+accounts, no acquittal path.
 
 - Program: `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H` (devnet + localnet)
 - Upstream: `solana-foundation/payment-channels` @ `3ffa4d67`

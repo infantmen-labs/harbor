@@ -78,7 +78,6 @@ fn test_channel_compose() {
     .unwrap();
 
     let payer = Keypair::new();
-    let payee = Keypair::new();
     let auth_signer = Keypair::new();
     let merchant = Keypair::new();
     let claimant = Keypair::new();
@@ -86,7 +85,8 @@ fn test_channel_compose() {
         svm.airdrop(&k.pubkey(), 10_000_000_000).unwrap();
     }
     // LiteSVM 0.10 enforces rent on loaded accounts: fund readonly actors too.
-    for k in [&payee, &auth_signer] {
+    // The harbor merchant IS the channel payee (bind requires payee == merchant).
+    for k in [&auth_signer] {
         svm.airdrop(&k.pubkey(), 10_000_000).unwrap();
     }
 
@@ -130,7 +130,7 @@ fn test_channel_compose() {
         &[
             b"channel",
             payer.pubkey().as_ref(),
-            payee.pubkey().as_ref(),
+            merchant.pubkey().as_ref(),
             mint.as_ref(),
             auth_signer.pubkey().as_ref(),
             &SALT.to_le_bytes(),
@@ -161,7 +161,7 @@ fn test_channel_compose() {
             accounts: vec![
                 meta(payer.pubkey(), true, true),
                 meta(payer.pubkey(), true, true),
-                meta(payee.pubkey(), false, false),
+                meta(merchant.pubkey(), false, false),
                 meta(mint, false, false),
                 meta(auth_signer.pubkey(), false, false),
                 meta(channel, true, false),
