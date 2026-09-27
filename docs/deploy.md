@@ -47,6 +47,7 @@ macOS: `base64 -i <file> | tr -d '\n'`.
 | `MINT` | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` |
 | `PRICE_PER_TOKEN` | `10` |
 | `MERCHANT_KEYPAIR_B64` | base64 of the merchant keypair (see §0) |
+| `KILL_TOKEN` | a random string (e.g. `openssl rand -hex 16`); gates `POST /admin/kill {killed:true}` via `Authorization: Bearer <token>`. Revive stays public. Unset = open (local rehearsal only) |
 | `PORT` | provided by Railway automatically |
 
 3. Generate a public domain. Health check is `GET /info` (returns
@@ -107,9 +108,11 @@ treasury). Example: claim 3,670 → refund 3,487, penalty 7,340.
 
 ## 5. Ops notes
 
-- **Kill switch is open by design** (`POST /admin/kill`, no auth). It is
-  demo control, not a funds control — bond funds are onchain and safe.
-  Anyone can also Revive from the UI. Do not expose it as anything else.
+- **Kill switch is bearer-gated** (`POST /admin/kill` with
+  `killed:true` requires `Authorization: Bearer $KILL_TOKEN`; Revive is
+  public). It is demo control, not a funds control — bond funds are
+  onchain and safe. Set `KILL_TOKEN` on Railway **and** as
+  `NEXT_PUBLIC_KILL_TOKEN` on Vercel so the UI's Kill button works.
 - **RPC budget**: the UI polls with backoff+jitter and web3.js retries
   are disabled; the QuickNode endpoint absorbs judging traffic. If you
   rotate the RPC URL, update it in Railway (server + keeper) and Vercel

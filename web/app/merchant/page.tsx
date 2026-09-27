@@ -4,6 +4,9 @@ import { StatusHeader } from "@/components/header";
 import { Container, Section } from "@/components/primitives";
 import { ManageBond } from "@/components/manage";
 import { OnboardStepper } from "@/components/merchant";
+import { PROGRAM_ID } from "@/lib/env";
+import { DOC_LINKS } from "@/lib/site";
+import { shorten } from "@/components/explorer";
 
 export default function Merchant() {
   const mint =
@@ -23,9 +26,29 @@ export default function Merchant() {
           </h1>
           <p className="mt-4 max-w-[60ch] text-[16px] text-foreground-secondary">
             Connect a devnet wallet, register your SLA, fund the bond, and
-            manage it — all signed in the browser. Channels bind
-            automatically when agents open their first session.
+            manage it — all signed in the browser. Channels bind automatically
+            when agents open their first session.
           </p>
+          <div className="mt-6 max-w-[80ch] rounded-[12px] border border-error/40 bg-surface p-4 text-[14px] leading-[150%]">
+            <span className="font-medium text-error">Risk disclosure. </span>
+            <span className="text-foreground-secondary">
+              Program upgrades are controlled by a single key — which can
+              reassign vault authority and drain all bonds. Do not bond real
+              funds. Multisig rotation is planned before mainnet.{" "}
+            </span>
+            <a
+              href={DOC_LINKS.authority()}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-[13px] text-accent underline underline-offset-2"
+            >
+              authority plan
+            </a>
+            <span className="font-mono text-[13px] text-muted">
+              {" "}
+              · program {shorten(PROGRAM_ID, 6)}
+            </span>
+          </div>
         </div>
         <Section>
           <div className="grid gap-6 lg:grid-cols-2">

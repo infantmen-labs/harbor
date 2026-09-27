@@ -10,6 +10,12 @@ export interface Config {
   programId: PublicKey;
   pricePerToken: bigint;
   skipChain: boolean;
+  /**
+   * Shared secret gating `POST /admin/kill` with `killed: true`.
+   * Unset = open (local rehearsal); set on Railway/Vercel deployments.
+   * Revive (`killed: false`) always stays public.
+   */
+  killToken: string | null;
 }
 
 function loadKeypair(path: string): Keypair {
@@ -29,13 +35,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: Number(env["PORT"] ?? 3000),
     rpcUrl: env["RPC_URL"] ?? "https://api.devnet.solana.com",
-    merchant: kpPath
-      ? loadKeypair(kpPath)
-      : Keypair.generate(),
+    merchant: kpPath ? loadKeypair(kpPath) : Keypair.generate(),
     mint: mint ? new PublicKey(mint) : Keypair.generate().publicKey,
-    programId: new PublicKey(env["HARBOR_PROGRAM_ID"] ?? HARBOR_PROGRAM_ID.toBase58()),
+    programId: new PublicKey(
+      env["HARBOR_PROGRAM_ID"] ?? HARBOR_PROGRAM_ID.toBase58()
+    ),
     pricePerToken: BigInt(env["PRICE_PER_TOKEN"] ?? 10),
     skipChain: env["SKIP_CHAIN"] === "1",
+    killToken: env["KILL_TOKEN"] ?? null,
   };
 }
 

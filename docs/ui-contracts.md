@@ -11,7 +11,7 @@ against them; no UI code lives in this phase.
 `ReceiptSubmitted { binding, nonce, cumulative_spend }`,
 `DisputeOpened { binding, nonce, reason, claimant, deadline_slot }`,
 `BondSlashed { binding, nonce, claimant, slash }`,
-`DisputeResolved { binding, nonce, winner, slashed }`,
+`ClaimRefunded { binding, nonce, claimant, refund, fee }`,
 `BondClosed { merchant, mint }`,
 `BindingHalted { binding }`.
 
@@ -25,7 +25,7 @@ decimal strings, hashes hex, signature base64. Byte layout matches
 ## Dispute log entry (keeper JSONL)
 
 `{ dispute, binding, nonce, action, slot, mode, signature? }` where action
-is `resolve-timeout | resolve-delivered | pending |
+is `resolve-timeout | pending |
 skipped-untrusted-channel-program`.
 
 ## Bond status (derived, not stored)

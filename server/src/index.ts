@@ -1,5 +1,15 @@
-import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
-import { Connection, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
+import {
+  createServer,
+  IncomingMessage,
+  Server,
+  ServerResponse,
+} from "node:http";
+import {
+  Connection,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from "@solana/web3.js";
 import {
   bindChannelIx,
   bindingPda,
@@ -25,7 +35,9 @@ function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
     req.on("data", (c) => (raw += c));
     req.on("end", () => {
       try {
-        resolve(raw.length > 0 ? (JSON.parse(raw) as Record<string, unknown>) : {});
+        resolve(
+          raw.length > 0 ? (JSON.parse(raw) as Record<string, unknown>) : {}
+        );
       } catch (e) {
         reject(e);
       }
@@ -49,8 +61,8 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
         binding,
         session.channel,
         session.channelProgram,
-        session.deposit,
-      ),
+        session.deposit
+      )
     );
     await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
   }
@@ -84,7 +96,10 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
 
   async function handleComplete(body: Record<string, unknown>) {
     if (store.killed) {
-      return { status: 500 as const, body: { error: "delivery failed: upstream fault injected" } };
+      return {
+        status: 500 as const,
+        body: { error: "delivery failed: upstream fault injected" },
+      };
     }
     const channel = new PublicKey(body["channel"] as string);
     const session = store.get(channel.toBase58());
@@ -96,12 +111,18 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     const cumulative = BigInt(body["voucherCumulative"] as string);
     const sig = Buffer.from(body["voucherSignature"] as string, "base64");
     if (nonce !== session.lastNonce + 1n) {
-      return { status: 400 as const, body: { error: "nonce must advance by exactly one" } };
+      return {
+        status: 400 as const,
+        body: { error: "nonce must advance by exactly one" },
+      };
     }
     if (cumulative <= session.accepted) {
       return {
         status: 402 as const,
-        body: { error: "voucher must exceed accepted total", accepted: session.accepted.toString() },
+        body: {
+          error: "voucher must exceed accepted total",
+          accepted: session.accepted.toString(),
+        },
       };
     }
     const voucherMsg = channelVoucherBytes(channel, cumulative, 0n);
@@ -129,14 +150,16 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
       expirySlot: EXPIRY_SLOT,
       signer: cfg.merchant.publicKey,
     });
-    const signature = Buffer.from(signEd25519(cfg.merchant.secretKey, msg)).toString("base64");
+    const signature = Buffer.from(
+      signEd25519(cfg.merchant.secretKey, msg)
+    ).toString("base64");
     session.accepted = cumulative;
     session.spent += cost;
     session.lastNonce = nonce;
     const receipt: StoredReceipt = {
       merchant: cfg.merchant.publicKey.toBase58(),
       binding: session.binding.toBase58(),
-      cumulativeSpend: (session.spent).toString(),
+      cumulativeSpend: session.spent.toString(),
       meterHash: meterHash.toString("hex"),
       outputHash: outputHash.toString("hex"),
       status: 0,
@@ -148,7 +171,12 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     session.receipts.set(nonce.toString(), receipt);
     return {
       status: 200 as const,
-      body: { output, tokens: tokens.toString(), cost: cost.toString(), receipt },
+      body: {
+        output,
+        tokens: tokens.toString(),
+        cost: cost.toString(),
+        receipt,
+      },
     };
   }
 
@@ -166,10 +194,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
           pricePerToken: cfg.pricePerToken.toString(),
           killed: store.killed,
         });
-      } else if (
-        req.method === "GET" &&
-        url.pathname.startsWith("/receipt/")
-      ) {
+      } else if (req.method === "GET" && url.pathname.startsWith("/receipt/")) {
         const [, , channel, nonce] = url.pathname.split("/");
         const s = channel !== undefined ? store.get(channel) : undefined;
         const r = s?.receipts.get(nonce ?? "");
@@ -177,7 +202,18 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
         else json(res, 200, r);
       } else if (req.method === "POST" && url.pathname === "/admin/kill") {
         const body = await readBody(req);
-        store.killed = body["killed"] !== false;
+        const killing = body["killed"] !== false;
+        if (killing && cfg.killToken !== null) {
+          const presented = (req.headers["authorization"] ?? "").replace(
+            /^Bearer\s+/i,
+            ""
+          );
+          if (presented !== cfg.killToken) {
+            json(res, 401, { error: "kill switch requires a bearer token" });
+            return;
+          }
+        }
+        store.killed = killing;
         json(res, 200, { killed: store.killed });
       } else {
         json(res, 404, { error: "not found" });

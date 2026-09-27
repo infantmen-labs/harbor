@@ -16,7 +16,9 @@ yarn start
 ```
 
 Every pass scans program disputes, classifies each
-(`resolve-timeout` / `resolve-delivered` / `pending`), and either logs
-the intent or executes it. Upstream channel `settle`/`distribute` stays
-operator-side; the keeper never finalizes anything with an open dispute
-because resolution IS the finalization.
+(`resolve-timeout` / `pending`), and either logs
+the intent or executes it. There is no delivered path: receipts are
+merchant-signed liveness attestations and never acquit a claim (see
+`docs/ui-contracts.md` Amendments v0.2.0). Upstream channel
+`settle`/`distribute` stays operator-side; the keeper never finalizes
+anything with an open dispute because resolution IS the finalization.

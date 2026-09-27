@@ -13,10 +13,14 @@ async function get<T>(path: string): Promise<T | null> {
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<{ status: number; json: T }> {
+async function post<T>(
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {}
+): Promise<{ status: number; json: T }> {
   const r = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
   return { status: r.status, json: (await r.json()) as T };
@@ -32,13 +36,22 @@ export function fetchInfo(): Promise<ServerInfo | null> {
   return get<ServerInfo>("/info");
 }
 
-export function fetchReceipt(channel: string, nonce: string): Promise<Receipt | null> {
+export function fetchReceipt(
+  channel: string,
+  nonce: string
+): Promise<Receipt | null> {
   return get<Receipt>(`/receipt/${channel}/${nonce}`);
 }
 
+const KILL_TOKEN = process.env["NEXT_PUBLIC_KILL_TOKEN"] ?? "";
+
 export function setKilled(killed: boolean): Promise<boolean> {
-  return post("/admin/kill", { killed }).then(
+  const headers: Record<string, string> = {};
+  if (killed && KILL_TOKEN !== "") {
+    headers["authorization"] = `Bearer ${KILL_TOKEN}`;
+  }
+  return post("/admin/kill", { killed }, headers).then(
     (r) => r.status === 200,
-    () => false,
+    () => false
   );
 }

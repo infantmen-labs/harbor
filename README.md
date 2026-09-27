@@ -1,9 +1,11 @@
 # Harbor
 
-Bonded refunds for metered APIs. Merchants post a bond; agents pay
-through Solana payment channels; failed deliveries refund automatically
-from the bond, plus a penalty to the backstop — no chargebacks, no
-accounts, no acquittal path.
+Bonded optimistic refunds for metered APIs. Merchants post a bond;
+agents pay through Solana payment channels; any claim past the challenge
+window refunds automatically from the bond, plus a penalty to the
+backstop — no chargebacks, no accounts, no judges. Receipts attest
+delivery offchain but never acquit onchain, by design (see
+`docs/ui-contracts.md` Amendments v0.2.0 for the exact trust model).
 
 - Program: `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H` (devnet + localnet)
 - Upstream: `solana-foundation/payment-channels` @ `3ffa4d67`

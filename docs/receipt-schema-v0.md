@@ -8,7 +8,7 @@ Scope: one merchant, one agent, one metered API.
 | # | Field | Type | Notes |
 |---|-------|------|-------|
 | 1 | `merchant` | Pubkey | Bond owner, authorized signer |
-| 2 | `channel` | Pubkey | Bound payment-channel PDA |
+| 2 | `binding` | Pubkey | Bound Harbor binding PDA (errata: earlier revisions of this doc mislabeled it `channel`; the code has always used `binding`) |
 | 3 | `cumulative_spend` | u64 | Total authorized spend in mint base units, monotonically increasing |
 | 4 | `meter_hash` | [u8; 32] | SHA-256 of the meter record (units delivered, e.g. token counts) |
 | 5 | `output_hash` | [u8; 32] | SHA-256 of the delivered output (or its commitment) |
@@ -53,5 +53,6 @@ the submission instruction.
 ## Events (contract for future consumers)
 
 `MerchantRegistered`, `BondPosted`, `ChannelBound`, `ReceiptSubmitted`,
-`DisputeOpened`, `BondSlashed`, `DisputeResolved`. Consumers tail these;
-no other receipt source is canonical.
+`DisputeOpened`, `BondSlashed`, `ClaimRefunded`. Consumers tail these;
+no other receipt source is canonical. (Errata: earlier revisions listed
+`DisputeResolved`, removed with the delivered path in v0.2.0.)
