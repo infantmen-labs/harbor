@@ -60,6 +60,7 @@ struct Setup {
     claimant_ata: Pubkey,
     bond: Pubkey,
     binding: Pubkey,
+    channel: Pubkey,
     vault: Pubkey,
     token_program: Pubkey,
 }
@@ -133,7 +134,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .unwrap();
 
-    let channel = mock_channel(svm, &merchant.pubkey(), &mint, 0);
+    let channel = mock_channel(svm, &claimant.pubkey(), &merchant.pubkey(), &mint, 0);
     let (binding, _) =
         Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
@@ -158,12 +159,18 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .unwrap();
 
-    Setup { merchant, claimant, mint, merchant_ata, claimant_ata, bond, binding, vault, token_program }
+    Setup { merchant, claimant, mint, merchant_ata, claimant_ata, bond, binding, channel, vault, token_program }
 }
 
 /// Test-only mock of the upstream 256-byte Channel struct (pinned layout):
-/// disc(1) + version(1) + status + payee@120 + mint@184.
-fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) -> Pubkey {
+/// disc(1) + version(1) + status + payer@88 + payee@120 + mint@184.
+fn mock_channel(
+    svm: &mut LiteSVM,
+    payer: &Pubkey,
+    payee: &Pubkey,
+    mint: &Pubkey,
+    status: u8,
+) -> Pubkey {
     let channel = Keypair::new();
     svm.airdrop(&channel.pubkey(), 10_000_000).unwrap();
     let mut acc = svm.get_account(&channel.pubkey()).unwrap();
@@ -171,6 +178,7 @@ fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) ->
     data[0] = 1;
     data[1] = 1;
     data[3] = status;
+    data[88..120].copy_from_slice(payer.as_ref());
     data[120..152].copy_from_slice(payee.as_ref());
     data[184..216].copy_from_slice(mint.as_ref());
     acc.data = data;
@@ -221,6 +229,7 @@ fn open_dispute(
                 claimant: s.claimant.pubkey(),
                 bond: s.bond,
                 binding: s.binding,
+                channel: s.channel,
                 dispute: dispute_pda(&s.binding, nonce),
                 mint: s.mint,
                 claimant_ata: s.claimant_ata,
@@ -371,6 +380,7 @@ fn test_unauthorized_matrix() {
                 claimant: s.merchant.pubkey(),
                 bond: s.bond,
                 binding: s.binding,
+                channel: s.channel,
                 dispute: dispute_pda(&s.binding, 1),
                 mint: s.mint,
                 claimant_ata: s.merchant_ata,
@@ -617,7 +627,7 @@ fn test_squat_binding_rejected() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
     let victim = Keypair::new().pubkey();
-    let channel = mock_channel(&mut svm, &victim, &s.mint, 0);
+    let channel = mock_channel(&mut svm, &s.claimant.pubkey(), &victim, &s.mint, 0);
     assert!(bind(&mut svm, &s, channel).is_err());
 }
 
@@ -626,7 +636,7 @@ fn test_wrong_mint_binding_rejected() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
     let other_mint = Keypair::new().pubkey();
-    let channel = mock_channel(&mut svm, &s.merchant.pubkey(), &other_mint, 0);
+    let channel = mock_channel(&mut svm, &s.claimant.pubkey(), &s.merchant.pubkey(), &other_mint, 0);
     assert!(bind(&mut svm, &s, channel).is_err());
 }
 
@@ -634,7 +644,7 @@ fn test_wrong_mint_binding_rejected() {
 fn test_closed_channel_binding_rejected() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
-    let channel = mock_channel(&mut svm, &s.merchant.pubkey(), &s.mint, 1);
+    let channel = mock_channel(&mut svm, &s.claimant.pubkey(), &s.merchant.pubkey(), &s.mint, 1);
     assert!(bind(&mut svm, &s, channel).is_err());
 }
 
@@ -648,4 +658,53 @@ fn test_garbage_channel_rejected() {
     let junk = Keypair::new();
     svm.airdrop(&junk.pubkey(), 10_000_000).unwrap();
     assert!(bind(&mut svm, &s, junk.pubkey()).is_err());
+}
+
+#[test]
+fn test_stranger_claim_rejected() {
+    // Only the channel's recorded payer may claim. A stranger holding
+    // tokens cannot lock a claim against someone else's purchase.
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    let stranger = Keypair::new();
+    svm.airdrop(&stranger.pubkey(), 1_000_000_000).unwrap();
+    let stranger_ata = a2p(
+        &CreateAssociatedTokenAccount::new(&mut svm, &stranger, &s.mint)
+            .send()
+            .unwrap(),
+    );
+    MintTo::new(&mut svm, &s.merchant, &s.mint, &stranger_ata, 100_000)
+        .send()
+        .unwrap();
+
+    let hostile = send(
+        &mut svm,
+        &stranger,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::OpenDispute {
+                nonce: 11,
+                reason: 1,
+                claim_spend: 1_000,
+            }
+            .data(),
+            harbor::accounts::OpenDispute {
+                claimant: stranger.pubkey(),
+                bond: s.bond,
+                binding: s.binding,
+                channel: s.channel,
+                dispute: dispute_pda(&s.binding, 11),
+                mint: s.mint,
+                claimant_ata: stranger_ata,
+                vault: s.vault,
+                token_program: s.token_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    );
+    assert!(hostile.is_err());
+    // No dispute account left behind (init rolled back).
+    assert!(svm.get_account(&dispute_pda(&s.binding, 11)).is_none());
 }

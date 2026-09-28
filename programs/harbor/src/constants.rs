@@ -21,6 +21,7 @@ pub const UPSTREAM_CHANNEL_VERSION: u8 = 1;
 pub const UPSTREAM_CHANNEL_STATUS_OPEN: u8 = 0;
 pub const UPSTREAM_PAYEE_OFFSET: usize = 120;
 pub const UPSTREAM_MINT_OFFSET: usize = 184;
+pub const UPSTREAM_PAYER_OFFSET: usize = 88;
 pub const TREASURY_SEED: &[u8] = b"treasury";
 /// Protocol fee on dispute claims, in bps of the locked claim.
 /// Paid to the per-mint backstop treasury on every timeout resolve.

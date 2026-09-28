@@ -65,6 +65,7 @@ struct Setup {
     claimant_ata: Pubkey,
     bond: Pubkey,
     binding: Pubkey,
+    channel: Pubkey,
     vault: Pubkey,
     token_program: Pubkey,
 }
@@ -157,7 +158,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .unwrap();
 
-    let channel = mock_channel(svm, &merchant.pubkey(), &mint, 0);
+    let channel = mock_channel(svm, &claimant.pubkey(), &merchant.pubkey(), &mint, 0);
     let (binding, _) =
         Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
@@ -190,6 +191,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
         claimant_ata,
         bond,
         binding,
+        channel,
         vault,
         token_program,
     }
@@ -204,8 +206,14 @@ fn receipt_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
 }
 
 /// Test-only mock of the upstream 256-byte Channel struct (pinned layout):
-/// disc(1) + version(1) + status + payee@120 + mint@184.
-fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) -> Pubkey {
+/// disc(1) + version(1) + status + payer@88 + payee@120 + mint@184.
+fn mock_channel(
+    svm: &mut LiteSVM,
+    payer: &Pubkey,
+    payee: &Pubkey,
+    mint: &Pubkey,
+    status: u8,
+) -> Pubkey {
     let channel = Keypair::new();
     svm.airdrop(&channel.pubkey(), 10_000_000).unwrap();
     let mut acc = svm.get_account(&channel.pubkey()).unwrap();
@@ -213,6 +221,7 @@ fn mock_channel(svm: &mut LiteSVM, payee: &Pubkey, mint: &Pubkey, status: u8) ->
     data[0] = 1;
     data[1] = 1;
     data[3] = status;
+    data[88..120].copy_from_slice(payer.as_ref());
     data[120..152].copy_from_slice(payee.as_ref());
     data[184..216].copy_from_slice(mint.as_ref());
     acc.data = data;
@@ -266,6 +275,7 @@ fn open(
                 claimant: s.claimant.pubkey(),
                 bond: s.bond,
                 binding: s.binding,
+                channel: s.channel,
                 dispute: dispute_pda(&s.binding, nonce),
                 mint: s.mint,
                 claimant_ata: s.claimant_ata,
@@ -599,4 +609,76 @@ fn test_fabrication_rejected() {
     assert!(open(&mut svm, &s, 5, 1, 250_000).is_err());
     // Failed opens leave no dispute account behind (init rolled back).
     assert!(svm.get_account(&dispute_pda(&s.binding, 5)).is_none());
+}
+
+fn treasury_withdraw(
+    svm: &mut LiteSVM,
+    s: &Setup,
+    signer: &Keypair,
+    amount: u64,
+) -> Result<(), String> {
+    let bpf_loader: Pubkey = "BPFLoaderUpgradeab1e11111111111111111111111"
+        .parse()
+        .unwrap();
+    let (programdata, _) = Pubkey::find_program_address(&[harbor::id().as_ref()], &bpf_loader);
+    let treasury = treasury_of(&s.mint);
+    send(
+        svm,
+        signer,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::WithdrawTreasury { amount }.data(),
+            harbor::accounts::WithdrawTreasury {
+                authority: signer.pubkey(),
+                programdata,
+                treasury,
+                treasury_ata: treasury_ata_of(&treasury, &s.mint, &s.token_program),
+                destination_ata: s.merchant_ata,
+                mint: s.mint,
+                token_program: s.token_program,
+            }
+            .to_account_metas(None),
+        )],
+    )
+}
+
+#[test]
+fn test_treasury_withdraw_governed() {
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    // Fund the treasury via a normal claim resolve (fee 500 + penalty 20_000).
+    open(&mut svm, &s, 12, 1, 10_000).unwrap();
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    resolve(&mut svm, &s, 12, &s.claimant).unwrap();
+    let treasury = treasury_of(&s.mint);
+    let t_ata = treasury_ata_of(&treasury, &s.mint, &s.token_program);
+    assert_eq!(token_balance(&svm, &t_ata), 20_500);
+
+    // Craft the programdata account naming `authority` as the upgrader.
+    let authority = Keypair::new();
+    svm.airdrop(&authority.pubkey(), 1_000_000_000).unwrap();
+    let bpf_loader: Pubkey = "BPFLoaderUpgradeab1e11111111111111111111111"
+        .parse()
+        .unwrap();
+    let (programdata, _) = Pubkey::find_program_address(&[harbor::id().as_ref()], &bpf_loader);
+    svm.airdrop(&programdata, 10_000_000).unwrap();
+    let mut pd = svm.get_account(&programdata).unwrap();
+    let mut bytes = vec![3u8, 0, 0, 0];
+    bytes.extend_from_slice(&0u64.to_le_bytes());
+    bytes.push(1u8);
+    bytes.extend_from_slice(authority.pubkey().as_ref());
+    pd.data = bytes;
+    pd.owner = bpf_loader;
+    svm.set_account(programdata, pd).unwrap();
+
+    // Stranger cannot move treasury funds.
+    let stranger = Keypair::new();
+    svm.airdrop(&stranger.pubkey(), 1_000_000_000).unwrap();
+    assert!(treasury_withdraw(&mut svm, &s, &stranger, 20_500).is_err());
+
+    // The upgrade authority drains to the destination ATA in full.
+    treasury_withdraw(&mut svm, &s, &authority, 20_500).unwrap();
+    assert_eq!(token_balance(&svm, &t_ata), 0);
+    assert_eq!(token_balance(&svm, &s.merchant_ata), 500_000 + 20_500);
 }

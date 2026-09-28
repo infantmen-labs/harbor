@@ -131,6 +131,13 @@
           "name": "binding"
         },
         {
+          "name": "channel",
+          "docs": [
+            "`binding.channel_program` ownership and the stored upstream",
+            "payer — only the channel's buyer may claim."
+          ]
+        },
+        {
           "name": "dispute",
           "writable": true,
           "pda": {
@@ -682,6 +689,54 @@
         {
           "name": "vault",
           "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_treasury",
+      "discriminator": [
+        40,
+        63,
+        122,
+        158,
+        144,
+        216,
+        83,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "programdata",
+          "docs": [
+            "the upgrade authority read from its bytes must match the signer."
+          ]
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "treasury_ata",
+          "writable": true
+        },
+        {
+          "name": "destination_ata",
+          "writable": true
+        },
+        {
+          "name": "mint"
         },
         {
           "name": "token_program"

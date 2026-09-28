@@ -33,6 +33,7 @@ async function main(): Promise<void> {
   const claimant = loadKeypair(process.env["CLAIMANT_KEYPAIR"] ?? "");
   const bond = new PublicKey(process.env["BOND"] ?? "");
   const binding = new PublicKey(process.env["BINDING"] ?? "");
+  const channel = new PublicKey(process.env["CHANNEL"] ?? "");
   const mint = new PublicKey(process.env["MINT"] ?? "");
   const nonce = BigInt(process.env["NONCE"] ?? "1");
   const reason = Number(process.env["REASON"] ?? 1);
@@ -44,14 +45,15 @@ async function main(): Promise<void> {
       claimant.publicKey,
       bond,
       binding,
+      channel,
       dispute,
       mint,
       ataFor(claimant.publicKey, mint),
       ataFor(bond, mint),
       nonce,
       reason,
-      claimSpend
-    )
+      claimSpend,
+    ),
   );
   const sig = await sendAndConfirmTransaction(connection, tx, [claimant]);
   console.log(`dispute=${dispute.toBase58()} sig=${sig}`);

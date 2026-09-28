@@ -17,6 +17,7 @@ const D = {
   openDispute: [137, 25, 99, 119, 23, 223, 161, 42],
   resolveTimeout: [149, 55, 89, 144, 121, 143, 48, 210],
   refundUnused: [239, 108, 1, 110, 2, 81, 44, 174],
+  withdrawTreasury: [40, 63, 122, 158, 144, 216, 83, 96],
 };
 
 function u8(v: number): Buffer {
@@ -144,6 +145,27 @@ export function withdrawBondIx(
   ]);
 }
 
+export function withdrawTreasuryIx(
+  programId: PublicKey,
+  authority: PublicKey,
+  programdata: PublicKey,
+  treasury: PublicKey,
+  treasuryAta: PublicKey,
+  destinationAta: PublicKey,
+  mint: PublicKey,
+  amount: bigint
+) {
+  return keys(programId, D.withdrawTreasury, u64(amount), [
+    { key: authority, s: true },
+    { key: programdata },
+    { key: treasury },
+    { key: treasuryAta, w: true },
+    { key: destinationAta, w: true },
+    { key: mint },
+    { key: TOKEN_PROGRAM_ID },
+  ]);
+}
+
 export function bindChannelIx(
   programId: PublicKey,
   merchant: PublicKey,
@@ -213,13 +235,14 @@ export function openDisputeIx(
   claimant: PublicKey,
   bond: PublicKey,
   binding: PublicKey,
+  channel: PublicKey,
   dispute: PublicKey,
   mint: PublicKey,
   claimantAta: PublicKey,
   vault: PublicKey,
   nonce: bigint,
   reason: number,
-  claimSpend: bigint
+  claimSpend: bigint,
 ) {
   return keys(
     programId,
@@ -229,13 +252,14 @@ export function openDisputeIx(
       { key: claimant, w: true, s: true },
       { key: bond, w: true },
       { key: binding },
+      { key: channel },
       { key: dispute, w: true },
       { key: mint },
       { key: claimantAta, w: true },
       { key: vault, w: true },
       { key: TOKEN_PROGRAM_ID },
       { key: SYSTEM_PROGRAM_ID },
-    ]
+    ],
   );
 }
 

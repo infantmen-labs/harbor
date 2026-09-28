@@ -60,3 +60,17 @@ following changed:
 - Bond status gains `reserved`; dispute status gains `claimSpend`.
   Health = (amount - reserved) withdrawable; reserved covers every open
   claim's full outflow.
+
+## Amendments (v0.3.0) — payer-bound claims, governed treasury
+
+- `open_dispute` takes a new `channel` account (after `binding`): it
+  must equal `binding.channel`, be owned by `binding.channel_program`,
+  carry the pinned upstream struct version, and record the claimant as
+  its payer (offset 88). Only the channel's buyer may claim; drive-by
+  claims by strangers are rejected. Demo callers use the agent key as
+  claimant (the buyer disputes its own purchases).
+- New `withdraw_treasury(amount)` instruction: moves fee + penalty funds
+  out of the per-mint treasury ATA. Gated by the program upgrade
+  authority read from the programdata account (same key that could
+  already drain vaults via upgrade — no new trust). Until a multisig
+  holds that key (see `docs/authority.md`), a governance escape hatch.

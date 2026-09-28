@@ -88,11 +88,14 @@ export function DisputeCard({
 export function OpenDisputeButton({
   bond,
   binding,
+  channel,
   mint,
   nextNonce,
 }: {
   bond: string;
   binding: string;
+  /** Upstream channel: the program verifies its stored payer is the claimant. */
+  channel: string;
   mint: string;
   nextNonce: bigint;
 }) {
@@ -113,6 +116,7 @@ export function OpenDisputeButton({
       publicKey,
       new PublicKey(bond),
       new PublicKey(binding),
+      new PublicKey(channel),
       new PublicKey(mint),
       nextNonce,
       reason,

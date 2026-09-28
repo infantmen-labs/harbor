@@ -11,6 +11,10 @@ pub struct OpenDispute<'info> {
     pub bond: Account<'info, MerchantBond>,
     #[account(constraint = binding.bond == bond.key() @ HarborError::BindingMismatch)]
     pub binding: Account<'info, ChannelBinding>,
+    /// CHECK: verified in handler against `binding.channel` +
+    /// `binding.channel_program` ownership and the stored upstream
+    /// payer — only the channel's buyer may claim.
+    pub channel: UncheckedAccount<'info>,
     #[account(
         init,
         payer = claimant,
@@ -54,6 +58,34 @@ pub fn handle_open_dispute(
         ctx.accounts.claimant.key() != ctx.accounts.bond.merchant,
         HarborError::Unauthorized
     );
+    // Only the channel's buyer can claim: the upstream channel account
+    // must be the bound one, owned by the bound program, carrying the
+    // pinned struct version, and recording this claimant as its payer.
+    require!(
+        ctx.accounts.channel.key() == ctx.accounts.binding.channel,
+        HarborError::BindingMismatch
+    );
+    require!(
+        *ctx.accounts.channel.to_account_info().owner == ctx.accounts.binding.channel_program,
+        HarborError::BindingMismatch
+    );
+    {
+        let data = ctx.accounts
+            .channel
+            .try_borrow_data()
+            .map_err(|_| HarborError::BindingMismatch)?;
+        require!(
+            data.len() == UPSTREAM_CHANNEL_LEN
+                && data[0] == UPSTREAM_CHANNEL_DISC
+                && data[1] == UPSTREAM_CHANNEL_VERSION,
+            HarborError::BindingMismatch
+        );
+        require!(
+            &data[UPSTREAM_PAYER_OFFSET..UPSTREAM_PAYER_OFFSET + 32]
+                == ctx.accounts.claimant.key().as_ref(),
+            HarborError::Unauthorized
+        );
+    }
     require!(claim_spend > 0, HarborError::ZeroAmount);
     require!(
         claim_spend <= ctx.accounts.binding.max_spend,

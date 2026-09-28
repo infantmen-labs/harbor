@@ -8,6 +8,7 @@ pub mod resolve_dispute;
 pub mod submit_receipt;
 pub mod top_up_bond;
 pub mod withdraw_bond;
+pub mod withdraw_treasury;
 
 pub use bind_channel::*;
 pub use halt_binding::*;
@@ -19,3 +20,4 @@ pub use resolve_dispute::*;
 pub use submit_receipt::*;
 pub use top_up_bond::*;
 pub use withdraw_bond::*;
+pub use withdraw_treasury::*;

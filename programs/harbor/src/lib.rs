@@ -86,4 +86,8 @@ pub mod harbor {
     pub fn refund_unused(ctx: Context<RefundUnused>) -> Result<()> {
         refund_unused::handle_refund_unused(ctx)
     }
+
+    pub fn withdraw_treasury(ctx: Context<WithdrawTreasury>, amount: u64) -> Result<()> {
+        withdraw_treasury::handle_withdraw_treasury(ctx, amount)
+    }
 }

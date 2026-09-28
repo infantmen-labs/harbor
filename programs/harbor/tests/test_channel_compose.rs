@@ -105,7 +105,7 @@ fn test_channel_compose() {
             .send()
             .unwrap();
     let payer_ata = a2p(&payer_ata_addr);
-    MintTo::new(&mut svm, &payer, &mint_addr, &payer_ata_addr, DEPOSIT)
+    MintTo::new(&mut svm, &payer, &mint_addr, &payer_ata_addr, DEPOSIT + 100_000)
         .send()
         .unwrap();
     let merchant_ata_addr =
@@ -322,7 +322,7 @@ fn test_channel_compose() {
     .0;
     send(
         &mut svm,
-        &claimant,
+        &payer,
         vec![Instruction::new_with_bytes(
             harbor::id(),
             &harbor::instruction::OpenDispute {
@@ -332,12 +332,15 @@ fn test_channel_compose() {
             }
             .data(),
             harbor::accounts::OpenDispute {
-                claimant: claimant.pubkey(),
+                // Only the channel's buyer may claim: the upstream payer
+                // (the agent) disputes its own purchase here.
+                claimant: payer.pubkey(),
                 bond,
                 binding,
+                channel,
                 dispute,
                 mint,
-                claimant_ata,
+                claimant_ata: payer_ata,
                 vault,
                 token_program,
                 system_program: system_program::ID,
@@ -365,11 +368,11 @@ fn test_channel_compose() {
                 mint,
                 binding,
                 dispute,
-                claimant: claimant.pubkey(),
+                claimant: payer.pubkey(),
                 treasury,
                 vault,
                 treasury_ata,
-                claimant_ata,
+                claimant_ata: payer_ata,
                 associated_token_program: ata_program,
                 token_program,
                 system_program: system_program::ID,
@@ -381,7 +384,9 @@ fn test_channel_compose() {
 
     // Refund math: fee = 10_000 * 500 / 10_000 = 500; refund = 9_500;
     // penalty = 20_000. Vault out 30_000 total, bond down 20_500.
-    assert_eq!(token_balance(&svm, &claimant_ata), 100_000 - 10_000 + 9_500);
+    // The buyer (upstream payer) locks the claim and gets it back minus
+    // the fee: 100_000 held after the channel open − 500 net.
+    assert_eq!(token_balance(&svm, &payer_ata), 100_000 - 500);
     assert_eq!(token_balance(&svm, &treasury_ata), 20_500);
     assert_eq!(token_balance(&svm, &vault), 500_000 + 10_000 - 30_000);
     // Upstream escrow intact: no double-pay across the disjoint pools.

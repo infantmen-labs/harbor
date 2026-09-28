@@ -184,6 +184,7 @@ export default function Live() {
               <OpenDisputeButton
                 bond={bond.address}
                 binding={binding.address}
+                channel={binding.channel}
                 mint={bond.mint}
                 nextNonce={mock ? 4n : nextNonce}
               />
