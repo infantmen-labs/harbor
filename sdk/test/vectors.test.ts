@@ -7,6 +7,8 @@ import {
   VOUCHER_LEN,
   buildEd25519Ix,
   channelVoucherBytes,
+  decodeBond,
+  decodeDispute,
   receiptMessageBytes,
   signEd25519,
   verifyEd25519,
@@ -34,12 +36,24 @@ describe("receipt layout", () => {
     const exp = Buffer.concat([
       Buffer.alloc(32, 1),
       Buffer.alloc(32, 2),
-      (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(10_000n); return b; })(),
+      (() => {
+        const b = Buffer.alloc(8);
+        b.writeBigUInt64LE(10_000n);
+        return b;
+      })(),
       Buffer.alloc(32, 3),
       Buffer.alloc(32, 4),
       Buffer.from([0]),
-      (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(7n); return b; })(),
-      (() => { const b = Buffer.alloc(8); b.writeBigUInt64LE(999n); return b; })(),
+      (() => {
+        const b = Buffer.alloc(8);
+        b.writeBigUInt64LE(7n);
+        return b;
+      })(),
+      (() => {
+        const b = Buffer.alloc(8);
+        b.writeBigUInt64LE(999n);
+        return b;
+      })(),
       Buffer.alloc(32, 1),
     ]);
     assert.ok(got.equals(exp));
@@ -68,7 +82,11 @@ describe("receipt layout", () => {
 
 describe("ed25519 ix layout", () => {
   it("places pubkey/sig/message at 16/48/112 with pinned indices", () => {
-    const ix = buildEd25519Ix(P(9), new Uint8Array(64).fill(7), new Uint8Array([1, 2, 3]));
+    const ix = buildEd25519Ix(
+      P(9),
+      new Uint8Array(64).fill(7),
+      new Uint8Array([1, 2, 3])
+    );
     const d = Buffer.from(ix.data);
     assert.equal(d.length, 16 + 32 + 64 + 3);
     assert.equal(d.readUInt8(0), 1);
@@ -89,5 +107,62 @@ describe("channel voucher layout", () => {
     assert.ok(v.subarray(2, 34).equals(Buffer.alloc(32, 5)));
     assert.equal(v.readBigUInt64LE(34), 2_000_000n);
     assert.equal(v.readBigInt64LE(42), 0n);
+  });
+});
+
+describe("account decoders", () => {
+  function layout(
+    parts: Array<[number, bigint | number]>,
+    size: number
+  ): Buffer {
+    const buf = Buffer.alloc(size);
+    for (const [off, v] of parts) {
+      if (typeof v === "bigint") buf.writeBigUInt64LE(v, off);
+      else buf.writeUInt16LE(v, off);
+    }
+    return buf;
+  }
+
+  it("decodes MerchantBond with reserved", () => {
+    const buf = layout(
+      [
+        [72, 500_000n],
+        [80, 50],
+        [82, 150n],
+        [90, 2n],
+        [98, 7n],
+        [106, 11_010n],
+      ],
+      115
+    );
+    P(3).toBuffer().copy(buf, 8);
+    P(4).toBuffer().copy(buf, 40);
+    const b = decodeBond(buf);
+    assert.ok(b.merchant.equals(P(3)));
+    assert.ok(b.mint.equals(P(4)));
+    assert.equal(b.amount, 500_000n);
+    assert.equal(b.slaBps, 50);
+    assert.equal(b.openDisputes, 2n);
+    assert.equal(b.reserved, 11_010n);
+  });
+
+  it("decodes Dispute with claimSpend", () => {
+    const buf = layout(
+      [
+        [40, 9n],
+        [81, 1000n],
+        [89, 10_000_000n],
+        [97, 3_670n],
+      ],
+      106
+    );
+    P(1).toBuffer().copy(buf, 8);
+    buf.writeUInt8(2, 48);
+    P(2).toBuffer().copy(buf, 49);
+    const d = decodeDispute(buf);
+    assert.equal(d.nonce, 9n);
+    assert.equal(d.reason, 2);
+    assert.ok(d.claimant.equals(P(2)));
+    assert.equal(d.claimSpend, 3_670n);
   });
 });

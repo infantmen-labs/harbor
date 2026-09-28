@@ -16,8 +16,8 @@ import {
   DISPUTE_DISC,
   bindingChannelProgram,
   decide,
-  parseBond,
-  parseDispute,
+  decodeBond,
+  decodeDispute,
 } from "./accounts";
 import { KeeperConfig } from "./config";
 
@@ -72,7 +72,7 @@ export async function consider(
     log.log({ dispute: disputeKey.toBase58(), action: "gone" });
     return "pending";
   }
-  const d = parseDispute(Buffer.from(info.data));
+  const d = decodeDispute(Buffer.from(info.data));
   const action = decide(d, slot);
   const entry = {
     dispute: disputeKey.toBase58(),
@@ -107,7 +107,7 @@ export async function consider(
   const bondKey = bindingBond(bindingData);
   const bondInfo = await conn.getAccountInfo(bondKey);
   if (bondInfo === null) throw new Error("bond not found");
-  const bond = parseBond(Buffer.from(bondInfo.data));
+  const bond = decodeBond(Buffer.from(bondInfo.data));
 
   const tx = new Transaction();
   const [treasury] = treasuryPda(bond.mint);

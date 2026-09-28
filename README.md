@@ -11,6 +11,36 @@ delivery offchain but never acquit onchain, by design (see
 - Upstream: `solana-foundation/payment-channels` @ `3ffa4d67`
 - Docs: `docs/` (schema, coordination, proof bundle, review, business)
 
+## Use the SDK (third parties start here)
+
+```sh
+npm i harbor-sdk
+```
+
+```ts
+import { Connection, PublicKey } from "@solana/web3.js";
+import {
+  bondPda,
+  decodeBond,
+  receiptMessageBytes,
+  verifyEd25519,
+} from "harbor-sdk";
+
+// Locate any merchant's bond — derived offline, no RPC call.
+const [bond] = bondPda(merchant, mint);
+
+// Read its health: bonded, reserved, and free collateral.
+const info = await connection.getAccountInfo(bond);
+const { amount, reserved, openDisputes } = decodeBond(info.data);
+
+// Verify every delivery before paying for the next unit.
+const ok = verifyEd25519(signer, receiptMessageBytes(receipt), signature);
+```
+
+See `examples/bond-watch` for a complete read-only monitor (bond health
+
+- open disputes, SDK + web3.js only, no wallet, no funds).
+
 ## One-command verification
 
 ```sh

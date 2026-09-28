@@ -1,6 +1,18 @@
 {
   "name": "harbor-sdk",
   "version": "0.3.0",
+  "description": "TypeScript SDK for Harbor bonded refunds on Solana: PDA helpers, instruction builders, receipt codec, ed25519 verify, account decoders.",
+  "license": "MIT",
+  "keywords": [
+    "solana",
+    "payments",
+    "metered-api",
+    "bond",
+    "anchor"
+  ],
+  "files": [
+    "dist"
+  ],
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "scripts": {

@@ -4,8 +4,8 @@ import { PublicKey } from "@solana/web3.js";
 import {
   bindingChannelProgram,
   decide,
-  parseBond,
-  parseDispute,
+  decodeBond,
+  decodeDispute,
   type Dispute,
 } from "../src/accounts";
 
@@ -46,7 +46,7 @@ describe("account parsers", () => {
     buf.writeBigUInt64LE(2n, 90);
     buf.writeBigUInt64LE(7n, 98);
     buf.writeBigUInt64LE(3_000n, 106);
-    const b = parseBond(buf);
+    const b = decodeBond(buf);
     assert.ok(b.merchant.equals(K(3)));
     assert.ok(b.mint.equals(K(4)));
     assert.equal(b.amount, 500_000n);
@@ -63,7 +63,7 @@ describe("account parsers", () => {
     buf.writeBigUInt64LE(1000n, 81);
     buf.writeBigUInt64LE(10_000_000n, 89);
     buf.writeBigUInt64LE(3_670n, 97);
-    const d = parseDispute(buf);
+    const d = decodeDispute(buf);
     assert.equal(d.nonce, 9n);
     assert.equal(d.reason, 2);
     assert.ok(d.claimant.equals(K(2)));
