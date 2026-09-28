@@ -198,6 +198,17 @@ state migration. Upgrade sig
   new mint): claim 2,000 → bond 496,000, reserved 0, treasury 4,100,
   resolve sig `2HyPDbuQmEZdhPermgVHK6e1LA3UrC55Zt7Lo2ifLAgHcjoRvfnyCHpn5Tu8BD2GBw5PnLiL1tQvmgG7nUap8`.
 
+## Tooling publication (live on npm)
+
+- `harbor-sdk` was taken (n1colaslugo, unrelated API-auth SDK), so the
+  package ships as `@infantmen-labs/harbor-sdk@0.3.0` (MIT, `files:
+  [dist]`, 21 files). Third-party proof: `examples/bond-watch` reads
+  the live devnet bond with SDK + web3.js only — verified against the
+  packed tarball pre-publish and the registry install post-publish.
+- Root `yarn build` / `yarn test` orchestrate all workspaces in
+  dependency order (caught a real fresh-clone gap: keeper/server
+  resolved `harbor-log` types before it was built).
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past

@@ -104,3 +104,10 @@ small against honest volume. The clean fix (an agent-signed delivery
 ack oracle gating receipts) is post-contest work, deliberately not
 rushed before the deadline; the mechanism is shipped as *disclosed
 optimistic refunds*, not delivery assurance.
+
+**Nonce gaps brick skipped receipt slots.** `submit_receipt` requires
+`nonce > last_nonce`, so a skipped nonce becomes permanently
+unreceiptable once a later nonce lands. Impact is metering-only (claims
+are nonce-independent and unaffected); consecutive-failure disputes work
+regardless. Documented here instead of patched: strict `== last+1`
+ordering would break legitimate out-of-order delivery batches.
