@@ -173,6 +173,31 @@ then passed against a live upstream channel on the next run.
   489,000, reserved 0. Claimant: 2,000,000,725 (−125 net). Treasury:
   11,275 (6,150 + 5,125).
 
+## v0.3.0 — payer-bound claims, governed treasury (live on devnet)
+
+`open_dispute` takes the channel account and requires its stored payer
+== claimant (drive-by claims rejected); new `withdraw_treasury` gated
+by the programdata upgrade authority. No account layout changes, so no
+state migration. Upgrade sig
+`31uj962tig5X2VVsPxn27UVx9Y4JX9f5Aetc1gVCMEQycRpNirFz3aCWFJyDwtgAGar9f1ZJ4VBAQBHFTKrQctfw`
+(deep-byte verified, IDL republished with `channel` + `claim_spend` +
+`withdraw_treasury` confirmed via fetch).
+
+- v0.3.0 devnet loop (agent key as claimant = channel payer): happy
+  channel `E8d3PSHkpAr27qooghGdtbL3F62uH3jMbJhCuS9wVVLk` (3 receipts,
+  settled) → kill → fail channel
+  `CucECNJqAryTN1PKiBE9Zidd49S7BFoQ4EsSfb8QHwZ5` → dispute
+  `JAHXgqmqVAoXzCBXVet6WtgohQw6QsMm1EQjcrxDPnaW` (claim 2,000, open sig
+  `3fXz7Cggkb454dpX87uGWQtW6Wz2kdFzhhdknVQfvQCVGpwf4rzb6MY7yMaafa2Np11AvNCz1hXuywg2h3oQFvSF`)
+  → keeper `resolve-timeout` sig
+  `346oQMQ2FVaurEEp6xWmACsWT55KzrrGj7WghB7kmNqfLJoQf7fbBosxkt6Kuhoo6er1tFSTK6WmNsTa1wKUBpG6`
+  (slot 504976313).
+- Math: fee = 100, refund = 1,900, penalty = 4,000. Bond `2G19xBTW…`:
+  485,000, reserved 0. Treasury: 15,375 (11,275 + 4,100).
+- v0.3.0 localnet loop on a fresh validator (rebuilt upstream fixture,
+  new mint): claim 2,000 → bond 496,000, reserved 0, treasury 4,100,
+  resolve sig `2HyPDbuQmEZdhPermgVHK6e1LA3UrC55Zt7Lo2ifLAgHcjoRvfnyCHpn5Tu8BD2GBw5PnLiL1tQvmgG7nUap8`.
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past
