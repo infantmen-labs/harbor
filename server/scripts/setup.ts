@@ -1,6 +1,6 @@
 /** One-time merchant setup: register bond + post collateral (binding happens per session). */
 import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import { bondPda, postBondIx, registerMerchantIx, ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "harbor-sdk";
+import { bondPda, postBondIx, registerMerchantIx, ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
 import { loadConfig, connectionFor } from "../src/config";
 
 async function main(): Promise<void> {

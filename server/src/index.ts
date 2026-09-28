@@ -18,7 +18,7 @@ import {
   receiptMessageBytes,
   signEd25519,
   verifyEd25519,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 import { Config, connectionFor } from "./config";
 import { Session, StoredReceipt, Store, meterTokens, sha256Hex } from "./store";
 

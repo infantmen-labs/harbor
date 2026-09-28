@@ -7,7 +7,7 @@ import {
   channelVoucherBytes,
   verifyEd25519,
   receiptMessageBytes,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 import { createApp } from "../src/index";
 import { Store } from "../src/store";
 import type { Config } from "../src/config";

@@ -1,4 +1,4 @@
-import { CHANNEL_PROGRAM_ID as SDK_CHANNEL_PROGRAM_ID } from "harbor-sdk";
+import { CHANNEL_PROGRAM_ID as SDK_CHANNEL_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
 
 export const PROGRAM_ID =
   process.env["NEXT_PUBLIC_PROGRAM_ID"] ??

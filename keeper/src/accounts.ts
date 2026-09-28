@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
-import { decodeBond, decodeDispute, type Bond, type Dispute } from "harbor-sdk";
+import {
+  decodeBond,
+  decodeDispute,
+  type Bond,
+  type Dispute,
+} from "@infantmen-labs/harbor-sdk";
 
 // Single source of truth lives in the SDK; re-exported here so existing
 // keeper imports keep working.

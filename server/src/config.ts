@@ -1,6 +1,6 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { readFileSync } from "node:fs";
-import { HARBOR_PROGRAM_ID } from "harbor-sdk";
+import { HARBOR_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
 
 export interface Config {
   port: number;

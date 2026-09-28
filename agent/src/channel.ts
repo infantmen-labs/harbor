@@ -6,7 +6,7 @@ import {
   SYSTEM_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   channelPda,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 
 /** Upstream `open`. Layout: disc(1) | salt(8) | deposit(8) | grace(4) | slot(8) | recipients u32. */
 export function openChannelIx(args: {
@@ -54,13 +54,13 @@ export function openChannelIx(args: {
   });
 }
 
-export function settleIx(programId: PublicKey, channel: PublicKey): TransactionInstruction {
+export function settleIx(
+  programId: PublicKey,
+  channel: PublicKey
+): TransactionInstruction {
   return new TransactionInstruction({
     programId,
-    keys: [
-      m(channel, true, false),
-      m(IX_SYSVAR_ID, false, false),
-    ],
+    keys: [m(channel, true, false), m(IX_SYSVAR_ID, false, false)],
     data: Buffer.from([2]),
   });
 }
@@ -96,8 +96,8 @@ export function deriveChannel(
   mint: PublicKey,
   authorizedSigner: PublicKey,
   salt: bigint,
-  openSlot: bigint,
-): { channel: PublicKey; } {
+  openSlot: bigint
+): { channel: PublicKey } {
   const [channel] = channelPda(
     programId,
     payer,
@@ -105,7 +105,7 @@ export function deriveChannel(
     mint,
     authorizedSigner,
     salt,
-    openSlot,
+    openSlot
   );
   return { channel };
 }

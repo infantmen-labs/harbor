@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.0",
-    "harbor-sdk": "*",
+    "@infantmen-labs/harbor-sdk": "*",
     "harbor-log": "*"
   }
 }

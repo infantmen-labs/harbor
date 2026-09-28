@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { receiptMessageBytes, verifyEd25519 } from "harbor-sdk";
+import { receiptMessageBytes, verifyEd25519 } from "@infantmen-labs/harbor-sdk";
 import { fetchReceipt } from "@/lib/server";
 import type { Receipt } from "@/lib/types";
 import { Card, EmptyState } from "./primitives";

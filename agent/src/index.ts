@@ -23,7 +23,7 @@ import {
   receiptMessageBytes,
   signEd25519,
   verifyEd25519,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 import { JsonlLogger } from "harbor-log";
 import { deriveChannel, openChannelIx, settleIx, topUpIx } from "./channel";
 
@@ -33,24 +33,33 @@ function env(name: string, fallback?: string): string {
   return v;
 }
 
-async function postJson(url: string, body: unknown): Promise<{ status: number; json: Record<string, unknown> }> {
+async function postJson(
+  url: string,
+  body: unknown
+): Promise<{ status: number; json: Record<string, unknown> }> {
   const r = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  return { status: r.status, json: (await r.json()) as Record<string, unknown> };
+  return {
+    status: r.status,
+    json: (await r.json()) as Record<string, unknown>,
+  };
 }
 
 async function main(): Promise<void> {
-  const connection = new Connection(env("RPC_URL", "https://api.devnet.solana.com"), "confirmed");
+  const connection = new Connection(
+    env("RPC_URL", "https://api.devnet.solana.com"),
+    "confirmed"
+  );
   const serverUrl = env("SERVER_URL", "http://127.0.0.1:3000");
   const agent = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(readFileSync(env("AGENT_KEYPAIR"), "utf8"))),
+    Uint8Array.from(JSON.parse(readFileSync(env("AGENT_KEYPAIR"), "utf8")))
   );
   const merchant = new PublicKey(env("MERCHANT_PUBKEY"));
   const channelProgram = new PublicKey(
-    env("CHANNEL_PROGRAM_ID", CHANNEL_PROGRAM_ID.toBase58()),
+    env("CHANNEL_PROGRAM_ID", CHANNEL_PROGRAM_ID.toBase58())
   );
   const mint = new PublicKey(env("MINT"));
   const deposit = BigInt(env("DEPOSIT", "100000"));
@@ -71,18 +80,18 @@ async function main(): Promise<void> {
     mint,
     agent.publicKey,
     salt,
-    BigInt(clockSlot),
+    BigInt(clockSlot)
   );
   const [channelAta] = (() => {
     const [a] = PublicKey.findProgramAddressSync(
       [channel.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-      ATA_PROGRAM_ID,
+      ATA_PROGRAM_ID
     );
     return [a] as const;
   })();
   const [eventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("event_authority")],
-    channelProgram,
+    channelProgram
   );
   const payerAta = (
     await connection.getParsedTokenAccountsByOwner(agent.publicKey, { mint })
@@ -104,7 +113,7 @@ async function main(): Promise<void> {
       deposit,
       gracePeriod: 7200,
       openSlot: BigInt(clockSlot),
-    }),
+    })
   );
   await sendAndConfirmTransaction(connection, openTx, [agent]);
   console.log(`channel ${channel.toBase58()}`);
@@ -115,15 +124,22 @@ async function main(): Promise<void> {
     deposit: deposit.toString(),
     authorizedSigner: agent.publicKey.toBase58(),
   });
-  if (s.status !== 200) throw new Error(`session failed: ${JSON.stringify(s.json)}`);
+  if (s.status !== 200)
+    throw new Error(`session failed: ${JSON.stringify(s.json)}`);
   const binding = new PublicKey(s.json["binding"] as string);
 
   async function attemptRequest(
     n: bigint,
-    cumulative: bigint,
-  ): Promise<{ status: number; json: Record<string, unknown>; cumulative: bigint }> {
+    cumulative: bigint
+  ): Promise<{
+    status: number;
+    json: Record<string, unknown>;
+    cumulative: bigint;
+  }> {
     const msg = channelVoucherBytes(channel, cumulative, 0n);
-    const sig = Buffer.from(signEd25519(agent.secretKey, msg)).toString("base64");
+    const sig = Buffer.from(signEd25519(agent.secretKey, msg)).toString(
+      "base64"
+    );
     const r = await postJson(`${serverUrl}/complete`, {
       channel: channel.toBase58(),
       nonce: n.toString(),
@@ -156,7 +172,7 @@ async function main(): Promise<void> {
           channelAta,
           mint,
           amount,
-        }),
+        })
       );
       await sendAndConfirmTransaction(connection, topTx, [agent]);
       ceiling += amount;
@@ -167,11 +183,16 @@ async function main(): Promise<void> {
       // Re-authorize higher against the quoted cost and retry the same nonce.
       attempt = await attemptRequest(
         nonce,
-        lastCumulative + BigInt(attempt.json["cost"] as string) * 2n,
+        lastCumulative + BigInt(attempt.json["cost"] as string) * 2n
       );
     }
     if (attempt.status !== 200) {
-      log.log({ nonce: nonce.toString(), ok: false, error: attempt.json["error"], status: attempt.status });
+      log.log({
+        nonce: nonce.toString(),
+        ok: false,
+        error: attempt.json["error"],
+        status: attempt.status,
+      });
       console.log(`request ${nonce} failed: ${JSON.stringify(attempt.json)}`);
       break;
     }
@@ -188,7 +209,11 @@ async function main(): Promise<void> {
       expirySlot: BigInt(receipt["expirySlot"]),
       signer: merchant,
     });
-    const ok = verifyEd25519(merchant, rmsg, Buffer.from(receipt["signature"], "base64"));
+    const ok = verifyEd25519(
+      merchant,
+      rmsg,
+      Buffer.from(receipt["signature"], "base64")
+    );
     lastCumulative = r.cumulative;
     lastSpent = BigInt(receipt["cumulativeSpend"]);
     log.log({
@@ -213,7 +238,7 @@ async function main(): Promise<void> {
   const closeSig = signEd25519(agent.secretKey, closeMsg);
   const closeTx = new Transaction().add(
     buildEd25519Ix(agent.publicKey, closeSig, closeMsg),
-    settleIx(channelProgram, channel),
+    settleIx(channelProgram, channel)
   );
   await sendAndConfirmTransaction(connection, closeTx, [agent]);
   console.log(`settled at ${lastCumulative}`);

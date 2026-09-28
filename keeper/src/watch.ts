@@ -10,7 +10,7 @@ import {
   TOKEN_PROGRAM_ID,
   resolveTimeoutIx,
   treasuryPda,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 import { JsonlLogger } from "harbor-log";
 import {
   DISPUTE_DISC,

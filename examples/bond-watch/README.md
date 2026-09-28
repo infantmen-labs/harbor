@@ -1,6 +1,6 @@
 # bond-watch — third-party Harbor example
 
-Read-only bond monitor built **only** on the published `harbor-sdk` plus
+Read-only bond monitor built **only** on the published `@infantmen-labs/harbor-sdk` plus
 `@solana/web3.js`. No repo code, no Anchor client, no wallet, no funds.
 
 ```sh

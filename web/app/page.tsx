@@ -5,7 +5,7 @@ import { DOC_LINKS, INSTALL_CMD, NPM_URL, REPO_URL } from "@/lib/site";
 
 const SNIPPET = `import {
   bondPda, openDisputeIx, receiptMessageBytes, verifyEd25519,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 
 // 1. Locate the merchant's bond (derived, no fetch needed)
 const [bond] = bondPda(merchant, mint);

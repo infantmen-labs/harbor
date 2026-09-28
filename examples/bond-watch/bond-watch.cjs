@@ -1,7 +1,7 @@
 /**
  * bond-watch: third-party Harbor bond monitor.
  *
- * Uses ONLY the published harbor-sdk + @solana/web3.js — no repo code,
+ * Uses ONLY the published @infantmen-labs/harbor-sdk + @solana/web3.js — no repo code,
  * no Anchor client, no funds. Reads a bond, its bindings, and every
  * open dispute, and prints health a treasury/risk desk would watch.
  *
@@ -35,7 +35,7 @@ const {
   bondPda,
   decodeBond,
   decodeDispute,
-} = require("harbor-sdk");
+} = require("@infantmen-labs/harbor-sdk");
 
 function disc(name) {
   return createHash("sha256")

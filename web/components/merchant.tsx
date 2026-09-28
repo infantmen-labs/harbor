@@ -10,7 +10,7 @@ import {
   buildPostBondIx,
   buildRegisterIx,
 } from "@/lib/dispute";
-import { bondPda } from "harbor-sdk";
+import { bondPda } from "@infantmen-labs/harbor-sdk";
 import { sendWalletTx } from "@/lib/tx";
 import { CHANNEL_PROGRAM_ID } from "@/lib/env";
 import type { TxState } from "@/lib/types";

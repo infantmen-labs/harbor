@@ -16,7 +16,7 @@ import {
   topUpBondIx,
   haltBindingIx,
   withdrawBondIx,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 import { PROGRAM_ID } from "./env";
 
 const PROGRAM = new PublicKey(PROGRAM_ID);

@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
-import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID, bondPda } from "harbor-sdk";
+import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID, bondPda } from "@infantmen-labs/harbor-sdk";
 import { buildHaltIx, buildTopUpIx, buildWithdrawIx } from "@/lib/dispute";
 import { sendWalletTx } from "@/lib/tx";
 import {

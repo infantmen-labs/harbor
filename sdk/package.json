@@ -1,5 +1,5 @@
 {
-  "name": "harbor-sdk",
+  "name": "@infantmen-labs/harbor-sdk",
   "version": "0.3.0",
   "description": "TypeScript SDK for Harbor bonded refunds on Solana: PDA helpers, instruction builders, receipt codec, ed25519 verify, account decoders.",
   "license": "MIT",

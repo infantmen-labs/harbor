@@ -6,22 +6,22 @@ server must have its public URL first).
 
 Live deployment record (fill in as you go):
 
-| Service | URL |
-|---|---|
-| Server (Railway) | _pending_ |
+| Service          | URL                                       |
+| ---------------- | ----------------------------------------- |
+| Server (Railway) | _pending_                                 |
 | Keeper (Railway) | runs inside Railway, no public URL needed |
-| Web (Vercel) | _pending_ |
+| Web (Vercel)     | _pending_                                 |
 
 Chain artifacts (devnet):
 
-| Artifact | Address |
-|---|---|
-| Harbor program | `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H` |
-| Channels program | `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX` |
-| tUSDC mint | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` (6 decimals) |
-| Merchant | `GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ` (also program upgrade authority) |
-| Bond | `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP` (500,000 base units) |
-| Keeper operator | `5gRRZXP18ZzUHB9Ud6vnnsAApgYXRVQxzXa2Uuf4f8en` (fee payer only, no privileges) |
+| Artifact         | Address                                                                         |
+| ---------------- | ------------------------------------------------------------------------------- |
+| Harbor program   | `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`                                  |
+| Channels program | `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`                                  |
+| tUSDC mint       | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` (6 decimals)                     |
+| Merchant         | `GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ` (also program upgrade authority) |
+| Bond             | `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP` (500,000 base units)             |
+| Keeper operator  | `5gRRZXP18ZzUHB9Ud6vnnsAApgYXRVQxzXa2Uuf4f8en` (fee payer only, no privileges)  |
 
 ## 0. Key material (devnet-only)
 
@@ -41,14 +41,14 @@ macOS: `base64 -i <file> | tr -d '\n'`.
    (`railway.json` is picked up automatically).
 2. Variables:
 
-| Var | Value |
-|---|---|
-| `RPC_URL` | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value; the local copy lives in `web/.env.local`, gitignored) |
-| `MINT` | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` |
-| `PRICE_PER_TOKEN` | `10` |
-| `MERCHANT_KEYPAIR_B64` | base64 of the merchant keypair (see §0) |
-| `KILL_TOKEN` | a random string (e.g. `openssl rand -hex 16`); gates `POST /admin/kill {killed:true}` via `Authorization: Bearer <token>`. Revive stays public. Unset = open (local rehearsal only) |
-| `PORT` | provided by Railway automatically |
+| Var                    | Value                                                                                                                                                                               |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RPC_URL`              | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value; the local copy lives in `web/.env.local`, gitignored)                |
+| `MINT`                 | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54`                                                                                                                                      |
+| `PRICE_PER_TOKEN`      | `10`                                                                                                                                                                                |
+| `MERCHANT_KEYPAIR_B64` | base64 of the merchant keypair (see §0)                                                                                                                                             |
+| `KILL_TOKEN`           | a random string (e.g. `openssl rand -hex 16`); gates `POST /admin/kill {killed:true}` via `Authorization: Bearer <token>`. Revive stays public. Unset = open (local rehearsal only) |
+| `PORT`                 | provided by Railway automatically                                                                                                                                                   |
 
 3. Generate a public domain. Health check is `GET /info` (returns
    `{ merchant, pricePerToken, killed }`).
@@ -82,12 +82,12 @@ correct devnet addresses; set them explicitly only if the programs move.
    (Vercel installs the yarn workspaces from the repo root automatically).
 2. Environment (Production **and** Preview), set **before the first build**:
 
-| Var | Value |
-|---|---|
-| `NEXT_PUBLIC_RPC_URL` | QuickNode devnet URL (same as server `RPC_URL`) |
-| `NEXT_PUBLIC_SERVER_URL` | `https://<server>` from §1 (no trailing slash) |
-| `NEXT_PUBLIC_PROGRAM_ID` | `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H` |
-| `NEXT_PUBLIC_CHANNEL_PROGRAM_ID` | `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX` |
+| Var                              | Value                                           |
+| -------------------------------- | ----------------------------------------------- |
+| `NEXT_PUBLIC_RPC_URL`            | QuickNode devnet URL (same as server `RPC_URL`) |
+| `NEXT_PUBLIC_SERVER_URL`         | `https://<server>` from §1 (no trailing slash)  |
+| `NEXT_PUBLIC_PROGRAM_ID`         | `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`  |
+| `NEXT_PUBLIC_CHANNEL_PROGRAM_ID` | `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`  |
 
 3. Deploy. `/api/*` rewrites to the server are baked at build time —
    if the server URL ever changes, update the var and redeploy web.

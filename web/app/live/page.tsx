@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "harbor-sdk";
+import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
 import { StatusHeader } from "@/components/header";
 import { Container } from "@/components/primitives";
 import { BondCard } from "@/components/bond";

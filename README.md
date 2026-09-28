@@ -14,7 +14,7 @@ delivery offchain but never acquit onchain, by design (see
 ## Use the SDK (third parties start here)
 
 ```sh
-npm i harbor-sdk
+npm i @infantmen-labs/harbor-sdk
 ```
 
 ```ts
@@ -24,7 +24,7 @@ import {
   decodeBond,
   receiptMessageBytes,
   verifyEd25519,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 
 // Locate any merchant's bond — derived offline, no RPC call.
 const [bond] = bondPda(merchant, mint);

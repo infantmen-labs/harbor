@@ -11,7 +11,7 @@ import {
   TOKEN_PROGRAM_ID,
   disputePda,
   openDisputeIx,
-} from "harbor-sdk";
+} from "@infantmen-labs/harbor-sdk";
 import { readFileSync } from "node:fs";
 
 function loadKeypair(path: string): Keypair {
@@ -52,8 +52,8 @@ async function main(): Promise<void> {
       ataFor(bond, mint),
       nonce,
       reason,
-      claimSpend,
-    ),
+      claimSpend
+    )
   );
   const sig = await sendAndConfirmTransaction(connection, tx, [claimant]);
   console.log(`dispute=${dispute.toBase58()} sig=${sig}`);

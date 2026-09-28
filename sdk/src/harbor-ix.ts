@@ -242,7 +242,7 @@ export function openDisputeIx(
   vault: PublicKey,
   nonce: bigint,
   reason: number,
-  claimSpend: bigint,
+  claimSpend: bigint
 ) {
   return keys(
     programId,
@@ -259,7 +259,7 @@ export function openDisputeIx(
       { key: vault, w: true },
       { key: TOKEN_PROGRAM_ID },
       { key: SYSTEM_PROGRAM_ID },
-    ],
+    ]
   );
 }
 

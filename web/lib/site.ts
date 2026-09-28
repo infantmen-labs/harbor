@@ -7,7 +7,7 @@
 // TODO(user): set the public repo URL (e.g. https://github.com/ORG/harbor).
 export const REPO_URL = "https://github.com/REPO_URL_PENDING";
 
-export const NPM_PACKAGE = "harbor-sdk";
+export const NPM_PACKAGE = "@infantmen-labs/harbor-sdk";
 export const NPM_URL = `https://www.npmjs.com/package/${NPM_PACKAGE}`;
 
 export const INSTALL_CMD = `npm i ${NPM_PACKAGE}`;
