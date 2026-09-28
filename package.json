@@ -11,7 +11,9 @@
   "license": "MIT",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "build": "yarn workspace harbor-sdk build && yarn workspace harbor-log build && yarn workspace harbor-server build && yarn workspace harbor-agent build && yarn workspace harbor-keeper build",
+    "test": "yarn workspace harbor-sdk test && yarn workspace harbor-server test && yarn workspace harbor-agent test && yarn workspace harbor-keeper test"
   },
   "dependencies": {
     "@anchor-lang/core": "^1.0.0",
