@@ -68,7 +68,6 @@ export default function Landing() {
           <p className="font-mono text-[14px] text-ink-inverse">
             <span className="opacity-50">$ </span>
             {INSTALL_CMD}
-            <span className="opacity-50"> ← publishing now</span>
           </p>
         </div>
       </section>
