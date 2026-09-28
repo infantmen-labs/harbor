@@ -392,3 +392,277 @@ fn test_channel_compose() {
     // Upstream escrow intact: no double-pay across the disjoint pools.
     assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
 }
+
+/// The escrow-leg rebuttal, encoded as a test.
+///
+/// A buyer who RECEIVED service disputing anyway is the strongest form
+/// of the "dishonest buyer profits" claim. Full accounting, with the
+/// upstream escrow the merchant settles unilaterally:
+///   buyer outlay  = S (escrow, unrecoverable once merchant settles)
+///                 + S (locked claim)
+///   buyer income  = 0.95 * S (refund)
+///   buyer net     = -1.05 * S  →  always ≥105% of the service value.
+/// There is no profitable dishonest-buyer strategy at any scale; the
+/// residual is spite-burn (destroy ≥5% of your own capital to burn 2x
+/// of the merchant's), which is bounded and unprofitable.
+#[test]
+fn test_dishonest_buyer_nets_negative() {
+    let chnl: Pubkey = CHANNEL_PROGRAM_ID.parse().unwrap();
+    let mut svm = LiteSVM::new();
+    svm.add_program(chnl, include_bytes!("fixtures/payment_channels.so"))
+        .unwrap();
+    svm.add_program(
+        harbor::id(),
+        include_bytes!("../../../target/deploy/harbor.so"),
+    )
+    .unwrap();
+
+    let payer = Keypair::new();
+    let auth_signer = Keypair::new();
+    let merchant = Keypair::new();
+    let resolver = Keypair::new();
+    for k in [&payer, &merchant, &resolver] {
+        svm.airdrop(&k.pubkey(), 10_000_000_000).unwrap();
+    }
+    for k in [&auth_signer] {
+        svm.airdrop(&k.pubkey(), 10_000_000).unwrap();
+    }
+
+    let mint_addr = CreateMint::new(&mut svm, &payer)
+        .decimals(6)
+        .send()
+        .unwrap();
+    let mint = a2p(&mint_addr);
+    let token_program = a2p(&TOKEN_ID);
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
+
+    // Buyer holds DEPOSIT (escrowed on open) plus SPARE for the claim lock.
+    const SPARE: u64 = 50_000;
+    const CLAIM: u64 = 10_000;
+    const FEE: u64 = 500; // CLAIM * 500 / 10_000
+    const PENALTY: u64 = 20_000; // CLAIM * 2
+    let payer_ata_addr =
+        CreateAssociatedTokenAccount::new(&mut svm, &payer, &mint_addr)
+            .send()
+            .unwrap();
+    let payer_ata = a2p(&payer_ata_addr);
+    MintTo::new(&mut svm, &payer, &mint_addr, &payer_ata_addr, DEPOSIT + SPARE)
+        .send()
+        .unwrap();
+    let merchant_ata_addr =
+        CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
+            .send()
+            .unwrap();
+    let merchant_ata = a2p(&merchant_ata_addr);
+    MintTo::new(&mut svm, &payer, &mint_addr, &merchant_ata_addr, 1_000_000)
+        .send()
+        .unwrap();
+
+    // Real upstream channel: payer (buyer) escrows DEPOSIT, payee is the
+    // merchant — the exact production shape the bind check requires.
+    let (channel, _) = Pubkey::find_program_address(
+        &[
+            b"channel",
+            payer.pubkey().as_ref(),
+            merchant.pubkey().as_ref(),
+            mint.as_ref(),
+            auth_signer.pubkey().as_ref(),
+            &7u64.to_le_bytes(),
+            &0u64.to_le_bytes(),
+        ],
+        &chnl,
+    );
+    let (channel_ata, _) = Pubkey::find_program_address(
+        &[channel.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    );
+    let (event_authority, _) = Pubkey::find_program_address(&[b"event_authority"], &chnl);
+    let rent_sysvar: Pubkey = "SysvarRent111111111111111111111111111111111"
+        .parse()
+        .unwrap();
+    let mut open_data = vec![1u8];
+    open_data.extend_from_slice(&7u64.to_le_bytes());
+    open_data.extend_from_slice(&DEPOSIT.to_le_bytes());
+    open_data.extend_from_slice(&7200u32.to_le_bytes());
+    open_data.extend_from_slice(&0u64.to_le_bytes());
+    open_data.extend_from_slice(&0u32.to_le_bytes());
+    send(
+        &mut svm,
+        &payer,
+        vec![Instruction {
+            program_id: chnl,
+            accounts: vec![
+                meta(payer.pubkey(), true, true),
+                meta(payer.pubkey(), true, true),
+                meta(merchant.pubkey(), false, false),
+                meta(mint, false, false),
+                meta(auth_signer.pubkey(), false, false),
+                meta(channel, true, false),
+                meta(payer_ata, true, false),
+                meta(channel_ata, true, false),
+                meta(token_program, false, false),
+                meta(system_program::ID, false, false),
+                meta(rent_sysvar, false, false),
+                meta(ata_program, false, false),
+                meta(event_authority, false, false),
+                meta(chnl, false, false),
+            ],
+            data: open_data,
+        }],
+    )
+    .unwrap();
+    assert_eq!(token_balance(&svm, &payer_ata), SPARE);
+
+    // Harbor bond + bind (payee check passes: merchant is the payee).
+    let bond = Pubkey::find_program_address(
+        &[b"bond", merchant.pubkey().as_ref(), mint.as_ref()],
+        &harbor::id(),
+    )
+    .0;
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::RegisterMerchant {
+                sla_bps: 50,
+                challenge_slots: 150,
+            }
+            .data(),
+            harbor::accounts::RegisterMerchant {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    let vault = Pubkey::find_program_address(
+        &[bond.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    )
+    .0;
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::PostBond { amount: 500_000 }.data(),
+            harbor::accounts::PostBond {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                merchant_ata,
+                vault,
+                token_program,
+                associated_token_program: ata_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    let (binding, _) =
+        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::BindChannel {
+                channel_program: chnl,
+                max_spend: 250_000,
+            }
+            .data(),
+            harbor::accounts::BindChannel {
+                merchant: merchant.pubkey(),
+                bond,
+                binding,
+                channel,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+
+    // The buyer RECEIVED service (escrow is the merchant's to settle),
+    // then disputes anyway with a fully-funded claim.
+    let dispute = Pubkey::find_program_address(
+        &[b"dispute", binding.as_ref(), &1u64.to_le_bytes()],
+        &harbor::id(),
+    )
+    .0;
+    send(
+        &mut svm,
+        &payer,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::OpenDispute {
+                nonce: 1,
+                reason: 1,
+                claim_spend: CLAIM,
+            }
+            .data(),
+            harbor::accounts::OpenDispute {
+                claimant: payer.pubkey(),
+                bond,
+                binding,
+                channel,
+                dispute,
+                mint,
+                claimant_ata: payer_ata,
+                vault,
+                token_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    let treasury = Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0;
+    let treasury_ata = Pubkey::find_program_address(
+        &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    )
+    .0;
+    send(
+        &mut svm,
+        &resolver,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::ResolveTimeout { nonce: 1 }.data(),
+            harbor::accounts::ResolveTimeout {
+                resolver: resolver.pubkey(),
+                bond,
+                mint,
+                binding,
+                dispute,
+                claimant: payer.pubkey(),
+                treasury,
+                vault,
+                treasury_ata,
+                claimant_ata: payer_ata,
+                associated_token_program: ata_program,
+                token_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+
+    // THE THEOREM: dishonest buyer nets exactly -FEE on the claim leg,
+    // on top of the unrecoverable escrow payment. No profit at any scale.
+    assert_eq!(token_balance(&svm, &payer_ata), SPARE - FEE);
+    // Escrow untouched by Harbor paths (merchant settles it separately).
+    assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
+    // Merchant punished as designed; treasury accumulates fee + penalty.
+    assert_eq!(token_balance(&svm, &vault), 500_000 + CLAIM - (CLAIM - FEE) - FEE - PENALTY);
+    assert_eq!(token_balance(&svm, &treasury_ata), FEE + PENALTY);
+}
