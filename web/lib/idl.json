@@ -2,7 +2,7 @@
   "address": "BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H",
   "metadata": {
     "name": "harbor",
-    "version": "0.1.0",
+    "version": "0.4.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },

@@ -111,3 +111,28 @@ unreceiptable once a later nonce lands. Impact is metering-only (claims
 are nonce-independent and unaffected); consecutive-failure disputes work
 regardless. Documented here instead of patched: strict `== last+1`
 ordering would break legitimate out-of-order delivery batches.
+
+## v0.3.0 / v0.4.0 security notes
+
+- **Payer-bound claims (v0.3.0).** `open_dispute` takes the upstream
+  channel account and requires its stored payer (offset 88) to equal the
+  claimant, plus key/owner/version checks against the binding. Drive-by
+  claims by strangers are rejected (`stranger_claim_rejected`); the demo
+  claimant is the channel payer (the buyer disputes its own purchases).
+- **Governed treasury withdraw (v0.3.0).** `withdraw_treasury` moves
+  fee + penalty funds only to an ATA of the bond mint, only with the
+  programdata upgrade authority as signer. Trust analysis: the same key
+  could already drain vaults via upgrade, so no new trust is introduced;
+  the instruction exists so funds are governable, not stranded.
+- **Claim tombstone (v0.4.0).** `open_dispute` inits a `claim` PDA
+  `[CLAIM_SEED, binding, nonce]` (claimant-paid, never closed);
+  re-opening a resolved nonce fails (`test_reclaim_same_nonce_rejected`).
+  Fresh-nonce walking remains possible — bounded by 5% + rent + fees
+  per round plus capital lockup, disclosed as the residual above.
+- **Arithmetic errors (v0.4.0).** Every checked-arithmetic site that
+  unwrapped now returns `ArithmeticOverflow`. A whale-sized claim
+  errors instead of bricking the dispute (`test_oversized_claim_errors_never_panics`).
+- **`sla_bps` is reserved, not enforced.** Stored and range-validated at
+  registration, unread by every instruction (fixed 2x multiple
+  throughout v0.2–v0.4). Kept to avoid a state migration for zero
+  benefit; removing it is a mainnet-cleanup item.

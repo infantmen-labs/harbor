@@ -25,6 +25,15 @@ must change before any real collateral exists.
    multisig immediately; halt new bonds via social coordination (no
    onchain pause exists by design); disclose within 24h.
 
+## Treasury withdrawals use the same key
+
+`withdraw_treasury` (v0.3.0) moves accumulated fee + penalty funds only
+on the upgrade authority's signature, read from the programdata
+account. This introduces no new trust — the key could already drain
+vaults via upgrade — and keeps backstop funds governable instead of
+stranded. Until the multisig rotation above, treasury movements are
+visible onchain within one signature of the disclosed key.
+
 ## Why not yet
 
 Multisig rotation on devnet buys judging optics but costs a migration
