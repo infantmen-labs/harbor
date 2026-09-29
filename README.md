@@ -52,10 +52,14 @@ yarn --cwd sdk test && yarn --cwd server test && yarn --cwd agent test && yarn -
 ## Local end-to-end
 
 ```sh
-solana-test-validator --reset            # terminal 1
-MERCHANT_KEYPAIR=~/.config/solana/id.json MINT=<mint> yarn --cwd server start   # terminal 2
-# terminal 3: run agent, then kill mid-stream, dispute, resolve (see docs/proof-bundle.md)
+./scripts/local-loop.sh    # isolated stack (:8900/:3001), happy -> kill ->
+                           # dispute -> keeper resolve, math verified to the unit
 ```
+
+Needs `anchor build` + `yarn build` first, a locally-built upstream
+`.so` via `UPSTREAM_SO` (default `/tmp/opencode/upstream/target/deploy/
+payment_channels.so`, built per `docs/proof-bundle.md` v0.4.0 notes),
+and keypairs via `MERCHANT_KEYPAIR` / `AGENT_KEYPAIR` env.
 
 ## Layout
 
