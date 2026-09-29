@@ -17,11 +17,11 @@ export interface Config {
    */
   killToken: string | null;
   /**
-   * Channel programs the server will bind as the merchant. An attacker
-   * pointing /session at a fake program gets a 400 before any signature
-   * — the merchant key never signs binds for unknown programs. Defaults
-   * to the canonical upstream ID; localnet rehearsals override with the
-   * fixture program ID.
+   * Upstream channel programs the server will bind as the merchant. An
+   * attacker pointing /session at a fake program gets a 400 before any
+   * signature — the merchant key never signs binds for unknown programs.
+   * Same name as the keeper's list; defaults to the canonical upstream
+   * ID; localnet rehearsals override with the fixture program ID.
    */
   channelProgramAllowlist: string[];
 }
@@ -52,7 +52,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     skipChain: env["SKIP_CHAIN"] === "1",
     killToken: env["KILL_TOKEN"] ?? null,
     channelProgramAllowlist: (
-      env["CHANNEL_PROGRAM_ALLOWLIST"] ??
+      env["UPSTREAM_PROGRAM_ALLOWLIST"] ??
       "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"
     )
       .split(",")

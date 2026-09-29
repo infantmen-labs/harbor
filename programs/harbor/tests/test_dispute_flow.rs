@@ -764,3 +764,60 @@ fn test_non_monotonic_spend_rejected() {
     let log = harbor::ReceiptLog::try_deserialize(&mut acc.data.as_slice()).unwrap();
     assert_eq!(log.cumulative_spend, 10_500);
 }
+
+#[test]
+fn test_fake_vault_rejected() {
+    // Anyone can initialize a token account naming the bond PDA as owner
+    // (no owner signature required), so owner+mint checks alone do not
+    // bind the protocol vault. All fund-moving paths must demand the
+    // canonical vault ATA — here proven on open_dispute.
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    let token_program: Pubkey = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        .parse()
+        .unwrap();
+    let fake = Keypair::new();
+    svm.airdrop(&fake.pubkey(), 10_000_000).unwrap();
+    let mut acc = svm.get_account(&fake.pubkey()).unwrap();
+    let mut data = vec![0u8; 165];
+    data[0..32].copy_from_slice(s.mint.as_ref());
+    data[32..64].copy_from_slice(s.bond.as_ref());
+    data[108] = 1; // Tokenkeg AccountState::Initialized
+    acc.data = data;
+    acc.owner = token_program;
+    svm.set_account(fake.pubkey(), acc).unwrap();
+
+    let r = send(
+        &mut svm,
+        &s.claimant,
+        vec![Instruction::new_with_bytes(
+            harbor::id(),
+            &harbor::instruction::OpenDispute {
+                nonce: 21,
+                reason: 1,
+                claim_spend: 1_000,
+            }
+            .data(),
+            harbor::accounts::OpenDispute {
+                claimant: s.claimant.pubkey(),
+                bond: s.bond,
+                binding: s.binding,
+                channel: s.channel,
+                dispute: dispute_pda(&s.binding, 21),
+                claim: claim_pda(&s.binding, 21),
+                mint: s.mint,
+                claimant_ata: s.claimant_ata,
+                vault: fake.pubkey(),
+                token_program: s.token_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    );
+    assert!(r.is_err());
+    assert!(r.unwrap_err().contains("InvalidVault"));
+    // No dispute, no reserve, no tombstone left behind.
+    assert!(svm.get_account(&dispute_pda(&s.binding, 21)).is_none());
+    assert_eq!(bond_field(&svm, &s.bond, |b| b.reserved), 0);
+}

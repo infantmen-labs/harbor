@@ -1,4 +1,4 @@
-use crate::{constants::*, error::HarborError, state::*};
+use crate::{constants::*, error::HarborError, mint_guard, state::*};
 use anchor_lang::{prelude::*, system_program};
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 
@@ -64,6 +64,18 @@ pub fn handle_open_dispute(
     reason: u8,
     claim_spend: u64,
 ) -> Result<()> {
+    // Canonical vault only: anyone can initialize a token account naming
+    // the bond PDA as owner, so owner+mint checks alone do not bind the
+    // protocol's vault.
+    require!(
+        ctx.accounts.vault.key()
+            == mint_guard::expected_vault_key(
+                &ctx.accounts.bond.key(),
+                &ctx.accounts.token_program.key(),
+                &ctx.accounts.mint.key(),
+            ),
+        HarborError::InvalidVault
+    );
     require!(
         ctx.accounts.claimant.key() != ctx.accounts.bond.merchant,
         HarborError::Unauthorized

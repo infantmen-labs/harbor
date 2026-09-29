@@ -112,11 +112,25 @@ are nonce-independent and unaffected); consecutive-failure disputes work
 regardless. Documented here instead of patched: strict `== last+1`
 ordering would break legitimate out-of-order delivery batches.
 
+**Vault must be canonical on every fund-moving path.** Owner+mint
+checks alone do not bind the protocol vault: anyone can initialize a
+token account naming the bond PDA as owner, diverting locks into an
+account the protocol cannot fully operate on (penalty legs fail,
+reserves jam). `post_bond` always enforced this (`InvalidVault`); as of
+this pass `open_dispute`, `resolve_timeout`, `withdraw_bond`, and
+`top_up_bond` check `mint_guard::expected_vault_key` first
+(`test_fake_vault_rejected`).
+
+**Server never serves beyond escrow.** The client-declared deposit is
+replaced by the onchain channel deposit at session open, and every
+`/complete` above the cached ceiling re-reads the chain (top-ups
+learned lazily, no client trust). Over-authorization returns 402.
+
 **Induced binds are rejected server-side.** `bind_channel` accepts any
 caller-supplied `channel_program` (owner + layout checks are
 self-satisfiable by an attacker-owned program), so the merchant server
 — the only auto-signer — allowlists programs via
-`CHANNEL_PROGRAM_ALLOWLIST` and rejects unknown ones before signing.
+`UPSTREAM_PROGRAM_ALLOWLIST` and rejects unknown ones before signing.
 Manual wallet binds of exotic programs remain possible as informed
 self-custody. An onchain pin is deferred: the localnet fixture carries
 a different ID than canonical, and a hardcoded pin would break dev

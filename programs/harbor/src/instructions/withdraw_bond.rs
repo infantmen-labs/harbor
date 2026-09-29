@@ -1,4 +1,4 @@
-use crate::{constants::*, error::HarborError, state::*};
+use crate::{constants::*, error::HarborError, mint_guard, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 
@@ -30,6 +30,15 @@ pub struct WithdrawBond<'info> {
 
 pub fn handle_withdraw_bond(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
+    require!(
+        ctx.accounts.vault.key()
+            == mint_guard::expected_vault_key(
+                &ctx.accounts.bond.key(),
+                &ctx.accounts.token_program.key(),
+                &ctx.accounts.mint.key(),
+            ),
+        HarborError::InvalidVault
+    );
     let unlock = ctx
         .accounts
         .bond

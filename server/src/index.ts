@@ -20,6 +20,7 @@ import {
   verifyEd25519,
 } from "@infantmen-labs/harbor-sdk";
 import { Config, connectionFor } from "./config";
+import { readUpstreamDeposit } from "./channel";
 import { Session, StoredReceipt, Store, meterTokens, sha256Hex } from "./store";
 
 const EXPIRY_SLOT = (1n << 63n) - 1n;
@@ -73,9 +74,28 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     if (!cfg.channelProgramAllowlist.includes(channelProgram.toBase58())) {
       throw new Error("channel program not allowlisted");
     }
-    const deposit = BigInt(body["deposit"] as string);
+    const claimed = BigInt(body["deposit"] as string);
     const authorizedSigner = new PublicKey(body["authorizedSigner"] as string);
-    if (deposit <= 0n) throw new Error("deposit must be positive");
+    if (claimed <= 0n) throw new Error("deposit must be positive");
+    // Authoritative ceiling comes from the chain, never the caller: the
+    // client-declared deposit is validated against escrow, so serving
+    // against unbacked authorization is impossible even if the caller lies.
+    let deposit = claimed;
+    if (!cfg.skipChain) {
+      const connection = conn ?? connectionFor(cfg);
+      const info = await connection.getAccountInfo(channel);
+      const onchain =
+        info === null
+          ? null
+          : readUpstreamDeposit(
+              info.data,
+              info.owner,
+              channelProgram,
+              cfg.mint
+            );
+      if (onchain === null) throw new Error("channel not found or invalid");
+      deposit = onchain;
+    }
     const key = channel.toBase58();
     let session = store.get(key);
     if (session === undefined) {
@@ -131,6 +151,29 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     const voucherMsg = channelVoucherBytes(channel, cumulative, 0n);
     if (!verifyEd25519(session.authorizedSigner, voucherMsg, sig)) {
       return { status: 402 as const, body: { error: "bad voucher signature" } };
+    }
+    // Deposit ceiling, refreshed lazily from the chain: vouchers beyond
+    // escrowed funds are uncollectible on settle, so they buy no service.
+    // Top-ups are learned here without any client trust.
+    if (cumulative > session.deposit && !cfg.skipChain) {
+      const connection = conn ?? connectionFor(cfg);
+      const info = await connection.getAccountInfo(channel);
+      const onchain =
+        info === null
+          ? null
+          : readUpstreamDeposit(
+              info.data,
+              info.owner,
+              session.channelProgram,
+              cfg.mint
+            );
+      if (onchain === null || cumulative > onchain) {
+        return {
+          status: 402 as const,
+          body: { error: "cumulative exceeds channel deposit" },
+        };
+      }
+      session.deposit = onchain;
     }
     const { output, tokens } = meterTokens(input);
     const cost = tokens * cfg.pricePerToken;

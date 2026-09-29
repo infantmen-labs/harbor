@@ -202,4 +202,126 @@ describe("server sessions", () => {
       await new Promise<void>((resolve) => gated.close(() => resolve()));
     }
   });
+
+  it("reads the upstream deposit ceiling offchain", async () => {
+    const { readUpstreamDeposit } = await import("../src/channel");
+    const mint = appCfg.mint;
+    const mk = (deposit: bigint, owner: PublicKey, mintOk = true) => {
+      const data = Buffer.alloc(256);
+      data[0] = 1;
+      data[1] = 1;
+      data.writeBigUInt64LE(deposit, 12);
+      (mintOk ? mint : Keypair.generate().publicKey).toBuffer().copy(data, 184);
+      return { data, owner };
+    };
+    assert.equal(
+      readUpstreamDeposit(mk(200_000n, CHNL, true).data, CHNL, CHNL, mint),
+      200_000n
+    );
+    // Wrong owner, bad discriminator, short buffer, wrong mint: all null.
+    const stranger = Keypair.generate().publicKey;
+    assert.equal(
+      readUpstreamDeposit(mk(1n, stranger, true).data, stranger, CHNL, mint),
+      null
+    );
+    const bad = mk(1n, CHNL, true);
+    bad.data[0] = 9;
+    assert.equal(readUpstreamDeposit(bad.data, CHNL, CHNL, mint), null);
+    assert.equal(readUpstreamDeposit(Buffer.alloc(32), CHNL, CHNL, mint), null);
+    assert.equal(
+      readUpstreamDeposit(mk(1n, CHNL, false).data, CHNL, CHNL, mint),
+      null
+    );
+  });
+
+  it("clamps sessions to onchain escrow and rejects over-authorization", async () => {
+    const chan = Keypair.generate().publicKey;
+    const data = Buffer.alloc(256);
+    data[0] = 1;
+    data[1] = 1;
+    data.writeBigUInt64LE(200_000n, 12);
+    appCfg.mint.toBuffer().copy(data, 184);
+    const stubConn = {
+      getAccountInfo: async (key: PublicKey) => {
+        if (key.equals(chan)) {
+          return { data, owner: CHNL, lamports: 1_000_000 };
+        }
+        // Pretend the binding already exists so no bind tx is attempted.
+        return { data: Buffer.alloc(8), owner: CHNL, lamports: 1 };
+      },
+    };
+    const live = createApp(
+      { ...appCfg, skipChain: false },
+      new Store(),
+      stubConn as never
+    );
+    await new Promise<void>((resolve) => live.listen(0, resolve));
+    const url = `http://127.0.0.1:${(live.address() as AddressInfo).port}`;
+    const lpost = async (path: string, body: unknown) => {
+      const r = await fetch(`${url}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return {
+        status: r.status,
+        json: (await r.json()) as Record<string, unknown>,
+      };
+    };
+    try {
+      // Inflated client claim (999M) is clamped to the onchain 200k.
+      const s = await lpost("/session", {
+        channel: chan.toBase58(),
+        channelProgram: CHNL.toBase58(),
+        deposit: "999999999",
+        authorizedSigner: agent.publicKey.toBase58(),
+      });
+      assert.equal(s.status, 200);
+      const over = await lpost("/complete", {
+        channel: chan.toBase58(),
+        nonce: "1",
+        input: "x",
+        voucherCumulative: "300000",
+        voucherSignature: Buffer.from(
+          nacl.sign.detached(
+            channelVoucherBytes(chan, 300000n, 0n),
+            agent.secretKey
+          )
+        ).toString("base64"),
+      });
+      assert.equal(over.status, 402);
+      // Within ceiling flows normally.
+      const ok = await lpost("/complete", {
+        channel: chan.toBase58(),
+        nonce: "1",
+        input: "hello world meter me",
+        voucherCumulative: "5000",
+        voucherSignature: Buffer.from(
+          nacl.sign.detached(
+            channelVoucherBytes(chan, 5000n, 0n),
+            agent.secretKey
+          )
+        ).toString("base64"),
+      });
+      assert.equal(ok.status, 200);
+      // After an onchain top-up the refreshed ceiling admits larger
+      // authorizations without any client change.
+      data.writeBigUInt64LE(300_000n, 12);
+      const topped = await lpost("/complete", {
+        channel: chan.toBase58(),
+        nonce: "2",
+        input: "after top up",
+        voucherCumulative: "250000",
+        voucherSignature: Buffer.from(
+          nacl.sign.detached(
+            channelVoucherBytes(chan, 250000n, 0n),
+            agent.secretKey
+          )
+        ).toString("base64"),
+      });
+      assert.equal(topped.status, 200);
+    } finally {
+      await new Promise<void>((resolve) => live.close(() => resolve()));
+    }
+  });
 });

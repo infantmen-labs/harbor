@@ -79,7 +79,7 @@ console.log(bondPda(new PublicKey('$MERCHANT_PUBKEY'), new PublicKey('$MINT'))[0
 echo "== bond $BOND"
 
 echo "== server :3001"
-PORT=3001 RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" PRICE_PER_TOKEN=10 CHANNEL_PROGRAM_ALLOWLIST="$UPSTREAM_ID" nohup node server/dist/src/serve.js > /tmp/opencode/loop-server.log 2>&1 &
+PORT=3001 RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" PRICE_PER_TOKEN=10 UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" nohup node server/dist/src/serve.js > /tmp/opencode/loop-server.log 2>&1 &
 echo $! > /tmp/opencode/loop-server.pid
 sleep 4
 curl -sS -m 8 http://127.0.0.1:3001/info; echo

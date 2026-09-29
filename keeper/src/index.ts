@@ -1,6 +1,6 @@
 /**
- * Harbor keeper: watches open disputes and resolves the adjudicated ones.
- * Delivery proof always wins; past-deadline absence slashes.
+ * Harbor keeper: watches open Harbor disputes and resolves matured ones
+ * as timeout refunds. There is no delivered path: receipts never acquit.
  * Dry-run by default; MODE=live sends transactions.
  */
 import { Connection } from "@solana/web3.js";

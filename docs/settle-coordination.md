@@ -54,6 +54,6 @@ status) and requires the binder to be the recorded payee on the bond's
 mint (v0.2.1). PDA re-derivation proved unnecessary: the stored payee is
 upstream-written, so squatters cannot forge it. Separately, the merchant
 server allowlists which channel programs it will auto-bind
-(`CHANNEL_PROGRAM_ALLOWLIST`, default canonical) — induced signing for
+(`UPSTREAM_PROGRAM_ALLOWLIST`, default canonical) — induced signing for
 attacker-owned programs is rejected before any signature, and the keeper
 resolves only allowlisted programs.

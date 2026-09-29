@@ -1,4 +1,4 @@
-use crate::{error::HarborError, state::*};
+use crate::{error::HarborError, mint_guard, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 
@@ -30,6 +30,15 @@ pub struct TopUpBond<'info> {
 
 pub fn handle_top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
+    require!(
+        ctx.accounts.vault.key()
+            == mint_guard::expected_vault_key(
+                &ctx.accounts.bond.key(),
+                &ctx.accounts.token_program.key(),
+                &ctx.accounts.mint.key(),
+            ),
+        HarborError::InvalidVault
+    );
 
     token_interface::transfer_checked(
         CpiContext::new(

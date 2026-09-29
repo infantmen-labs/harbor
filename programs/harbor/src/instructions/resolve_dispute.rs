@@ -1,4 +1,4 @@
-use crate::{constants::*, error::HarborError, state::*};
+use crate::{constants::*, error::HarborError, mint_guard, state::*};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::{self, AssociatedToken},
@@ -61,6 +61,15 @@ pub struct ResolveTimeout<'info> {
 /// receipts are merchant-signed liveness attestations and are never
 /// evidence against a claim.
 pub fn handle_resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Result<()> {
+    require!(
+        ctx.accounts.vault.key()
+            == mint_guard::expected_vault_key(
+                &ctx.accounts.bond.key(),
+                &ctx.accounts.token_program.key(),
+                &ctx.accounts.mint.key(),
+            ),
+        HarborError::InvalidVault
+    );
     require!(
         ctx.accounts.treasury.key() == expected_treasury_key(&ctx.accounts.mint.key()),
         HarborError::BindingMismatch
