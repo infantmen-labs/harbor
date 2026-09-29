@@ -88,7 +88,7 @@ the challenge window. Two properties follow, both load-bearing:
 S (locked) and the income cap is exactly S (refund = S − fee), so
 fabrication nets −5% − tx fees at every scale. A frequently-claimed
 "profitable dishonest buyer" theorem forgets the escrow leg: a buyer
-who *received* service has already paid the channel escrow for it
+who _received_ service has already paid the channel escrow for it
 (the server holds buyer-signed vouchers for every served unit, and the
 upstream `settle` instruction is permissionless — no buyer signature
 needed), so that payment is unrecoverable. Full accounting for a
@@ -102,8 +102,8 @@ bond. This is bounded (no theft path — all outflows are capped by
 locked principal), unprofitable for the attacker, and proportionally
 small against honest volume. The clean fix (an agent-signed delivery
 ack oracle gating receipts) is post-contest work, deliberately not
-rushed before the deadline; the mechanism is shipped as *disclosed
-optimistic refunds*, not delivery assurance.
+rushed before the deadline; the mechanism is shipped as _disclosed
+optimistic refunds_, not delivery assurance.
 
 **Nonce gaps brick skipped receipt slots.** `submit_receipt` requires
 `nonce > last_nonce`, so a skipped nonce becomes permanently
@@ -111,6 +111,16 @@ unreceiptable once a later nonce lands. Impact is metering-only (claims
 are nonce-independent and unaffected); consecutive-failure disputes work
 regardless. Documented here instead of patched: strict `== last+1`
 ordering would break legitimate out-of-order delivery batches.
+
+**Induced binds are rejected server-side.** `bind_channel` accepts any
+caller-supplied `channel_program` (owner + layout checks are
+self-satisfiable by an attacker-owned program), so the merchant server
+— the only auto-signer — allowlists programs via
+`CHANNEL_PROGRAM_ALLOWLIST` and rejects unknown ones before signing.
+Manual wallet binds of exotic programs remain possible as informed
+self-custody. An onchain pin is deferred: the localnet fixture carries
+a different ID than canonical, and a hardcoded pin would break dev
+loops for zero mainnet benefit pre-multisig.
 
 ## v0.3.0 / v0.4.0 security notes
 

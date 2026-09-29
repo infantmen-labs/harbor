@@ -70,6 +70,9 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
   async function handleSession(body: Record<string, unknown>) {
     const channel = new PublicKey(body["channel"] as string);
     const channelProgram = new PublicKey(body["channelProgram"] as string);
+    if (!cfg.channelProgramAllowlist.includes(channelProgram.toBase58())) {
+      throw new Error("channel program not allowlisted");
+    }
     const deposit = BigInt(body["deposit"] as string);
     const authorizedSigner = new PublicKey(body["authorizedSigner"] as string);
     if (deposit <= 0n) throw new Error("deposit must be positive");

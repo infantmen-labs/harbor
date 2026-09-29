@@ -37,6 +37,7 @@ describe("server sessions", () => {
       pricePerToken: 10n,
       skipChain: true,
       killToken: null,
+      channelProgramAllowlist: [CHNL.toBase58()],
     };
     appCfg = cfg;
     server = createApp(cfg, store);
@@ -110,6 +111,24 @@ describe("server sessions", () => {
     // Receipts are retrievable.
     const g = await fetch(`${base}/receipt/${channel.toBase58()}/1`);
     assert.equal(g.status, 200);
+  });
+
+  it("rejects sessions on non-allowlisted channel programs", async () => {
+    const evil = await post("/session", {
+      channel: channel.toBase58(),
+      channelProgram: Keypair.generate().publicKey.toBase58(),
+      deposit: "100000",
+      authorizedSigner: agent.publicKey.toBase58(),
+    });
+    assert.equal(evil.status, 400);
+    // The allowlisted (canonical) program still binds.
+    const good = await post("/session", {
+      channel: Keypair.generate().publicKey.toBase58(),
+      channelProgram: CHNL.toBase58(),
+      deposit: "100000",
+      authorizedSigner: agent.publicKey.toBase58(),
+    });
+    assert.equal(good.status, 200);
   });
 
   it("rejects replays and enforces kill switch", async () => {

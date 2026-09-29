@@ -48,7 +48,12 @@ channel escrow balance is unchanged after a Harbor slash.
 
 ## Binding trust
 
-`bind_channel` requires the channel account to be owned by the declared
-channel program (`channel_program` arg; mainnet: the pinned ID). Full
-upstream seed re-derivation is deferred — ownership is the meaningful gate
-against binding random accounts.
+`bind_channel` verifies the channel account against the pinned upstream
+layout (owner == declared program, discriminator/version bytes, open
+status) and requires the binder to be the recorded payee on the bond's
+mint (v0.2.1). PDA re-derivation proved unnecessary: the stored payee is
+upstream-written, so squatters cannot forge it. Separately, the merchant
+server allowlists which channel programs it will auto-bind
+(`CHANNEL_PROGRAM_ALLOWLIST`, default canonical) — induced signing for
+attacker-owned programs is rejected before any signature, and the keeper
+resolves only allowlisted programs.
