@@ -365,13 +365,14 @@ fn submit(
     signer: &Keypair,
     nonce: u64,
     expiry_slot: u64,
+    spend: u64,
 ) -> Result<(), String> {
     let meter_hash = [1u8; 32];
     let output_hash = [2u8; 32];
     let msg = harbor::receipt_message_bytes(
         &s.merchant.pubkey(),
         &s.binding,
-        10_000,
+        spend,
         &meter_hash,
         &output_hash,
         0,
@@ -390,7 +391,7 @@ fn submit(
             Instruction::new_with_bytes(
                 harbor::id(),
                 &harbor::instruction::SubmitReceipt {
-                    cumulative_spend: 10_000,
+                    cumulative_spend: spend,
                     meter_hash,
                     output_hash,
                     status: 0,
@@ -420,7 +421,7 @@ fn test_receipt_proofs() {
     let far_future = svm.get_sysvar::<Clock>().slot + 10_000;
 
     // Valid receipt lands.
-    submit(&mut svm, &s, &s.merchant, 1, far_future).unwrap();
+    submit(&mut svm, &s, &s.merchant, 1, far_future, 10_000).unwrap();
     let acc = svm
         .get_account(&receipt_pda(&s.binding, 1))
         .unwrap();
@@ -429,17 +430,17 @@ fn test_receipt_proofs() {
     assert_eq!(log.cumulative_spend, 10_000);
 
     // Replay of the same nonce fails.
-    assert!(submit(&mut svm, &s, &s.merchant, 1, far_future).is_err());
+    assert!(submit(&mut svm, &s, &s.merchant, 1, far_future, 10_000).is_err());
 
     // Wrong signer fails.
     let stranger = Keypair::new();
     svm.airdrop(&stranger.pubkey(), 1_000_000_000).unwrap();
-    assert!(submit(&mut svm, &s, &stranger, 2, far_future).is_err());
+    assert!(submit(&mut svm, &s, &stranger, 2, far_future, 10_000).is_err());
 
     // Expired receipt fails.
     svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 50);
     let past = svm.get_sysvar::<Clock>().slot - 1;
-    assert!(submit(&mut svm, &s, &s.merchant, 2, past).is_err());
+    assert!(submit(&mut svm, &s, &s.merchant, 2, past, 10_000).is_err());
 }
 
 #[test]
@@ -482,7 +483,7 @@ fn test_proactive_junk_receipt_irrelevant() {
 
     // The merchant proactively "delivers" the failed request with a
     // validly-signed junk receipt before any dispute exists.
-    submit(&mut svm, &s, &s.merchant, 3, far_future).unwrap();
+    submit(&mut svm, &s, &s.merchant, 3, far_future, 10_000).unwrap();
 
     // The dispute opens anyway: receipts are not evidence.
     open(&mut svm, &s, 3, 1, 5_000).unwrap();
@@ -596,7 +597,7 @@ fn test_halt_then_dispute_succeeds() {
         )],
     )
     .unwrap();
-    assert!(submit(&mut svm, &s, &s.merchant, 1, far_future).is_err());
+    assert!(submit(&mut svm, &s, &s.merchant, 1, far_future, 10_000).is_err());
 
     // ...but disputes are NEVER blocked by halt: no halt-shaped rug.
     open(&mut svm, &s, 1, 1, 4_000).unwrap();
@@ -739,4 +740,27 @@ fn test_oversized_claim_errors_never_panics() {
         "whale claim must error, never panic"
     );
     assert_eq!(token_balance(&svm, &s.vault), vault_before);
+}
+
+#[test]
+fn test_non_monotonic_spend_rejected() {
+    // Cumulative authorized spend never decreases: backward shaping is
+    // rejected, flat follow-ups stay receiptable. Metering-only (no
+    // funds move on receipts).
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+    let far_future = svm.get_sysvar::<Clock>().slot + 10_000;
+
+    submit(&mut svm, &s, &s.merchant, 1, far_future, 10_000).unwrap();
+    // Backward spend rejected with a proper error, not a panic.
+    let r = submit(&mut svm, &s, &s.merchant, 2, far_future, 9_999);
+    assert!(r.is_err());
+    assert!(r.unwrap_err().contains("NonMonotonicSpend"));
+    // Flat follow-up accepted.
+    submit(&mut svm, &s, &s.merchant, 2, far_future, 10_000).unwrap();
+    // Forward spend accepted.
+    submit(&mut svm, &s, &s.merchant, 3, far_future, 10_500).unwrap();
+    let acc = svm.get_account(&receipt_pda(&s.binding, 3)).unwrap();
+    let log = harbor::ReceiptLog::try_deserialize(&mut acc.data.as_slice()).unwrap();
+    assert_eq!(log.cumulative_spend, 10_500);
 }

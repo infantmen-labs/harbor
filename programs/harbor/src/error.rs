@@ -44,4 +44,6 @@ pub enum HarborError {
     ChannelNotOpen,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+    #[msg("Cumulative spend moved backwards")]
+    NonMonotonicSpend,
 }

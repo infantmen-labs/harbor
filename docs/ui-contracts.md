@@ -89,3 +89,10 @@ following changed:
   registration, unread by every instruction (v0.2–v0.4 use the fixed
   2x penalty multiple). Kept for future fee parameterization; removing
   it would force a state migration for zero benefit.
+
+## Amendments (v0.4.2) — receipt monotonicity
+
+- `submit_receipt` requires `cumulative_spend >= binding.last_cumulative_spend`
+  (new `NonMonotonicSpend` error). Zero-cost follow-up units stay
+  receiptable; backward shaping is rejected. Metering-only: no funds
+  move on receipts.

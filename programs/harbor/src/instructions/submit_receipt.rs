@@ -126,6 +126,13 @@ pub fn handle_submit_receipt(
     require!(slot <= expiry_slot, HarborError::Expired);
     require!(!ctx.accounts.binding.halted, HarborError::Halted);
     require!(nonce > ctx.accounts.binding.last_nonce, HarborError::Replay);
+    // Cumulative authorized spend never decreases: `>=` (not `>`) so
+    // zero-cost follow-up units stay receiptable while backward shaping
+    // is rejected. Metering-only (no funds move on receipts).
+    require!(
+        cumulative_spend >= ctx.accounts.binding.last_cumulative_spend,
+        HarborError::NonMonotonicSpend
+    );
     require!(signer == ctx.accounts.merchant.key(), HarborError::Unauthorized);
 
     let message = receipt_message_bytes(
