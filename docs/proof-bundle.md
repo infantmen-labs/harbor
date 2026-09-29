@@ -198,6 +198,34 @@ state migration. Upgrade sig
   new mint): claim 2,000 → bond 496,000, reserved 0, treasury 4,100,
   resolve sig `2HyPDbuQmEZdhPermgVHK6e1LA3UrC55Zt7Lo2ifLAgHcjoRvfnyCHpn5Tu8BD2GBw5PnLiL1tQvmgG7nUap8`.
 
+## v0.4.0 — claim tombstone, arithmetic errors (live on devnet)
+
+`open_dispute` inits a `claim` PDA `[CLAIM_SEED, binding, nonce]`
+(claimant-paid, never closed) so resolved nonces can't re-claim; all
+checked-arithmetic sites return `ArithmeticOverflow` instead of
+unwrapping (whale claims error, never brick). Upgrade path hit a real
+loader constraint worth recording: `ExtendProgram` refuses extensions
+under 10,240 bytes, so the programdata was extended +20,480 first, then
+upgraded. Upgrade sig
+`64jzzwttzrcwVXttXbTfXJcUDJtZRW4gqbGc4wbJtmfHWH1KysvozgN9Yjs1Px5pX8EhenVvtbBHWi9Kk5BwV1ix`
+(deep-byte verified, IDL republished with `claim` + `withdraw_treasury`
+confirmed via fetch).
+
+- v0.4.0 devnet loop (agent key as claimant = channel payer): happy
+  channel `5uvr1JSVRAyQR27jscYXvkWUdR2w5MVtiZHYoxEPLRBS` (3 receipts,
+  settled) → kill → fail channel
+  `qu1LwbZmc527UgGPUvaUKh8BirQ4kbEUXSeEohGZcu5` → dispute
+  `ZZJyDY4TNqLQ1cYoC1boa4AyUQnCA6Thdt4QgDxQiru` (claim 2,000, open sig
+  `msTPYKGj8WasqawEFvtakYvKhEUHG6DhdVY9JdnYWJWGxayoWU2V6UpMZxnvtRxjKWHf8131gY679KsyUekLWZg`)
+  → keeper `resolve-timeout` sig
+  `4HAMcC8ofX6wMcyaU9imXv684TXHLS66DsWRmpMZ5koSAekH4M1EqT8FYvfCZQVPQSCRAckUVTse3yFbuwETSiqx`
+  (slot 505642165).
+- Math: fee = 100, refund = 1,900, penalty = 4,000. Bond `2G19xBTW…`:
+  481,000, reserved 0. Treasury: 19,475 (15,375 + 4,100).
+- v0.4.0 localnet loop on the rebuilt validator: claim 2,000 → bond
+  492,000, reserved 0, treasury 8,200, tombstone verified present after
+  resolve; resolve sig `5Hpyigh73Y51N4w836ZhKcgdhEibnnBZRkg5qxRnewwXenRwP6sdqA9M4vb7YwLbmijPFbDmzKdTeg3e4bSRoGes`.
+
 ## Tooling publication (live on npm)
 
 - `harbor-sdk` was taken (n1colaslugo, unrelated API-auth SDK), so the
