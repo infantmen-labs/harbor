@@ -30,27 +30,25 @@ pub struct WithdrawBond<'info> {
 
 pub fn handle_withdraw_bond(ctx: Context<WithdrawBond>, amount: u64) -> Result<()> {
     require!(amount > 0, HarborError::ZeroAmount);
+    let unlock = ctx
+        .accounts
+        .bond
+        .last_change_slot
+        .checked_add(WITHDRAW_DELAY_SLOTS)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     require!(
-        Clock::get()?.slot
-            > ctx
-                .accounts
-                .bond
-                .last_change_slot
-                .checked_add(WITHDRAW_DELAY_SLOTS)
-                .unwrap(),
+        Clock::get()?.slot > unlock,
         HarborError::TimelockNotPassed
     );
     // Open disputes lock their full outflow (refund + fee + penalty);
     // withdrawals may only touch the unreserved remainder.
-    require!(
-        amount <= ctx
-            .accounts
-            .bond
-            .amount
-            .checked_sub(ctx.accounts.bond.reserved)
-            .unwrap(),
-        HarborError::DisputeOpen
-    );
+    let free = ctx
+        .accounts
+        .bond
+        .amount
+        .checked_sub(ctx.accounts.bond.reserved)
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    require!(amount <= free, HarborError::DisputeOpen);
 
     let mint_key = ctx.accounts.mint.key();
     let seeds: &[&[u8]] = &[

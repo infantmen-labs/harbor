@@ -8,6 +8,7 @@ import {
   TOKEN_PROGRAM_ID,
   bindingPda,
   bondPda,
+  claimPda,
   disputePda,
   openDisputeIx,
   registerMerchantIx,
@@ -146,6 +147,7 @@ export function buildOpenDisputeIx(
   claimSpend: bigint
 ): { ix: TransactionInstruction; dispute: PublicKey } {
   const [dispute] = disputePda(binding, nonce);
+  const [claim] = claimPda(binding, nonce);
   const claimantAta = PublicKey.findProgramAddressSync(
     [claimant.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
     ATA_PROGRAM_ID
@@ -162,6 +164,7 @@ export function buildOpenDisputeIx(
       binding,
       channel,
       dispute,
+      claim,
       mint,
       claimantAta,
       vault,

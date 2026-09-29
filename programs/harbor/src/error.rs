@@ -42,4 +42,6 @@ pub enum HarborError {
     ClaimTooLarge,
     #[msg("Payment channel is not open")]
     ChannelNotOpen,
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
 }

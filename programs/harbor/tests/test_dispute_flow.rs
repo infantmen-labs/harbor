@@ -237,6 +237,15 @@ fn dispute_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
     .0
 }
 
+fn claim_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
+    Pubkey::find_program_address(
+        &[b"claim", binding.as_ref(), &nonce.to_le_bytes()],
+        &harbor::id(),
+    )
+    .0
+}
+
+
 fn treasury_of(mint: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0
 }
@@ -277,6 +286,7 @@ fn open(
                 binding: s.binding,
                 channel: s.channel,
                 dispute: dispute_pda(&s.binding, nonce),
+                claim: claim_pda(&s.binding, nonce),
                 mint: s.mint,
                 claimant_ata: s.claimant_ata,
                 vault: s.vault,
@@ -681,4 +691,52 @@ fn test_treasury_withdraw_governed() {
     treasury_withdraw(&mut svm, &s, &authority, 20_500).unwrap();
     assert_eq!(token_balance(&svm, &t_ata), 0);
     assert_eq!(token_balance(&svm, &s.merchant_ata), 500_000 + 20_500);
+}
+
+#[test]
+fn test_oversized_claim_errors_never_panics() {
+    // A whale-sized claim (unreachable via open_dispute, which requires
+    // funding the lock) must fail resolve with ArithmeticOverflow — not
+    // panic, not move funds, not brick anything reachable.
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    // Harvest the real Dispute discriminator from an honest dispute.
+    open(&mut svm, &s, 30, 1, 1_000).unwrap();
+    let real = svm.get_account(&dispute_pda(&s.binding, 30)).unwrap();
+    let mut disc = [0u8; 8];
+    disc.copy_from_slice(&real.data[0..8]);
+
+    // Craft the oversized dispute directly: deadline 0 (mature),
+    // claim u64::MAX, canonical bump so seeds verify.
+    let dpda = dispute_pda(&s.binding, 31);
+    svm.airdrop(&dpda, 10_000_000).unwrap();
+    let mut acc = svm.get_account(&dpda).unwrap();
+    let mut data = vec![0u8; 8 + 32 + 8 + 1 + 32 + 8 + 8 + 8 + 1];
+    data[0..8].copy_from_slice(&disc);
+    data[8..40].copy_from_slice(s.binding.as_ref());
+    data[40..48].copy_from_slice(&31u64.to_le_bytes());
+    data[48] = 1;
+    data[49..81].copy_from_slice(s.claimant.pubkey().as_ref());
+    data[81..89].copy_from_slice(&0u64.to_le_bytes());
+    data[89..97].copy_from_slice(&10_000_000u64.to_le_bytes());
+    data[97..105].copy_from_slice(&u64::MAX.to_le_bytes());
+    let (_, bump) = Pubkey::find_program_address(
+        &[b"dispute", s.binding.as_ref(), &31u64.to_le_bytes()],
+        &harbor::id(),
+    );
+    data[105] = bump;
+    acc.data = data;
+    acc.owner = harbor::id();
+    svm.set_account(dpda, acc).unwrap();
+
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    let vault_before = token_balance(&svm, &s.vault);
+    let r = resolve(&mut svm, &s, 31, &s.claimant);
+    assert!(r.is_err());
+    assert!(
+        r.unwrap_err().contains("ArithmeticOverflow"),
+        "whale claim must error, never panic"
+    );
+    assert_eq!(token_balance(&svm, &s.vault), vault_before);
 }

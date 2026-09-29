@@ -46,7 +46,10 @@ pub fn handle_top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
     )?;
 
     let bond = &mut ctx.accounts.bond;
-    bond.amount = bond.amount.checked_add(amount).unwrap();
+    bond.amount = bond
+        .amount
+        .checked_add(amount)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     bond.last_change_slot = Clock::get()?.slot;
     Ok(())
 }

@@ -339,6 +339,11 @@ fn test_channel_compose() {
                 binding,
                 channel,
                 dispute,
+                claim: Pubkey::find_program_address(
+                    &[b"claim", binding.as_ref(), &9u64.to_le_bytes()],
+                    &harbor::id(),
+                )
+                .0,
                 mint,
                 claimant_ata: payer_ata,
                 vault,
@@ -614,6 +619,11 @@ fn test_dishonest_buyer_nets_negative() {
                 binding,
                 channel,
                 dispute,
+                claim: Pubkey::find_program_address(
+                    &[b"claim", binding.as_ref(), &1u64.to_le_bytes()],
+                    &harbor::id(),
+                )
+                .0,
                 mint,
                 claimant_ata: payer_ata,
                 vault,

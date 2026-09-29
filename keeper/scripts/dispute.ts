@@ -9,6 +9,7 @@ import {
 import {
   ATA_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  claimPda,
   disputePda,
   openDisputeIx,
 } from "@infantmen-labs/harbor-sdk";
@@ -39,6 +40,7 @@ async function main(): Promise<void> {
   const reason = Number(process.env["REASON"] ?? 1);
   const claimSpend = BigInt(process.env["CLAIM_SPEND"] ?? "1000");
   const [dispute] = disputePda(binding, nonce);
+  const [claim] = claimPda(binding, nonce);
   const tx = new Transaction().add(
     openDisputeIx(
       programId,
@@ -47,6 +49,7 @@ async function main(): Promise<void> {
       binding,
       channel,
       dispute,
+      claim,
       mint,
       ataFor(claimant.publicKey, mint),
       ataFor(bond, mint),

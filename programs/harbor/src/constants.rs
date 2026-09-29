@@ -23,6 +23,11 @@ pub const UPSTREAM_PAYEE_OFFSET: usize = 120;
 pub const UPSTREAM_MINT_OFFSET: usize = 184;
 pub const UPSTREAM_PAYER_OFFSET: usize = 88;
 pub const TREASURY_SEED: &[u8] = b"treasury";
+/// Tombstone marking a (binding, nonce) as claimed exactly once.
+/// Init'd (claimant-paid) at open, never closed: re-opening the same
+/// nonce fails because the PDA already exists. Fresh nonces can still
+/// be claimed — each round costs the attacker 5% + rent + fees.
+pub const CLAIM_SEED: &[u8] = b"claim";
 /// Protocol fee on dispute claims, in bps of the locked claim.
 /// Paid to the per-mint backstop treasury on every timeout resolve.
 pub const CLAIM_FEE_BPS: u64 = 500;

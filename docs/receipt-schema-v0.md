@@ -43,7 +43,7 @@ the submission instruction.
 
 | Param | Value | Notes |
 |-------|-------|-------|
-| `sla_bps` | 50 | Slash per proven failure, basis points of bound spend |
+| `sla_bps` | 50 | Reserved; currently unread by any instruction (no SLA-scaled math ships in v0.2–v0.4; penalty is a fixed 2x multiple — see ui-contracts Amendments) |
 | `challenge_slots` | 150 | Dispute window after opening |
 | `dispute_stake` | 0.01 SOL equiv | Opener stake, forfeited on false challenge |
 | `bond_withdraw_timelock` | 1 epoch | Withdraw only with zero open disputes |

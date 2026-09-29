@@ -166,6 +166,35 @@
           }
         },
         {
+          "name": "claim",
+          "docs": [
+            "closed. Its existence is the single-claim guarantee."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "binding"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
           "name": "mint"
         },
         {
@@ -1023,6 +1052,11 @@
       "code": 6019,
       "name": "ChannelNotOpen",
       "msg": "Payment channel is not open"
+    },
+    {
+      "code": 6020,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
     }
   ],
   "types": [
@@ -1289,6 +1323,10 @@
           },
           {
             "name": "sla_bps",
+            "docs": [
+              "Reserved for future fee parameterization; currently unread by any",
+              "instruction (v0.2–v0.4 use a fixed 2x penalty multiple instead)."
+            ],
             "type": "u16"
           },
           {

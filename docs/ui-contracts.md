@@ -74,3 +74,18 @@ following changed:
   authority read from the programdata account (same key that could
   already drain vaults via upgrade — no new trust). Until a multisig
   holds that key (see `docs/authority.md`), a governance escape hatch.
+
+## Amendments (v0.4.0) — claim tombstone, arithmetic errors
+
+- `open_dispute` takes a new `claim` account (after `dispute`): a
+  tombstone PDA `[CLAIM_SEED, binding, nonce]`, init'd claimant-paid,
+  never closed. Re-opening a resolved (binding, nonce) fails because
+  the PDA exists. Fresh nonces remain claimable (each round costs the
+  attacker 5% + rent + fees — disclosed residual, not a fix).
+- New `ArithmeticOverflow` error; all checked-arithmetic sites that
+  previously unwrapped now return it. A whale-sized claim errors
+  instead of bricking the dispute.
+- `sla_bps` is reserved, not enforced: stored and validated at
+  registration, unread by every instruction (v0.2–v0.4 use the fixed
+  2x penalty multiple). Kept for future fee parameterization; removing
+  it would force a state migration for zero benefit.

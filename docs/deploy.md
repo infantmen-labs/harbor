@@ -96,8 +96,8 @@ correct devnet addresses; set them explicitly only if the programs move.
 
 ```sh
 curl https://<server>/info                                     # killed: false
-open https://<web>/live?mock=1                                # full fail-path, no wallet
 open https://<web>/live                                       # bond 2G19xBTW…, no-dispute state
+open https://<web>/live?mock=1                                # offline fallback only
 ```
 
 Then the live loop: agent happy run → receipts `signed ✓` →

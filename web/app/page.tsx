@@ -77,7 +77,7 @@ export default function Landing() {
           <HowMetric label="Mechanism" value="Bond → claim → refund" />
           <HowMetric label="Settlement" value="Payment channels" />
           <HowMetric label="Challenge window" value="150 slots" />
-          <HowMetric label="Trust model" value="Collateral, not trust" />
+          <HowMetric label="Trust model" value="Collateral, single-key" />
         </div>
       </section>
 
@@ -98,7 +98,7 @@ export default function Landing() {
             <HowCard
               n="01"
               title="Bond"
-              body="The merchant locks stablecoin collateral sized to its SLA. The bond is the performance guarantee — no legal contract, no account."
+              body="The merchant locks stablecoin collateral as a performance guarantee — no legal contract, no account."
             />
             <HowCard
               n="02"
@@ -108,7 +108,7 @@ export default function Landing() {
             <HowCard
               n="03"
               title="Refund on failure"
-              body="A missed deadline opens a dispute backed by a locked claim. Nobody judges it: past the challenge window the claim refunds to the agent and the bond pays a penalty to the backstop."
+              body="A missed deadline opens a dispute backed by a locked claim. Nobody judges it: past the challenge window any payer-bound claim auto-refunds 95% to the agent and burns 2x from the bond."
             />
           </div>
         </div>

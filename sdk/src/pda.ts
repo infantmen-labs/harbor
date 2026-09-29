@@ -49,6 +49,19 @@ export function treasuryPda(mint: PublicKey): [PublicKey, number] {
   );
 }
 
+/** Tombstone marking a (binding, nonce) as claimed exactly once. */
+export function claimPda(
+  binding: PublicKey,
+  nonce: bigint
+): [PublicKey, number] {
+  const nonceBuf = Buffer.alloc(8);
+  nonceBuf.writeBigUInt64LE(nonce);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("claim"), binding.toBuffer(), nonceBuf],
+    HARBOR_PROGRAM_ID
+  );
+}
+
 export function channelPda(
   channelProgram: PublicKey,
   payer: PublicKey,

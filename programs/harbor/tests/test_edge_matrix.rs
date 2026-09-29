@@ -194,6 +194,15 @@ fn dispute_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
     .0
 }
 
+fn claim_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
+    Pubkey::find_program_address(
+        &[b"claim", binding.as_ref(), &nonce.to_le_bytes()],
+        &harbor::id(),
+    )
+    .0
+}
+
+
 fn treasury_of(mint: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0
 }
@@ -231,6 +240,7 @@ fn open_dispute(
                 binding: s.binding,
                 channel: s.channel,
                 dispute: dispute_pda(&s.binding, nonce),
+                claim: claim_pda(&s.binding, nonce),
                 mint: s.mint,
                 claimant_ata: s.claimant_ata,
                 vault: s.vault,
@@ -382,6 +392,7 @@ fn test_unauthorized_matrix() {
                 binding: s.binding,
                 channel: s.channel,
                 dispute: dispute_pda(&s.binding, 1),
+                claim: claim_pda(&s.binding, 1),
                 mint: s.mint,
                 claimant_ata: s.merchant_ata,
                 vault: s.vault,
@@ -695,6 +706,7 @@ fn test_stranger_claim_rejected() {
                 binding: s.binding,
                 channel: s.channel,
                 dispute: dispute_pda(&s.binding, 11),
+                claim: claim_pda(&s.binding, 11),
                 mint: s.mint,
                 claimant_ata: stranger_ata,
                 vault: s.vault,
@@ -707,4 +719,24 @@ fn test_stranger_claim_rejected() {
     assert!(hostile.is_err());
     // No dispute account left behind (init rolled back).
     assert!(svm.get_account(&dispute_pda(&s.binding, 11)).is_none());
+}
+
+#[test]
+fn test_reclaim_same_nonce_rejected() {
+    // A resolved (binding, nonce) can never be claimed again: the claim
+    // tombstone PDA persists after the dispute account closes, so the
+    // re-init fails. Fresh nonces remain claimable (each round still
+    // costs the attacker 5% + rent + fees — disclosed residual).
+    let mut svm = LiteSVM::new();
+    let s = setup(&mut svm);
+
+    open_dispute(&mut svm, &s, 11, 1, 1_000).unwrap();
+    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    resolve_timeout(&mut svm, &s, 11).unwrap();
+    assert_eq!(bond_open_disputes(&svm, &s.bond), 0);
+
+    // Same nonce again: tombstone blocks re-init.
+    assert!(open_dispute(&mut svm, &s, 11, 1, 1_000).is_err());
+    // Fresh nonce still works.
+    open_dispute(&mut svm, &s, 12, 1, 1_000).unwrap();
 }

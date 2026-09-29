@@ -100,16 +100,20 @@ pub fn handle_resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Resul
     let claim = ctx.accounts.dispute.claim_spend;
     let fee = claim
         .checked_mul(CLAIM_FEE_BPS)
-        .unwrap()
+        .ok_or(HarborError::ArithmeticOverflow)?
         .checked_div(BPS_DENOMINATOR)
-        .unwrap();
-    let refund = claim.checked_sub(fee).unwrap();
-    let penalty = claim.checked_mul(PENALTY_MULT).unwrap();
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    let refund = claim
+        .checked_sub(fee)
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    let penalty = claim
+        .checked_mul(PENALTY_MULT)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     let outflow = refund
         .checked_add(fee)
-        .unwrap()
+        .ok_or(HarborError::ArithmeticOverflow)?
         .checked_add(penalty)
-        .unwrap();
+        .ok_or(HarborError::ArithmeticOverflow)?;
     require!(outflow > 0, HarborError::ZeroAmount);
 
     let merchant_key = ctx.accounts.bond.merchant;
@@ -145,16 +149,26 @@ pub fn handle_resolve_timeout(ctx: Context<ResolveTimeout>, nonce: u64) -> Resul
             },
             &[seeds],
         ),
-        fee.checked_add(penalty).unwrap(),
+        fee.checked_add(penalty)
+            .ok_or(HarborError::ArithmeticOverflow)?,
         ctx.accounts.mint.decimals,
     )?;
 
     let bond = &mut ctx.accounts.bond;
     // The fee comes out of the claimant's locked principal; only the
     // penalty hits the bond. Invariant: vault == amount + open claims.
-    bond.amount = bond.amount.checked_sub(penalty).unwrap();
-    bond.reserved = bond.reserved.checked_sub(outflow).unwrap();
-    bond.open_disputes = bond.open_disputes.checked_sub(1).unwrap();
+    bond.amount = bond
+        .amount
+        .checked_sub(penalty)
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    bond.reserved = bond
+        .reserved
+        .checked_sub(outflow)
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    bond.open_disputes = bond
+        .open_disputes
+        .checked_sub(1)
+        .ok_or(HarborError::ArithmeticOverflow)?;
 
     emit!(BondSlashed {
         binding: ctx.accounts.binding.key(),

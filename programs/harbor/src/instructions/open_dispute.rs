@@ -23,6 +23,16 @@ pub struct OpenDispute<'info> {
         bump
     )]
     pub dispute: Account<'info, Dispute>,
+    #[account(
+        init,
+        payer = claimant,
+        space = 8,
+        seeds = [CLAIM_SEED, binding.key().as_ref(), &nonce.to_le_bytes()],
+        bump
+    )]
+    /// CHECK: pure tombstone — discriminator only, never read, never
+    /// closed. Its existence is the single-claim guarantee.
+    pub claim: UncheckedAccount<'info>,
     pub mint: InterfaceAccount<'info, Mint>,
     #[account(
         mut,
@@ -97,12 +107,14 @@ pub fn handle_open_dispute(
     );
     let outflow = claim_spend
         .checked_mul(1 + PENALTY_MULT)
-        .ok_or(HarborError::ZeroAmount)?;
-    require!(
-        outflow
-            <= ctx.accounts.bond.amount.checked_sub(ctx.accounts.bond.reserved).unwrap(),
-        HarborError::InsufficientBond
-    );
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    let free = ctx
+        .accounts
+        .bond
+        .amount
+        .checked_sub(ctx.accounts.bond.reserved)
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    require!(outflow <= free, HarborError::InsufficientBond);
 
     system_program::transfer(
         CpiContext::new(
@@ -135,14 +147,22 @@ pub fn handle_open_dispute(
     dispute.nonce = nonce;
     dispute.reason = reason;
     dispute.claimant = ctx.accounts.claimant.key();
-    dispute.deadline_slot = slot.checked_add(ctx.accounts.bond.challenge_slots).unwrap();
+    dispute.deadline_slot = slot
+        .checked_add(ctx.accounts.bond.challenge_slots)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     dispute.stake_lamports = DISPUTE_STAKE_LAMPORTS;
     dispute.claim_spend = claim_spend;
     dispute.bump = ctx.bumps.dispute;
 
     let bond = &mut ctx.accounts.bond;
-    bond.open_disputes = bond.open_disputes.checked_add(1).unwrap();
-    bond.reserved = bond.reserved.checked_add(outflow).unwrap();
+    bond.open_disputes = bond
+        .open_disputes
+        .checked_add(1)
+        .ok_or(HarborError::ArithmeticOverflow)?;
+    bond.reserved = bond
+        .reserved
+        .checked_add(outflow)
+        .ok_or(HarborError::ArithmeticOverflow)?;
 
     emit!(DisputeOpened {
         binding: dispute.binding,

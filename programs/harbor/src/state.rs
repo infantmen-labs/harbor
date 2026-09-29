@@ -6,6 +6,8 @@ pub struct MerchantBond {
     pub merchant: Pubkey,
     pub mint: Pubkey,
     pub amount: u64,
+    /// Reserved for future fee parameterization; currently unread by any
+    /// instruction (v0.2–v0.4 use a fixed 2x penalty multiple instead).
     pub sla_bps: u16,
     pub challenge_slots: u64,
     pub open_disputes: u64,

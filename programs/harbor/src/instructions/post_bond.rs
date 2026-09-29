@@ -90,7 +90,10 @@ pub fn handle_post_bond(ctx: Context<PostBond>, amount: u64) -> Result<()> {
     )?;
 
     let bond = &mut ctx.accounts.bond;
-    bond.amount = bond.amount.checked_add(amount).unwrap();
+    bond.amount = bond
+        .amount
+        .checked_add(amount)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     bond.last_change_slot = Clock::get()?.slot;
 
     emit!(BondPosted {

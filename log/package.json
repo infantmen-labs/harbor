@@ -1,6 +1,6 @@
 {
   "name": "harbor-log",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Minimal JSONL evidence logger shared by Harbor services.",
   "license": "MIT",
   "main": "dist/src/index.js",

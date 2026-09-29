@@ -39,14 +39,14 @@ pub struct RefundUnused<'info> {
 }
 
 pub fn handle_refund_unused(ctx: Context<RefundUnused>) -> Result<()> {
+    let unlock = ctx
+        .accounts
+        .bond
+        .last_change_slot
+        .checked_add(WITHDRAW_DELAY_SLOTS)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     require!(
-        Clock::get()?.slot
-            > ctx
-                .accounts
-                .bond
-                .last_change_slot
-                .checked_add(WITHDRAW_DELAY_SLOTS)
-                .unwrap(),
+        Clock::get()?.slot > unlock,
         HarborError::TimelockNotPassed
     );
 
