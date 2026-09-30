@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { HARBOR_PROGRAM_ID } from "./ids";
+import { u64le } from "./u64";
 
 export function bondPda(
   merchant: PublicKey,
@@ -22,8 +23,7 @@ export function receiptPda(
   binding: PublicKey,
   nonce: bigint
 ): [PublicKey, number] {
-  const nonceBuf = Buffer.alloc(8);
-  nonceBuf.writeBigUInt64LE(nonce);
+  const nonceBuf = u64le(nonce);
   return PublicKey.findProgramAddressSync(
     [Buffer.from("receipt"), binding.toBuffer(), nonceBuf],
     HARBOR_PROGRAM_ID
@@ -34,8 +34,7 @@ export function disputePda(
   binding: PublicKey,
   nonce: bigint
 ): [PublicKey, number] {
-  const nonceBuf = Buffer.alloc(8);
-  nonceBuf.writeBigUInt64LE(nonce);
+  const nonceBuf = u64le(nonce);
   return PublicKey.findProgramAddressSync(
     [Buffer.from("dispute"), binding.toBuffer(), nonceBuf],
     HARBOR_PROGRAM_ID
@@ -54,8 +53,7 @@ export function claimPda(
   binding: PublicKey,
   nonce: bigint
 ): [PublicKey, number] {
-  const nonceBuf = Buffer.alloc(8);
-  nonceBuf.writeBigUInt64LE(nonce);
+  const nonceBuf = u64le(nonce);
   return PublicKey.findProgramAddressSync(
     [Buffer.from("claim"), binding.toBuffer(), nonceBuf],
     HARBOR_PROGRAM_ID
@@ -71,10 +69,8 @@ export function channelPda(
   salt: bigint,
   openSlot: bigint
 ): [PublicKey, number] {
-  const saltBuf = Buffer.alloc(8);
-  saltBuf.writeBigUInt64LE(salt);
-  const slotBuf = Buffer.alloc(8);
-  slotBuf.writeBigUInt64LE(openSlot);
+  const saltBuf = u64le(salt);
+  const slotBuf = u64le(openSlot);
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("channel"),

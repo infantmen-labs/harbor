@@ -5,6 +5,7 @@ import {
   SYSTEM_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "./ids";
+import { u64le } from "./u64";
 
 const D = {
   registerMerchant: [238, 245, 77, 132, 161, 88, 216, 248],
@@ -31,9 +32,7 @@ function u16(v: number): Buffer {
   return b;
 }
 function u64(v: bigint): Buffer {
-  const b = Buffer.alloc(8);
-  b.writeBigUInt64LE(v);
-  return b;
+  return u64le(v);
 }
 function pk(k: PublicKey): Buffer {
   return k.toBuffer();

@@ -12,7 +12,10 @@ import {
   receiptMessageBytes,
   sendWithRetry,
   signEd25519,
+  u64le,
   verifyEd25519,
+  writeI64LE,
+  writeU64LE,
 } from "../src/index";
 
 const P = (n: number) => new PublicKey(Buffer.alloc(32, n));
@@ -219,5 +222,34 @@ describe("sendWithRetry", () => {
       /simulated failure/
     );
     assert.equal(builds(), 1);
+  });
+});
+
+describe("portable u64 encoders", () => {
+  it("matches native writeBigUInt64LE byte-for-byte", () => {
+    for (const v of [0n, 1n, 255n, 256n, 2n ** 32n, 2n ** 64n - 1n]) {
+      const expected = Buffer.alloc(8);
+      expected.writeBigUInt64LE(v);
+      assert.deepEqual(u64le(v), expected);
+      const out = Buffer.alloc(8);
+      writeU64LE(out, v, 0);
+      assert.deepEqual(out, expected);
+    }
+  });
+
+  it("encodes signed i64 incl. negatives like writeBigInt64LE", () => {
+    for (const v of [0n, 1n, -1n, -(2n ** 63n), 2n ** 63n - 1n]) {
+      const expected = Buffer.alloc(8);
+      expected.writeBigInt64LE(v);
+      const out = Buffer.alloc(8);
+      writeI64LE(out, v, 0);
+      assert.deepEqual(out, expected);
+    }
+  });
+
+  it("rejects out-of-range values instead of wrapping", () => {
+    assert.throws(() => u64le(-1n), RangeError);
+    assert.throws(() => u64le(2n ** 64n), RangeError);
+    assert.throws(() => writeI64LE(Buffer.alloc(8), 2n ** 63n, 0), RangeError);
   });
 });
