@@ -53,10 +53,35 @@ pkill -f "solana-test-validator.*loop-ledge[r]" 2>/dev/null || true
 if [ -f /tmp/opencode/loop-server.pid ] && kill -0 "$(cat /tmp/opencode/loop-server.pid)" 2>/dev/null; then
   kill "$(cat /tmp/opencode/loop-server.pid)" 2>/dev/null || true
 fi
+sleep 2
+# Port ownership: never launch into a stranger's port, never kill one.
+# (pkill above only matches our own --ledger flag; bracket avoids self-match.)
+if ss -ltn 2>/dev/null | grep -q ":8900 "; then
+  echo "FATAL: :8900 busy by a process this script did not start. Free it or change RPC_URL." >&2
+  exit 1
+fi
+if ss -ltn 2>/dev/null | grep -q ":3001 "; then
+  echo "FATAL: :3001 busy by a process this script did not start. Free it or change SERVER_URL." >&2
+  exit 1
+fi
 rm -rf "$LEDGER"
 nohup solana-test-validator --reset --quiet --ledger "$LEDGER" --rpc-port 8900 > /tmp/opencode/loop-validator.log 2>&1 &
+echo $! > /tmp/opencode/loop-validator.pid
 for _ in $(seq 1 60); do sleep 2; SLOT=$(solana --url "$RPC_URL" slot 2>/dev/null || true); [ -n "$SLOT" ] && [ "$SLOT" -gt 0 ] 2>/dev/null && break; done
-echo "== slot $(solana --url "$RPC_URL" slot)"
+# Freshness tripwire: a reset ledger reads low slots. A high slot here
+# means we are talking to a stranger's chain — abort, do not deploy.
+if [ -z "${SLOT:-}" ] || [ "$SLOT" -gt 2000 ]; then
+  echo "FATAL: validator did not boot fresh (slot=${SLOT:-none}). Check /tmp/opencode/loop-validator.log" >&2
+  exit 1
+fi
+echo "== slot $SLOT (fresh)"
+# Warmup gate: a just-booted validator accepts RPC before producing
+# blocks. Transacting into a stalled chain flakes (observed once at
+# slot 4: channel open landed nowhere the server could read).
+sleep 6
+SLOT2=$(solana --url "$RPC_URL" slot 2>/dev/null || true)
+[ -n "$SLOT2" ] && [ "$SLOT2" -gt "$SLOT" ] 2>/dev/null || { echo "FATAL: chain not advancing ($SLOT -> ${SLOT2:-none})" >&2; exit 1; }
+echo "== chain advancing ($SLOT -> $SLOT2)"
 
 echo "== deploy programs"
 solana program deploy target/deploy/harbor.so --program-id target/deploy/harbor-keypair.json --upgrade-authority "$MERCHANT_KEYPAIR" --url "$RPC_URL" > /dev/null
@@ -82,7 +107,15 @@ echo "== server :3001"
 PORT=3001 RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" PRICE_PER_TOKEN=10 UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" nohup node server/dist/src/serve.js > /tmp/opencode/loop-server.log 2>&1 &
 echo $! > /tmp/opencode/loop-server.pid
 sleep 4
-curl -sS -m 8 http://127.0.0.1:3001/info; echo
+INFO=$(curl -sS -m 8 http://127.0.0.1:3001/info)
+echo "$INFO"
+# Identity + boot-state assertions: must be OUR merchant and unkilled.
+# A stale server on this port (or a snapshot restore) would poison the run.
+echo "$INFO" | grep -q "\"merchant\":\"$MERCHANT_PUBKEY\"" || { echo "FATAL: :3001 is not our server (merchant mismatch)" >&2; exit 1; }
+# Deterministic start: revive unconditionally, then assert.
+curl -sS -m 10 -X POST http://127.0.0.1:3001/admin/kill -H 'content-type: application/json' -d '{"killed":false}' > /dev/null
+curl -sS -m 8 http://127.0.0.1:3001/info | grep -q '"killed":false' || { echo "FATAL: server did not boot unkilled" >&2; exit 1; }
+echo "== server verified: our merchant, unkilled"
 
 echo "== happy path"
 CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=3 BUDGET_PER_REQUEST=5000 REQUEST_DELAY_MS=400 SALT="$SALT_OK" LOG_PATH=/tmp/opencode/loop-ok.jsonl node agent/dist/src/index.js
