@@ -2,6 +2,16 @@
 
 Metered API behind Harbor surety. One merchant, one metered endpoint.
 
+## Quickstart
+
+```sh
+# 1. Build first (all entrypoints below run from dist/):
+yarn build
+
+# 2. Start (port 3000 by default; set PORT to change it):
+MERCHANT_KEYPAIR=~/.config/solana/id.json MINT=<mint> yarn start
+```
+
 ## Routes
 
 - `POST /session {channel, channelProgram, deposit, authorizedSigner}` —
@@ -24,17 +34,24 @@ Metered API behind Harbor surety. One merchant, one metered endpoint.
 
 ## Env
 
-`MERCHANT_KEYPAIR`, `MINT`, `RPC_URL`, `HARBOR_PROGRAM_ID`,
+`MERCHANT_KEYPAIR` (required, path), `MINT` (required),
+`RPC_URL` (default devnet), `HARBOR_PROGRAM_ID` (default canonical),
 `PRICE_PER_TOKEN` (default 10), `PORT` (default 3000),
 `UPSTREAM_PROGRAM_ALLOWLIST` (default canonical; localnet fixture ID
 for rehearsals), `KILL_TOKEN` (unset = open), `STORE_PATH` (snapshot
 file for restart-safe sessions; unset = in-memory only),
 `SKIP_CHAIN=1` (offline mode: no chain reads/writes).
 
-## Run
+## Scripts (`node dist/scripts/<name>.js` after `yarn build`)
 
-```sh
-MERCHANT_KEYPAIR=~/.config/solana/id.json MINT=<mint> yarn start
-MERCHANT_KEYPAIR=... MINT=... yarn setup   # register bond + post collateral
-SKIP_CHAIN=1 yarn test
-```
+- `setup.js` — register bond + post collateral. Env: same server env
+  plus `SLA_BPS` (50), `CHALLENGE_SLOTS` (150), `BOND_AMOUNT` (500000).
+  Also runnable as `yarn setup`.
+- `mint.js` — create a dev mint (or reuse `MINT`) and fund merchant +
+  agent ATAs. Env: `RPC_URL`, `PAYER_KEYPAIR` (default
+  `~/.config/solana/id.json`), `MERCHANT_PUBKEY` (default payer),
+  `AGENT_PUBKEY`, `MINT_DECIMALS` (6), `MINT_AMOUNT` (1000000000).
+- `upload-buffer.js` — resumable program deploy (sliced reads survive
+  rate-limited RPC). Env: `RPC_URL`, `PROGRAM_KEYPAIR`,
+  `BUFFER_KEYPAIR`, `AUTHORITY_KEYPAIR`, `SO_PATH`,
+  `FINALIZE=1` to finalize.

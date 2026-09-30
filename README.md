@@ -31,6 +31,7 @@ const [bond] = bondPda(merchant, mint);
 
 // Read its health: bonded, reserved, and free collateral.
 const info = await connection.getAccountInfo(bond);
+if (info === null) throw new Error("bond not found");
 const { amount, reserved, openDisputes } = decodeBond(info.data);
 
 // Verify every delivery before paying for the next unit.
@@ -64,8 +65,16 @@ and keypairs via `MERCHANT_KEYPAIR` / `AGENT_KEYPAIR` env.
 ## Layout
 
 - `programs/harbor` — Anchor program (bond, receipts, disputes, halt)
-- `sdk` — PDAs, receipt/voucher bytes, instruction builders, JSONL log
+- `sdk` — PDAs, receipt/voucher bytes, instruction builders, account
+  decoders (`sdk/README.md`)
 - `server` — metered API with voucher verification + receipt signing
+  (`server/README.md`)
 - `agent` — channel lifecycle CLI with receipt verification
-- `keeper` — dispute watcher/resolver (dry-run + live)
+  (`agent/README.md`)
+- `keeper` — dispute watcher/resolver, dry-run + live
+  (`keeper/README.md`)
+- `web` — landing + mission control + merchant onboarding
+  (`web/README.md`); dev on `:3101`, the server owns `:3000`
+- `examples/bond-watch` — third-party read-only bond monitor
+- `scripts/local-loop.sh` — one-command localnet full loop
 - `docs` — schema, coordination, proofs, review, business, disclosure
