@@ -1,14 +1,10 @@
 import bs58 from "bs58";
-import {
-  Connection,
-  PublicKey,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   resolveTimeoutIx,
+  sendWithRetry,
   treasuryPda,
 } from "@infantmen-labs/harbor-sdk";
 import { JsonlLogger } from "harbor-log";
@@ -109,25 +105,28 @@ export async function consider(
   if (bondInfo === null) throw new Error("bond not found");
   const bond = decodeBond(Buffer.from(bondInfo.data));
 
-  const tx = new Transaction();
   const [treasury] = treasuryPda(bond.mint);
-  tx.add(
-    resolveTimeoutIx(
-      cfg.programId,
-      cfg.operator.publicKey,
-      bondKey,
-      bond.mint,
-      d.binding,
-      disputeKey,
-      d.claimant,
-      treasury,
-      vaultAta(bondKey, bond.mint),
-      ataFor(treasury, bond.mint),
-      ataFor(d.claimant, bond.mint),
-      d.nonce
-    )
-  );
-  const sig = await sendAndConfirmTransaction(conn, tx, [cfg.operator]);
+  const buildResolveTx = () => {
+    const tx = new Transaction();
+    tx.add(
+      resolveTimeoutIx(
+        cfg.programId,
+        cfg.operator.publicKey,
+        bondKey,
+        bond.mint,
+        d.binding,
+        disputeKey,
+        d.claimant,
+        treasury,
+        vaultAta(bondKey, bond.mint),
+        ataFor(treasury, bond.mint),
+        ataFor(d.claimant, bond.mint),
+        d.nonce
+      )
+    );
+    return tx;
+  };
+  const sig = await sendWithRetry(conn, buildResolveTx, [cfg.operator]);
   log.log({ ...entry, signature: sig });
   return "resolved";
 }

@@ -4,12 +4,7 @@ import {
   Server,
   ServerResponse,
 } from "node:http";
-import {
-  Connection,
-  PublicKey,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
   bindChannelIx,
   bindingPda,
@@ -18,6 +13,7 @@ import {
   channelVoucherBytes,
   receiptMessageBytes,
   receiptPda,
+  sendWithRetry,
   signEd25519,
   submitReceiptIx,
   verifyEd25519,
@@ -57,18 +53,19 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     const existing = await connection.getAccountInfo(binding);
     if (existing !== null) return;
     const [bond] = bondPda(cfg.merchant.publicKey, cfg.mint);
-    const tx = new Transaction().add(
-      bindChannelIx(
-        cfg.programId,
-        cfg.merchant.publicKey,
-        bond,
-        binding,
-        session.channel,
-        session.channelProgram,
-        session.deposit
-      )
-    );
-    await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
+    const buildBindTx = () =>
+      new Transaction().add(
+        bindChannelIx(
+          cfg.programId,
+          cfg.merchant.publicKey,
+          bond,
+          binding,
+          session.channel,
+          session.channelProgram,
+          session.deposit
+        )
+      );
+    await sendWithRetry(connection, buildBindTx, [cfg.merchant]);
   }
 
   async function submitReceiptOnchain(
@@ -88,18 +85,19 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
   ): Promise<void> {
     const [bond] = bondPda(cfg.merchant.publicKey, cfg.mint);
     const [receipt] = receiptPda(binding, args.nonce);
-    const tx = new Transaction().add(
-      buildEd25519Ix(cfg.merchant.publicKey, signature, message),
-      submitReceiptIx(
-        cfg.programId,
-        cfg.merchant.publicKey,
-        bond,
-        binding,
-        receipt,
-        args
-      )
-    );
-    await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
+    const buildReceiptTx = () =>
+      new Transaction().add(
+        buildEd25519Ix(cfg.merchant.publicKey, signature, message),
+        submitReceiptIx(
+          cfg.programId,
+          cfg.merchant.publicKey,
+          bond,
+          binding,
+          receipt,
+          args
+        )
+      );
+    await sendWithRetry(connection, buildReceiptTx, [cfg.merchant]);
   }
 
   async function handleSession(body: Record<string, unknown>) {

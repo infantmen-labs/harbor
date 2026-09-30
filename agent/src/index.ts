@@ -7,13 +7,7 @@
  * MINT, DEPOSIT, REQUESTS, BUDGET_PER_REQUEST, SALT, LOG_PATH.
  */
 import { readFileSync } from "node:fs";
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
   CHANNEL_PROGRAM_ID,
@@ -21,6 +15,7 @@ import {
   buildEd25519Ix,
   channelVoucherBytes,
   receiptMessageBytes,
+  sendWithRetry,
   signEd25519,
   verifyEd25519,
 } from "@infantmen-labs/harbor-sdk";
@@ -98,24 +93,25 @@ async function main(): Promise<void> {
   ).value[0]?.pubkey;
   if (payerAta === undefined) throw new Error("agent has no ATA for mint");
 
-  const openTx = new Transaction().add(
-    openChannelIx({
-      programId: channelProgram,
-      payer: agent.publicKey,
-      payee,
-      mint,
-      authorizedSigner: agent.publicKey,
-      channel,
-      payerAta,
-      channelAta,
-      eventAuthority,
-      salt,
-      deposit,
-      gracePeriod: 7200,
-      openSlot: BigInt(clockSlot),
-    })
-  );
-  await sendAndConfirmTransaction(connection, openTx, [agent]);
+  const buildOpenTx = () =>
+    new Transaction().add(
+      openChannelIx({
+        programId: channelProgram,
+        payer: agent.publicKey,
+        payee,
+        mint,
+        authorizedSigner: agent.publicKey,
+        channel,
+        payerAta,
+        channelAta,
+        eventAuthority,
+        salt,
+        deposit,
+        gracePeriod: 7200,
+        openSlot: BigInt(clockSlot),
+      })
+    );
+  await sendWithRetry(connection, buildOpenTx, [agent]);
   console.log(`channel ${channel.toBase58()}`);
 
   const s = await postJson(`${serverUrl}/session`, {
@@ -163,18 +159,19 @@ async function main(): Promise<void> {
     // Authorization can never exceed the channel deposit: top up first.
     if (base + budget > ceiling) {
       const amount = deposit / 2n;
-      const topTx = new Transaction().add(
-        topUpIx({
-          programId: channelProgram,
-          payer: agent.publicKey,
-          channel,
-          payerAta,
-          channelAta,
-          mint,
-          amount,
-        })
-      );
-      await sendAndConfirmTransaction(connection, topTx, [agent]);
+      const buildTopTx = () =>
+        new Transaction().add(
+          topUpIx({
+            programId: channelProgram,
+            payer: agent.publicKey,
+            channel,
+            payerAta,
+            channelAta,
+            mint,
+            amount,
+          })
+        );
+      await sendWithRetry(connection, buildTopTx, [agent]);
       ceiling += amount;
       console.log(`topped up channel, ceiling=${ceiling}`);
     }
@@ -236,11 +233,12 @@ async function main(): Promise<void> {
   }
   const closeMsg = channelVoucherBytes(channel, lastCumulative, 0n);
   const closeSig = signEd25519(agent.secretKey, closeMsg);
-  const closeTx = new Transaction().add(
-    buildEd25519Ix(agent.publicKey, closeSig, closeMsg),
-    settleIx(channelProgram, channel)
-  );
-  await sendAndConfirmTransaction(connection, closeTx, [agent]);
+  const buildCloseTx = () =>
+    new Transaction().add(
+      buildEd25519Ix(agent.publicKey, closeSig, closeMsg),
+      settleIx(channelProgram, channel)
+    );
+  await sendWithRetry(connection, buildCloseTx, [agent]);
   console.log(`settled at ${lastCumulative}`);
 }
 

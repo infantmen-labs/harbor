@@ -1,17 +1,12 @@
 /** Watchtower opens a dispute on behalf of a claimant after a failed delivery. */
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   claimPda,
   disputePda,
   openDisputeIx,
+  sendWithRetry,
 } from "@infantmen-labs/harbor-sdk";
 import { readFileSync } from "node:fs";
 
@@ -41,24 +36,25 @@ async function main(): Promise<void> {
   const claimSpend = BigInt(process.env["CLAIM_SPEND"] ?? "1000");
   const [dispute] = disputePda(binding, nonce);
   const [claim] = claimPda(binding, nonce);
-  const tx = new Transaction().add(
-    openDisputeIx(
-      programId,
-      claimant.publicKey,
-      bond,
-      binding,
-      channel,
-      dispute,
-      claim,
-      mint,
-      ataFor(claimant.publicKey, mint),
-      ataFor(bond, mint),
-      nonce,
-      reason,
-      claimSpend
-    )
-  );
-  const sig = await sendAndConfirmTransaction(connection, tx, [claimant]);
+  const buildDisputeTx = () =>
+    new Transaction().add(
+      openDisputeIx(
+        programId,
+        claimant.publicKey,
+        bond,
+        binding,
+        channel,
+        dispute,
+        claim,
+        mint,
+        ataFor(claimant.publicKey, mint),
+        ataFor(bond, mint),
+        nonce,
+        reason,
+        claimSpend
+      )
+    );
+  const sig = await sendWithRetry(connection, buildDisputeTx, [claimant]);
   console.log(`dispute=${dispute.toBase58()} sig=${sig}`);
 }
 

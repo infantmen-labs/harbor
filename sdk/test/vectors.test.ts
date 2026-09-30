@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import {
   RECEIPT_MESSAGE_LEN,
@@ -10,6 +10,7 @@ import {
   decodeBond,
   decodeDispute,
   receiptMessageBytes,
+  sendWithRetry,
   signEd25519,
   verifyEd25519,
 } from "../src/index";
@@ -164,5 +165,59 @@ describe("account decoders", () => {
     assert.equal(d.reason, 2);
     assert.ok(d.claimant.equals(P(2)));
     assert.equal(d.claimSpend, 3_670n);
+  });
+});
+
+describe("sendWithRetry", () => {
+  function mockConn(script: Array<"expiry" | "fatal" | "ok">) {
+    let builds = 0;
+    const conn = {
+      getLatestBlockhash: async () => ({
+        blockhash: "11111111111111111111111111111111",
+        lastValidBlockHeight: 1,
+      }),
+      sendTransaction: async () => {
+        const step = script.shift();
+        if (step === "expiry") {
+          throw new Error("Signature X has expired: block height exceeded.");
+        }
+        if (step === "fatal") throw new Error("simulated failure");
+        return "sig-ok";
+      },
+      confirmTransaction: async () => ({ value: { err: null } }),
+    };
+    return {
+      conn,
+      builds: () => builds,
+      build: () => {
+        builds += 1;
+        return new Transaction();
+      },
+    };
+  }
+
+  it("rebuilds and resends once after a single expiry", async () => {
+    const { conn, builds, build } = mockConn(["expiry", "ok"]);
+    const sig = await sendWithRetry(conn as never, build, [], 3);
+    assert.equal(sig, "sig-ok");
+    assert.equal(builds(), 2);
+  });
+
+  it("gives up after maxTries on repeated expiry", async () => {
+    const { conn, builds, build } = mockConn(["expiry", "expiry", "expiry"]);
+    await assert.rejects(
+      sendWithRetry(conn as never, build, [], 3),
+      /block height exceeded/
+    );
+    assert.equal(builds(), 3);
+  });
+
+  it("propagates non-expiry failures immediately without rebuild", async () => {
+    const { conn, builds, build } = mockConn(["fatal", "ok"]);
+    await assert.rejects(
+      sendWithRetry(conn as never, build, [], 3),
+      /simulated failure/
+    );
+    assert.equal(builds(), 1);
   });
 });
