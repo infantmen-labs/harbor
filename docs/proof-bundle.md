@@ -222,6 +222,19 @@ confirmed via fetch).
   (slot 505642165).
 - Math: fee = 100, refund = 1,900, penalty = 4,000. Bond `2G19xBTW…`:
   481,000, reserved 0. Treasury: 19,475 (15,375 + 4,100).
+- v0.4.3 loop (server submits receipts onchain per request — 3 landed,
+  zero silent failures): happy channel
+  `EghyMvMbFdCLiz4dPX7GUoQNP3sYLorGJapw3Dk6FmWa` → kill → fail channel
+  `5n3SYvcHY8W5aQSzapuztTGwDxua3zULx5CFbBuveVkw` → dispute
+  `E2YQd3xijL8a882dJCDDFgNXX7FNGMKbuGo11KeyGMvv` (claim 2,000, open sig
+  after agent refuel `5DJ1cojxVN7VS5bL75cwrRRQQmzsA2QZh1XEewUQSXrntSHzN1EepXnomsR3JRfTQx1df6WYMBiFriAj5yjrMfUh`)
+  → keeper `resolve-timeout` sig
+  `5hUd2zpYXmET2xZi5B9M7Fnirh46wEEoBJqZ4Qy1RTmTf3kSy3rV5B6eVrqZ2kxWzRY2D8WeeKikyAGCnnP2iJtR`
+  (slot 505719456) → second loop same binary: dispute
+  `4ZhHpyhNtGkswGtFTiLgtGbyYpDboX4Kf6FxoBNgtrtM`, resolve sig
+  `3X4wrzwJVnjJ3pYBgZjRwQ77XUcqJ18z9wxbYBnqRcp1ptpdtewwgMyPJGrJWrpTMx1HsLpYvy1bpSygZ7iKGKgK`
+  (slot 505757356). Bond `2G19xBTW…`: 469,000, reserved 0. Treasury:
+  31,775 (27,675 + 4,100). Upgrade sig `28ijggmV…`, deep-byte verified.
 - v0.4.0 localnet loop on the rebuilt validator: claim 2,000 → bond
   492,000, reserved 0, treasury 8,200, tombstone verified present after
   resolve; resolve sig `5Hpyigh73Y51N4w836ZhKcgdhEibnnBZRkg5qxRnewwXenRwP6sdqA9M4vb7YwLbmijPFbDmzKdTeg3e4bSRoGes`.
