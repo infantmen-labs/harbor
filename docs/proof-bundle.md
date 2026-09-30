@@ -226,6 +226,29 @@ confirmed via fetch).
   492,000, reserved 0, treasury 8,200, tombstone verified present after
   resolve; resolve sig `5Hpyigh73Y51N4w836ZhKcgdhEibnnBZRkg5qxRnewwXenRwP6sdqA9M4vb7YwLbmijPFbDmzKdTeg3e4bSRoGes`.
 
+## v0.4.3 — canonical vaults, server escrow ceiling (live on devnet)
+
+Audit pass closed two findings: `mint_guard::expected_vault_key` is now
+checked first on every fund-moving path (a second token account naming
+the bond PDA as owner can no longer divert locks — `InvalidVault`),
+and the server reads the onchain channel deposit at session open plus
+re-checks it above the cached ceiling per request (over-authorization
+returns 402; top-ups learned lazily). Upgrade sig
+`385jKYjgWR9H9tysW64eeE8zMnJDznkNY6VdCohYA3U4ic118zGUQS43vc4QQtuCUwPjrQcQXraEUH3D4FcaCAvK`
+(deep-byte verified, IDL republished at 0.4.3).
+
+- v0.4.3 devnet loop (agent key as claimant = channel payer): happy
+  channel `9czCTa9J7Td5eNcWnxVTkJ3znHCss9sWjAuX5VPw2bTv` (3 receipts,
+  settled) → kill → fail channel
+  `5DhXVgZvajJoUt5LcFbF9mKyVKvnNSLBCNdYmtP7m5Vx` → dispute
+  `D2qKsjBZ7GDyiV2ZiPod4AamnGY9Efyr4eHdWyeR78sQ` (claim 2,000, open sig
+  `5DJ1cojxVN7VS5bL75cwrRRQQmzsA2QZh1XEewUQSXrntSHzN1EepXnomsR3JRfTQx1df6WYMBiFriAj5yjrMfUh`)
+  → keeper `resolve-timeout` sig
+  `3Q6QEU5h3UCuHg2KWEajYyvFtTHWSqi6fbCrygyyamN975JpouP2tPByF2bSLsn1G59ugN8qodviyGbN2c2W9nD9`
+  (slot 505719456).
+- Math: fee = 100, refund = 1,900, penalty = 4,000. Bond `2G19xBTW…`:
+  473,000, reserved 0. Treasury: 27,675 (23,575 + 4,100).
+
 ## Tooling publication (live on npm)
 
 - `harbor-sdk` was taken (n1colaslugo, unrelated API-auth SDK), so the
