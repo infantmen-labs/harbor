@@ -58,9 +58,10 @@ yarn --cwd sdk test && yarn --cwd server test && yarn --cwd agent test && yarn -
 ```
 
 Needs `anchor build` + `yarn build` first, a locally-built upstream
-`.so` via `UPSTREAM_SO` (default `/tmp/opencode/upstream/target/deploy/
-payment_channels.so`, built per `docs/proof-bundle.md` v0.4.0 notes),
-and keypairs via `MERCHANT_KEYPAIR` / `AGENT_KEYPAIR` env.
+`.so` via `UPSTREAM_SO` (required — build per `docs/proof-bundle.md`
+v0.4.0 notes), and keypairs via `MERCHANT_KEYPAIR` / `AGENT_KEYPAIR`
+env. All run state (ledger, logs, pidfiles) stays in `./.loop-run`
+(gitignored, override with `LOOP_DIR`).
 
 ## Layout
 

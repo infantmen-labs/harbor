@@ -8,10 +8,13 @@
 # -> keeper resolve, then verifies the settlement math to the unit.
 # Leaves the stack running for the demo video; re-running resets it.
 #
-# Env (all optional, secrets never hardcoded):
+# Env (secrets never hardcoded; everything local to LOOP_DIR):
+#   LOOP_DIR          working dir for ledger, logs, pidfiles, run logs
+#                     (default ./.loop-run — gitignored, override per run)
 #   MERCHANT_KEYPAIR  merchant + upgrade authority (default ~/.config/solana/id.json)
 #   AGENT_KEYPAIR     channel payer, also the dispute claimant (default loop-agent.json)
-#   UPSTREAM_SO       locally-built payment-channels.so (default: rebuilt fixture path below)
+#   UPSTREAM_SO       locally-built payment-channels.so (REQUIRED — build per
+#                     docs/proof-bundle.md v0.4.0 notes; no default on purpose)
 #   UPSTREAM_KEYPAIR  keypair matching UPSTREAM_SO's declare_id
 #   BOND_AMOUNT / DEPOSIT / CLAIM / SALT_OK / SALT_FAIL (defaults: 500000/200000/2000/100/101)
 set -euo pipefail
@@ -23,20 +26,24 @@ RPC_URL="${RPC_URL:-http://127.0.0.1:8900}"
 SERVER_URL="${SERVER_URL:-http://127.0.0.1:3001}"
 MERCHANT_KEYPAIR="${MERCHANT_KEYPAIR:-$HOME/.config/solana/id.json}"
 AGENT_KEYPAIR="${AGENT_KEYPAIR:-$HOME/.config/solana/loop-agent.json}"
-UPSTREAM_SO="${UPSTREAM_SO:-/tmp/opencode/upstream/target/deploy/payment_channels.so}"
+UPSTREAM_SO="${UPSTREAM_SO:-}"
 UPSTREAM_KEYPAIR="${UPSTREAM_KEYPAIR:-$HOME/.config/solana/local-chnl.json}"
 BOND_AMOUNT="${BOND_AMOUNT:-500000}"
 DEPOSIT="${DEPOSIT:-200000}"
 CLAIM="${CLAIM:-2000}"
 SALT_OK="${SALT_OK:-100}"
 SALT_FAIL="${SALT_FAIL:-101}"
-LEDGER=/tmp/opencode/loop-ledger
+LOOP_DIR="${LOOP_DIR:-./.loop-run}"
+LEDGER="$LOOP_DIR/ledger"
+VALIDATOR_PID="$LOOP_DIR/validator.pid"
+SERVER_PID="$LOOP_DIR/server.pid"
+mkdir -p "$LOOP_DIR"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "missing: $1"; exit 1; }; }
 need solana; need solana-keygen; need node; need curl
 [ -f "$MERCHANT_KEYPAIR" ] || { echo "missing merchant keypair: $MERCHANT_KEYPAIR"; exit 1; }
 [ -f "$AGENT_KEYPAIR" ] || { echo "missing agent keypair: $AGENT_KEYPAIR"; exit 1; }
-[ -f "$UPSTREAM_SO" ] || { echo "missing upstream .so: rebuild via clone/patch/cargo build-sbf (see docs/proof-bundle.md v0.4.0 notes)"; exit 1; }
+[ -n "$UPSTREAM_SO" ] && [ -f "$UPSTREAM_SO" ] || { echo "set UPSTREAM_SO to a locally-built payment-channels.so (clone/patch/cargo build-sbf per docs/proof-bundle.md v0.4.0 notes)"; exit 1; }
 [ -f "$UPSTREAM_KEYPAIR" ] || { echo "missing upstream keypair: $UPSTREAM_KEYPAIR"; exit 1; }
 [ -f target/deploy/harbor.so ] || { echo "missing target/deploy/harbor.so: run anchor build"; exit 1; }
 [ -d server/dist ] || { echo "missing server/dist: run yarn build"; exit 1; }
@@ -49,29 +56,34 @@ echo "== agent    $AGENT_PUBKEY"
 echo "== upstream $UPSTREAM_ID"
 
 echo "== validator (fresh, isolated ledger)"
-pkill -f "solana-test-validator.*loop-ledge[r]" 2>/dev/null || true
-if [ -f /tmp/opencode/loop-server.pid ] && kill -0 "$(cat /tmp/opencode/loop-server.pid)" 2>/dev/null; then
-  kill "$(cat /tmp/opencode/loop-server.pid)" 2>/dev/null || true
+# Stop only processes THIS script started before (pidfiles); never strangers.
+if [ -f "$VALIDATOR_PID" ] && kill -0 "$(cat "$VALIDATOR_PID")" 2>/dev/null; then
+  kill "$(cat "$VALIDATOR_PID")" 2>/dev/null || true
+  sleep 2
+fi
+if [ -f "$SERVER_PID" ] && kill -0 "$(cat "$SERVER_PID")" 2>/dev/null; then
+  kill "$(cat "$SERVER_PID")" 2>/dev/null || true
 fi
 sleep 2
 # Port ownership: never launch into a stranger's port, never kill one.
-# (pkill above only matches our own --ledger flag; bracket avoids self-match.)
-if ss -ltn 2>/dev/null | grep -q ":8900 "; then
-  echo "FATAL: :8900 busy by a process this script did not start. Free it or change RPC_URL." >&2
+RPC_PORT="${RPC_URL##*:}"
+SERVER_PORT="${SERVER_URL##*:}"
+if ss -ltn 2>/dev/null | grep -q ":$RPC_PORT "; then
+  echo "FATAL: :$RPC_PORT busy by a process this script did not start. Free it or change RPC_URL." >&2
   exit 1
 fi
-if ss -ltn 2>/dev/null | grep -q ":3001 "; then
-  echo "FATAL: :3001 busy by a process this script did not start. Free it or change SERVER_URL." >&2
+if ss -ltn 2>/dev/null | grep -q ":$SERVER_PORT "; then
+  echo "FATAL: :$SERVER_PORT busy by a process this script did not start. Free it or change SERVER_URL." >&2
   exit 1
 fi
 rm -rf "$LEDGER"
-nohup solana-test-validator --reset --quiet --ledger "$LEDGER" --rpc-port 8900 > /tmp/opencode/loop-validator.log 2>&1 &
-echo $! > /tmp/opencode/loop-validator.pid
+nohup solana-test-validator --reset --quiet --ledger "$LEDGER" --rpc-port "$RPC_PORT" > "$LOOP_DIR/validator.log" 2>&1 &
+echo $! > "$VALIDATOR_PID"
 for _ in $(seq 1 60); do sleep 2; SLOT=$(solana --url "$RPC_URL" slot 2>/dev/null || true); [ -n "$SLOT" ] && [ "$SLOT" -gt 0 ] 2>/dev/null && break; done
 # Freshness tripwire: a reset ledger reads low slots. A high slot here
 # means we are talking to a stranger's chain — abort, do not deploy.
 if [ -z "${SLOT:-}" ] || [ "$SLOT" -gt 2000 ]; then
-  echo "FATAL: validator did not boot fresh (slot=${SLOT:-none}). Check /tmp/opencode/loop-validator.log" >&2
+  echo "FATAL: validator did not boot fresh (slot=${SLOT:-none}). Check $LOOP_DIR/validator.log" >&2
   exit 1
 fi
 echo "== slot $SLOT (fresh)"
@@ -103,29 +115,29 @@ import {bondPda} from './sdk/dist/src/index.js';
 console.log(bondPda(new PublicKey('$MERCHANT_PUBKEY'), new PublicKey('$MINT'))[0].toBase58());")
 echo "== bond $BOND"
 
-echo "== server :3001"
-PORT=3001 RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" PRICE_PER_TOKEN=10 UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" nohup node server/dist/src/serve.js > /tmp/opencode/loop-server.log 2>&1 &
-echo $! > /tmp/opencode/loop-server.pid
+echo "== server $SERVER_URL"
+PORT="$SERVER_PORT" RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" PRICE_PER_TOKEN=10 UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" nohup node server/dist/src/serve.js > "$LOOP_DIR/server.log" 2>&1 &
+echo $! > "$SERVER_PID"
 sleep 4
-INFO=$(curl -sS -m 8 http://127.0.0.1:3001/info)
+INFO=$(curl -sS -m 8 "$SERVER_URL/info")
 echo "$INFO"
 # Identity + boot-state assertions: must be OUR merchant and unkilled.
 # A stale server on this port (or a snapshot restore) would poison the run.
-echo "$INFO" | grep -q "\"merchant\":\"$MERCHANT_PUBKEY\"" || { echo "FATAL: :3001 is not our server (merchant mismatch)" >&2; exit 1; }
+echo "$INFO" | grep -q "\"merchant\":\"$MERCHANT_PUBKEY\"" || { echo "FATAL: $SERVER_URL is not our server (merchant mismatch)" >&2; exit 1; }
 # Deterministic start: revive unconditionally, then assert.
-curl -sS -m 10 -X POST http://127.0.0.1:3001/admin/kill -H 'content-type: application/json' -d '{"killed":false}' > /dev/null
-curl -sS -m 8 http://127.0.0.1:3001/info | grep -q '"killed":false' || { echo "FATAL: server did not boot unkilled" >&2; exit 1; }
+curl -sS -m 10 -X POST "$SERVER_URL/admin/kill" -H 'content-type: application/json' -d '{"killed":false}' > /dev/null
+curl -sS -m 8 "$SERVER_URL/info" | grep -q '"killed":false' || { echo "FATAL: server did not boot unkilled" >&2; exit 1; }
 echo "== server verified: our merchant, unkilled"
 
 echo "== happy path"
-CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=3 BUDGET_PER_REQUEST=5000 REQUEST_DELAY_MS=400 SALT="$SALT_OK" LOG_PATH=/tmp/opencode/loop-ok.jsonl node agent/dist/src/index.js
+CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=3 BUDGET_PER_REQUEST=5000 REQUEST_DELAY_MS=400 SALT="$SALT_OK" LOG_PATH="$LOOP_DIR"/loop-ok.jsonl node agent/dist/src/index.js
 
 echo "== kill + fail path"
 echo "   (demo honesty note: the merchant holds this request's signed voucher"
 echo "    and could settle escrow anyway — the bond refunds only the locked"
 echo "    claim, never the escrow debit. See docs/review.md.)"
 curl -sS -m 10 -X POST "$SERVER_URL/admin/kill" -H 'content-type: application/json' -d '{"killed":true}' > /dev/null
-FAIL_OUT=$(CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=2 BUDGET_PER_REQUEST=5000 SALT="$SALT_FAIL" LOG_PATH=/tmp/opencode/loop-fail.jsonl node agent/dist/src/index.js 2>&1 || true)
+FAIL_OUT=$(CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=2 BUDGET_PER_REQUEST=5000 SALT="$SALT_FAIL" LOG_PATH="$LOOP_DIR"/loop-fail.jsonl node agent/dist/src/index.js 2>&1 || true)
 echo "$FAIL_OUT" | grep -E "channel|failed|skipping"
 FAIL_CHANNEL=$(echo "$FAIL_OUT" | grep -oE "^channel [A-Za-z0-9]+" | head -1 | cut -d' ' -f2)
 [ -n "$FAIL_CHANNEL" ] || { echo "could not parse fail channel"; exit 1; }
@@ -158,7 +170,7 @@ console.log('matured');
 "
 
 echo "== keeper resolve"
-OPERATOR_KEYPAIR="$MERCHANT_KEYPAIR" RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" POLL_MS=5000 MODE=live LOG_PATH=/tmp/opencode/loop-keeper.log.jsonl RUN_ONCE=1 node keeper/dist/src/index.js | tail -1
+OPERATOR_KEYPAIR="$MERCHANT_KEYPAIR" RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" POLL_MS=5000 MODE=live LOG_PATH="$LOOP_DIR"/loop-keeper.log.jsonl RUN_ONCE=1 node keeper/dist/src/index.js | tail -1
 
 echo "== verify"
 RPC_URL="$RPC_URL" MINT="$MINT" BOND="$BOND" CLAIM="$CLAIM" BOND_AMOUNT="$BOND_AMOUNT" AGENT="$AGENT_PUBKEY" node --input-type=module -e "
@@ -184,4 +196,4 @@ console.log(okBond && okTreasury ? 'LOOP PASS' : 'LOOP FAIL');
 process.exit(okBond && okTreasury ? 0 : 1);
 "
 
-echo "== stack left running: RPC $RPC_URL | server $SERVER_URL | logs /tmp/opencode/loop-*.log"
+echo "== stack left running: RPC $RPC_URL | server $SERVER_URL | logs $LOOP_DIR/*.log"
