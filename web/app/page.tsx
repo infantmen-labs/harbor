@@ -42,6 +42,10 @@ export default function Landing() {
           attest delivery offchain but never acquit onchain, by design. No
           chargebacks, no accounts, no judges.
         </p>
+        <p className="mt-3 max-w-[52ch] text-[14px] leading-[150%] text-muted">
+          Caveat, stated plainly: failed-voucher escrow still settles upstream —
+          the bond covers the rebate leg, not the payment leg.
+        </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link
             href="/live"

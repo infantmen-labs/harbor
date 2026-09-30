@@ -177,7 +177,10 @@ export default function Live() {
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           <div className="space-y-6">
-            <ReceiptFeed receipts={shownReceipts} />
+            <ReceiptFeed
+              receipts={shownReceipts}
+              channel={mock ? null : channel}
+            />
             <KillButton />
             <DisputeCard dispute={dispute} slot={slot} />
             {bond !== null && binding !== null && (

@@ -8,7 +8,10 @@ import type { Receipt } from "@/lib/types";
 import { Card, EmptyState } from "./primitives";
 import { shorten } from "./explorer";
 
-export function useReceipts(channel: string | null, active: boolean): Receipt[] {
+export function useReceipts(
+  channel: string | null,
+  active: boolean
+): Receipt[] {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const seen = useRef<Set<string>>(new Set());
 
@@ -26,7 +29,9 @@ export function useReceipts(channel: string | null, active: boolean): Receipt[] 
           if (r !== null && !seen.current.has(r.nonce)) {
             seen.current.add(r.nonce);
             setReceipts((prev) =>
-              [...prev, r].sort((a, b) => Number(BigInt(a.nonce) - BigInt(b.nonce))),
+              [...prev, r].sort((a, b) =>
+                Number(BigInt(a.nonce) - BigInt(b.nonce))
+              )
             );
           }
         } catch {
@@ -48,7 +53,13 @@ export function useReceipts(channel: string | null, active: boolean): Receipt[] 
   return receipts;
 }
 
-export function ReceiptFeed({ receipts }: { receipts: Receipt[] }) {
+export function ReceiptFeed({
+  receipts,
+  channel,
+}: {
+  receipts: Receipt[];
+  channel?: string | null;
+}) {
   if (receipts.length === 0) {
     return (
       <EmptyState
@@ -59,10 +70,16 @@ export function ReceiptFeed({ receipts }: { receipts: Receipt[] }) {
   }
   return (
     <Card>
-      <h3 className="mb-2 font-display text-[20px] font-medium">Live receipts</h3>
+      <h3 className="mb-2 font-display text-[20px] font-medium">
+        Live receipts
+      </h3>
       <ul>
         {receipts.map((r) => (
-          <ReceiptRow key={`${r.binding}:${r.nonce}`} receipt={r} />
+          <ReceiptRow
+            key={`${r.binding}:${r.nonce}`}
+            receipt={r}
+            channel={channel ?? null}
+          />
         ))}
       </ul>
     </Card>
@@ -77,7 +94,13 @@ function hex(s: string): Uint8Array {
   return Uint8Array.from(Buffer.from(s, "hex"));
 }
 
-function ReceiptRow({ receipt: r }: { receipt: Receipt }) {
+function ReceiptRow({
+  receipt: r,
+  channel,
+}: {
+  receipt: Receipt;
+  channel: string | null;
+}) {
   let verified = false;
   try {
     const msg = receiptMessageBytes({
@@ -101,7 +124,9 @@ function ReceiptRow({ receipt: r }: { receipt: Receipt }) {
       style={{ animation: "harbor-fade-in 150ms ease-out" }}
     >
       <span className="font-mono text-[14px]">#{r.nonce}</span>
-      <span className="font-mono text-[14px] text-muted">Σ {r.cumulativeSpend}</span>
+      <span className="font-mono text-[14px] text-muted">
+        Σ {r.cumulativeSpend}
+      </span>
       <span className="hidden font-mono text-[13px] text-muted sm:inline">
         {shorten(r.meterHash, 6)}
       </span>
@@ -109,6 +134,16 @@ function ReceiptRow({ receipt: r }: { receipt: Receipt }) {
         <span className="font-mono text-[13px] text-success">signed ✓</span>
       ) : (
         <span className="font-mono text-[13px] text-error">bad signature</span>
+      )}
+      {channel !== null && (
+        <a
+          href={`/api/receipt/${channel}/${r.nonce}`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-mono text-[13px] text-accent underline underline-offset-2"
+        >
+          json
+        </a>
       )}
     </li>
   );

@@ -1,9 +1,18 @@
 "use client";
 
+import { PublicKey } from "@solana/web3.js";
+import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
 import type { BondStatus } from "@/lib/types";
 import { Card, EmptyState, ErrorBanner, LoadingSkeleton } from "./primitives";
 import { ExplorerLink, shorten } from "./explorer";
 import { StateBadge } from "./status";
+
+function vaultFor(bond: PublicKey, mint: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [bond.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ATA_PROGRAM_ID
+  )[0];
+}
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
@@ -45,9 +54,10 @@ export function BondCard({
       </div>
       <dl className="divide-y divide-border-subtle">
         <Row k="Bonded" v={`${bond.amount.toString()} base units`} />
+        <Row k="Reserved" v={`${bond.reserved.toString()} base units`} />
         <Row
-          k="SLA"
-          v={`${(bond.slaBps / 100).toFixed(2)}% per proven failure`}
+          k="SLA (registered)"
+          v={`${(bond.slaBps / 100).toFixed(2)}% · reserved, not enforced`}
         />
         <Row
           k="Challenge window"
@@ -64,6 +74,19 @@ export function BondCard({
         <Row
           k="Bond account"
           v={<ExplorerLink kind="address" value={bond.address} short />}
+        />
+        <Row
+          k="Vault"
+          v={
+            <ExplorerLink
+              kind="address"
+              value={vaultFor(
+                new PublicKey(bond.address),
+                new PublicKey(bond.mint)
+              ).toBase58()}
+              short
+            />
+          }
         />
       </dl>
       <p className="mt-3 font-mono text-[12px] text-muted">

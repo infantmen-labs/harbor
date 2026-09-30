@@ -25,9 +25,9 @@ export default function Merchant() {
             Become a bonded merchant. No CLI.
           </h1>
           <p className="mt-4 max-w-[60ch] text-[16px] text-foreground-secondary">
-            Connect a devnet wallet, register your SLA, fund the bond, and
-            manage it — all signed in the browser. Channels bind automatically
-            when agents open their first session.
+            Connect a devnet wallet, register, fund the bond, and manage it —
+            all signed in the browser. Channels bind automatically when agents
+            open their first session.
           </p>
           <div className="mt-6 max-w-[80ch] rounded-[12px] border border-error/40 bg-surface p-4 text-[14px] leading-[150%]">
             <span className="font-medium text-error">Risk disclosure. </span>

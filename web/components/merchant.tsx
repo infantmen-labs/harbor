@@ -79,6 +79,14 @@ export function OnboardStepper({ defaultMint }: { defaultMint: string }) {
         programKey,
         spend
       );
+      if ((await connection.getAccountInfo(bind.binding)) !== null) {
+        setState({
+          status: "failed",
+          error:
+            "Channel is already bound (bindings are global, one per channel). Leave the field empty to onboard without binding.",
+        });
+        return;
+      }
       ixs.push(bind.ix);
     }
     await sendWalletTx(

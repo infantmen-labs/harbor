@@ -62,7 +62,7 @@ export function DisputeCard({
       </dl>
       <div className="mt-2">
         <Countdown
-          label="Deadline"
+          label={`Deadline · slot ${dispute.deadlineSlot.toString()}`}
           value={
             slot === null
               ? "…"
