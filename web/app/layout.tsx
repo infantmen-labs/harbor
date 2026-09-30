@@ -23,9 +23,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Harbor — Surety for machine payments",
+  title: "Harbor — Bonded refunds for agent API payments",
   description:
-    "Merchants post a bond. Agents pay through payment channels. Funds release on delivery receipts — or the bond slashes.",
+    "Merchants post a bond. Agents pay through payment channels. Failed deliveries refund automatically from the bond — plus a penalty to the backstop.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
