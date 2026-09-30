@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
 import { StatusHeader } from "@/components/header";
@@ -76,6 +76,28 @@ export default function Live() {
     6000,
     !mock && bond !== null
   );
+  // Channel selector: the feed used to follow bindings[0] forever, so new
+  // channels on a busy bond showed an empty feed. Default to the most
+  // receipted binding (richest feed, best first impression); the judge
+  // can switch to any channel explicitly. Onchain data has no
+  // timestamps, so recency ties break toward list order.
+  const [selectedBinding, setSelectedBinding] = useState<string | null>(null);
+  const bindings = mock ? [] : bindingsQuery.data ?? [];
+  const mostReceipted = bindings.reduce<{
+    address: string;
+    lastNonce: bigint;
+  } | null>(
+    (best, b) =>
+      best === null || b.lastNonce > best.lastNonce
+        ? { address: b.address, lastNonce: b.lastNonce }
+        : best,
+    null
+  );
+  const effectiveSelection =
+    selectedBinding !== null &&
+    bindings.some((b) => b.address === selectedBinding)
+      ? selectedBinding
+      : mostReceipted?.address ?? null;
   const binding = useMemo(
     () =>
       mock
@@ -83,13 +105,15 @@ export default function Live() {
             address: "HuzLMKJZeboM1vEKGnrMg4PAoqj8i6JcbQzwLqaxRi1X",
             channel: "mock-channel",
           }
-        : bindingsQuery.data !== null && bindingsQuery.data.length > 0
-        ? {
-            address: bindingsQuery.data[0].address,
-            channel: bindingsQuery.data[0].channel,
-          }
-        : null,
-    [mock, bindingsQuery.data]
+        : (() => {
+            const found = bindingsQuery.data?.find(
+              (b) => b.address === effectiveSelection
+            );
+            return found !== undefined && found !== null
+              ? { address: found.address, channel: found.channel }
+              : null;
+          })(),
+    [mock, bindingsQuery.data, effectiveSelection]
   );
 
   const channel = mock ? "mock-channel" : binding?.channel ?? null;
@@ -161,7 +185,10 @@ export default function Live() {
   );
 
   const nextNonce =
-    bond === null ? 1n : (bindingsQuery.data?.[0]?.lastNonce ?? 0n) + 1n;
+    bond === null
+      ? 1n
+      : (bindingsQuery.data?.find((b) => b.address === effectiveSelection)
+          ?.lastNonce ?? 0n) + 1n;
 
   return (
     <main className="pb-20">
@@ -177,6 +204,23 @@ export default function Live() {
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           <div className="space-y-6">
+            {!mock && bindings.length > 1 && (
+              <label className="flex items-center gap-3 text-[14px] text-muted">
+                Channel
+                <select
+                  value={effectiveSelection ?? ""}
+                  onChange={(e) => setSelectedBinding(e.target.value)}
+                  className="h-9 rounded-[8px] border border-border bg-surface px-3 font-mono text-[13px] text-foreground"
+                >
+                  {bindings.map((b) => (
+                    <option key={b.address} value={b.address}>
+                      {b.channel.slice(0, 4)}…{b.channel.slice(-4)} · nonce{" "}
+                      {b.lastNonce.toString()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <ReceiptFeed
               receipts={shownReceipts}
               channel={mock ? null : channel}
