@@ -88,6 +88,9 @@ echo "== happy path"
 CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=3 BUDGET_PER_REQUEST=5000 REQUEST_DELAY_MS=400 SALT="$SALT_OK" LOG_PATH=/tmp/opencode/loop-ok.jsonl node agent/dist/src/index.js
 
 echo "== kill + fail path"
+echo "   (demo honesty note: the merchant holds this request's signed voucher"
+echo "    and could settle escrow anyway — the bond refunds only the locked"
+echo "    claim, never the escrow debit. See docs/review.md.)"
 curl -sS -m 10 -X POST "$SERVER_URL/admin/kill" -H 'content-type: application/json' -d '{"killed":true}' > /dev/null
 FAIL_OUT=$(CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT="$DEPOSIT" REQUESTS=2 BUDGET_PER_REQUEST=5000 SALT="$SALT_FAIL" LOG_PATH=/tmp/opencode/loop-fail.jsonl node agent/dist/src/index.js 2>&1 || true)
 echo "$FAIL_OUT" | grep -E "channel|failed|skipping"

@@ -234,6 +234,79 @@ describe("server sessions", () => {
     );
   });
 
+  it("submits receipts onchain per served request", async () => {
+    const chan = Keypair.generate().publicKey;
+    const data = Buffer.alloc(256);
+    data[0] = 1;
+    data[1] = 1;
+    data.writeBigUInt64LE(200_000n, 12);
+    appCfg.mint.toBuffer().copy(data, 184);
+    const sent: Array<{ ixs: number; programIds: string[] }> = [];
+    const stubConn = {
+      getAccountInfo: async (key: PublicKey) => {
+        if (key.equals(chan)) {
+          return { data, owner: CHNL, lamports: 1_000_000 };
+        }
+        return { data: Buffer.alloc(8), owner: CHNL, lamports: 1 };
+      },
+      getLatestBlockhash: async () => ({
+        blockhash: "11111111111111111111111111111111",
+        lastValidBlockHeight: 1_000_000,
+      }),
+      sendTransaction: async (tx: { instructions: Array<{ programId: PublicKey }> }) => {
+        sent.push({
+          ixs: tx.instructions.length,
+          programIds: tx.instructions.map((i) => i.programId.toBase58()),
+        });
+        return "receiptsig";
+      },
+      confirmTransaction: async () => ({ value: { err: null } }),
+    };
+    const live = createApp(
+      { ...appCfg, skipChain: false },
+      new Store(),
+      stubConn as never
+    );
+    await new Promise<void>((resolve) => live.listen(0, resolve));
+    const url = `http://127.0.0.1:${(live.address() as AddressInfo).port}`;
+    const lpost = async (path: string, body: unknown) => {
+      const r = await fetch(`${url}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, json: (await r.json()) as Record<string, unknown> };
+    };
+    try {
+      const s = await lpost("/session", {
+        channel: chan.toBase58(),
+        channelProgram: CHNL.toBase58(),
+        deposit: "200000",
+        authorizedSigner: agent.publicKey.toBase58(),
+      });
+      assert.equal(s.status, 200);
+      const r = await lpost("/complete", {
+        channel: chan.toBase58(),
+        nonce: "1",
+        input: "hello world meter me",
+        voucherCumulative: "5000",
+        voucherSignature: Buffer.from(
+          nacl.sign.detached(channelVoucherBytes(chan, 5000n, 0n), agent.secretKey)
+        ).toString("base64"),
+      });
+      assert.equal(r.status, 200);
+      // One tx: Ed25519 precompile ix first, then the receipt submit.
+      assert.equal(sent.length, 1);
+      assert.equal(sent[0]!.ixs, 2);
+      assert.equal(
+        sent[0]!.programIds[0],
+        "Ed25519SigVerify111111111111111111111111111"
+      );
+    } finally {
+      await new Promise<void>((resolve) => live.close(() => resolve()));
+    }
+  });
+
   it("clamps sessions to onchain escrow and rejects over-authorization", async () => {
     const chan = Keypair.generate().publicKey;
     const data = Buffer.alloc(256);
@@ -249,6 +322,12 @@ describe("server sessions", () => {
         // Pretend the binding already exists so no bind tx is attempted.
         return { data: Buffer.alloc(8), owner: CHNL, lamports: 1 };
       },
+      getLatestBlockhash: async () => ({
+        blockhash: "11111111111111111111111111111111",
+        lastValidBlockHeight: 1_000_000,
+      }),
+      sendTransaction: async () => "stubsig",
+      confirmTransaction: async () => ({ value: { err: null } }),
     };
     const live = createApp(
       { ...appCfg, skipChain: false },
@@ -324,4 +403,56 @@ describe("server sessions", () => {
       await new Promise<void>((resolve) => live.close(() => resolve()));
     }
   });
+
+  it("round-trips sessions and kill state through a snapshot file", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "harbor-store-"));
+    try {
+      const path = join(dir, "store.json");
+      const s = new Store(path);
+      s.set({
+        channel,
+        binding: Keypair.generate().publicKey,
+        channelProgram: CHNL,
+        deposit: 200_000n,
+        authorizedSigner: agent.publicKey,
+        accepted: 5_000n,
+        spent: 1_000n,
+        lastNonce: 1n,
+        receipts: new Map([
+          [
+            "1",
+            {
+              merchant: merchant.publicKey.toBase58(),
+              binding: "b",
+              cumulativeSpend: "1000",
+              meterHash: "00",
+              outputHash: "11",
+              status: 0,
+              nonce: "1",
+              expirySlot: "9",
+              signer: merchant.publicKey.toBase58(),
+              signature: "sig",
+            },
+          ],
+        ]),
+      });
+      s.killed = true;
+      s.save();
+      const back = Store.load(path);
+      assert.ok(back !== null);
+      assert.equal(back!.killed, true);
+      const got = back!.get(channel.toBase58());
+      assert.ok(got !== undefined);
+      assert.equal(got!.deposit, 200_000n);
+      assert.equal(got!.accepted, 5_000n);
+      assert.equal(got!.receipts.get("1")!.cumulativeSpend, "1000");
+      assert.equal(Store.load(join(dir, "missing.json")), null);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
+

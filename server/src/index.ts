@@ -14,9 +14,12 @@ import {
   bindChannelIx,
   bindingPda,
   bondPda,
+  buildEd25519Ix,
   channelVoucherBytes,
   receiptMessageBytes,
+  receiptPda,
   signEd25519,
+  submitReceiptIx,
   verifyEd25519,
 } from "@infantmen-labs/harbor-sdk";
 import { Config, connectionFor } from "./config";
@@ -63,6 +66,37 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
         session.channel,
         session.channelProgram,
         session.deposit
+      )
+    );
+    await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
+  }
+
+  async function submitReceiptOnchain(
+    connection: Connection,
+    binding: PublicKey,
+    message: Uint8Array,
+    signature: Uint8Array,
+    args: {
+      cumulativeSpend: bigint;
+      meterHash: Uint8Array;
+      outputHash: Uint8Array;
+      status: number;
+      nonce: bigint;
+      expirySlot: bigint;
+      signer: PublicKey;
+    }
+  ): Promise<void> {
+    const [bond] = bondPda(cfg.merchant.publicKey, cfg.mint);
+    const [receipt] = receiptPda(binding, args.nonce);
+    const tx = new Transaction().add(
+      buildEd25519Ix(cfg.merchant.publicKey, signature, message),
+      submitReceiptIx(
+        cfg.programId,
+        cfg.merchant.publicKey,
+        bond,
+        binding,
+        receipt,
+        args
       )
     );
     await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
@@ -202,6 +236,26 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     session.accepted = cumulative;
     session.spent += cost;
     session.lastNonce = nonce;
+    if (!cfg.skipChain) {
+      // Best-effort onchain receipt: delivery already happened, so a
+      // failed submit must never 500 the request — it only means this
+      // nonce lacks an onchain record.
+      await submitReceiptOnchain(
+        conn ?? connectionFor(cfg),
+        session.binding,
+        msg,
+        Buffer.from(signature, "base64"),
+        {
+          cumulativeSpend: session.spent,
+          meterHash,
+          outputHash,
+          status: 0,
+          nonce,
+          expirySlot: EXPIRY_SLOT,
+          signer: cfg.merchant.publicKey,
+        }
+      ).catch((e) => console.error("receipt submit failed:", e));
+    }
     const receipt: StoredReceipt = {
       merchant: cfg.merchant.publicKey.toBase58(),
       binding: session.binding.toBase58(),
@@ -215,6 +269,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
       signature,
     };
     session.receipts.set(nonce.toString(), receipt);
+    store.save();
     return {
       status: 200 as const,
       body: {
@@ -260,6 +315,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
           }
         }
         store.killed = killing;
+        store.save();
         json(res, 200, { killed: store.killed });
       } else {
         json(res, 404, { error: "not found" });

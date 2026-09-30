@@ -105,6 +105,17 @@ ack oracle gating receipts) is post-contest work, deliberately not
 rushed before the deadline; the mechanism is shipped as _disclosed
 optimistic refunds_, not delivery assurance.
 
+**Failed vouchers settle against the buyer.** The agent sends each
+voucher _before_ receiving service, and upstream `settle` is
+permissionless on presentation of a valid buyer-signed voucher — so a
+merchant holding a failed request's voucher can settle that escrow leg
+even though delivery never happened. The bond claim refunds only the
+separately locked claim (95%), never the escrow debit. Demo honesty
+depends on the operator not front-running failed vouchers (ours
+doesn't); the keeper cannot prevent it, and no test asserts adversarial
+settle ordering. Any production deployment needs voucher-per-nonce
+hash-locked release or dispute-before-settle enforcement first.
+
 **Nonce gaps brick skipped receipt slots.** `submit_receipt` requires
 `nonce > last_nonce`, so a skipped nonce becomes permanently
 unreceiptable once a later nonce lands. Impact is metering-only (claims

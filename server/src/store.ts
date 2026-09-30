@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { PublicKey } from "@solana/web3.js";
 
 export interface StoredReceipt {
@@ -30,12 +31,69 @@ export class Store {
   readonly sessions = new Map<string, Session>();
   killed = false;
 
+  constructor(private readonly path: string | null = null) {}
+
   get(channel: string): Session | undefined {
     return this.sessions.get(channel);
   }
 
   set(s: Session): void {
     this.sessions.set(s.channel.toBase58(), s);
+    this.save();
+  }
+
+  /** Persist after every mutation; restart-safe demo state. */
+  save(): void {
+    if (this.path === null) return;
+    const sessions = [...this.sessions.values()].map((s) => ({
+      channel: s.channel.toBase58(),
+      binding: s.binding.toBase58(),
+      channelProgram: s.channelProgram.toBase58(),
+      deposit: s.deposit.toString(),
+      authorizedSigner: s.authorizedSigner.toBase58(),
+      accepted: s.accepted.toString(),
+      spent: s.spent.toString(),
+      lastNonce: s.lastNonce.toString(),
+      receipts: [...s.receipts.values()],
+    }));
+    writeFileSync(this.path, JSON.stringify({ killed: this.killed, sessions }));
+  }
+
+  static load(path: string): Store | null {
+    try {
+      const raw = JSON.parse(readFileSync(path, "utf8")) as {
+        killed: boolean;
+        sessions: Array<{
+          channel: string;
+          binding: string;
+          channelProgram: string;
+          deposit: string;
+          authorizedSigner: string;
+          accepted: string;
+          spent: string;
+          lastNonce: string;
+          receipts: StoredReceipt[];
+        }>;
+      };
+      const store = new Store(path);
+      store.killed = raw.killed === true;
+      for (const s of raw.sessions) {
+        store.sessions.set(s.channel, {
+          channel: new PublicKey(s.channel),
+          binding: new PublicKey(s.binding),
+          channelProgram: new PublicKey(s.channelProgram),
+          deposit: BigInt(s.deposit),
+          authorizedSigner: new PublicKey(s.authorizedSigner),
+          accepted: BigInt(s.accepted),
+          spent: BigInt(s.spent),
+          lastNonce: BigInt(s.lastNonce),
+          receipts: new Map(s.receipts.map((r) => [r.nonce, r])),
+        });
+      }
+      return store;
+    } catch {
+      return null;
+    }
   }
 }
 

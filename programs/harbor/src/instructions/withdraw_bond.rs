@@ -82,7 +82,10 @@ pub fn handle_withdraw_bond(ctx: Context<WithdrawBond>, amount: u64) -> Result<(
     )?;
 
     let bond = &mut ctx.accounts.bond;
-    bond.amount = bond.amount.checked_sub(amount).unwrap();
+    bond.amount = bond
+        .amount
+        .checked_sub(amount)
+        .ok_or(HarborError::ArithmeticOverflow)?;
     bond.last_change_slot = Clock::get()?.slot;
     Ok(())
 }

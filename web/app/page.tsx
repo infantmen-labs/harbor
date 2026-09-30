@@ -74,9 +74,9 @@ export default function Landing() {
 
       <section className="border-y border-border bg-background-secondary">
         <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
-          <HowMetric label="Mechanism" value="Bond → claim → refund" />
-          <HowMetric label="Settlement" value="Payment channels" />
-          <HowMetric label="Challenge window" value="150 slots" />
+          <HowMetric label="Problem" value="Failed API calls after payment" />
+          <HowMetric label="Today" value="Eat the loss" />
+          <HowMetric label="Harbor" value="Bonded rebate + 2x penalty" />
           <HowMetric label="Trust model" value="Collateral, single-key" />
         </div>
       </section>
