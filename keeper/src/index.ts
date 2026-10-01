@@ -16,8 +16,21 @@ async function main(): Promise<void> {
   const cfg = loadKeeperConfig();
   const conn = new Connection(cfg.rpcUrl, "confirmed");
   const log = new JsonlLogger(cfg.logPath);
+  // Never log the RPC URL: hosted keys live in its query string and
+  // journals are lower-trust than the secrets file.
+  const rpcOrigin = (() => {
+    try {
+      const u = new URL(cfg.rpcUrl);
+      u.search = "";
+      return u.origin + u.pathname;
+    } catch {
+      return "unparseable-rpc-url";
+    }
+  })();
   console.log(
-    `keeper ${cfg.live ? "LIVE" : "dry-run"} on ${cfg.rpcUrl} every ${cfg.pollMs}ms`,
+    `keeper ${cfg.live ? "LIVE" : "dry-run"} on ${rpcOrigin} every ${
+      cfg.pollMs
+    }ms`
   );
   for (;;) {
     try {
