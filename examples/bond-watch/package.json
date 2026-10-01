@@ -5,7 +5,7 @@
   "description": "Third-party Harbor bond monitor: read-only bond health from any RPC, using only @infantmen-labs/harbor-sdk + web3.js.",
   "license": "MIT",
   "dependencies": {
-    "@solana/web3.js": "^1.98.0",
-    "@infantmen-labs/harbor-sdk": "^0.4.1"
+    "@infantmen-labs/harbor-sdk": "^0.4.4",
+    "@solana/web3.js": "^1.98.0"
   }
 }
