@@ -41,15 +41,15 @@ macOS: `base64 -i <file> | tr -d '\n'`.
    (`railway.json` is picked up automatically).
 2. Variables:
 
-| Var                         | Value                                                                                                                                                                                                                                                                                     |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RPC_URL`                   | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value; the local copy lives in `web/.env.local`, gitignored)                                                                                                                      |
-| `MINT`                      | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54`                                                                                                                                                                                                                                            |
-| `PRICE_PER_TOKEN`           | `10`                                                                                                                                                                                                                                                                                      |
-| `MERCHANT_KEYPAIR_B64`      | base64 of the merchant keypair (see §0)                                                                                                                                                                                                                                                   |
-| `KILL_TOKEN`                | a random string (e.g. `openssl rand -hex 16`); gates `POST /admin/kill {killed:true}` via `Authorization: Bearer <token>`. Revive stays public. Unset = open (local rehearsal only)                                                                                                       |
+| Var                          | Value                                                                                                                                                                                                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RPC_URL`                    | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value; the local copy lives in `web/.env.local`, gitignored)                                                                                                                      |
+| `MINT`                       | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54`                                                                                                                                                                                                                                            |
+| `PRICE_PER_TOKEN`            | `10`                                                                                                                                                                                                                                                                                      |
+| `MERCHANT_KEYPAIR_B64`       | base64 of the merchant keypair (see §0)                                                                                                                                                                                                                                                   |
+| `KILL_TOKEN`                 | a random string (e.g. `openssl rand -hex 16`); gates `POST /admin/kill {killed:true}` via `Authorization: Bearer <token>`. Revive stays public. Unset = open (local rehearsal only)                                                                                                       |
 | `UPSTREAM_PROGRAM_ALLOWLIST` | comma-separated program IDs the server will bind as the merchant (default: canonical `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`). Unknown programs get 400 before any signature — this is what stops induced binds of attacker-owned programs. Localnet rehearsals set the fixture ID |
-| `PORT`                      | provided by Railway automatically                                                                                                                                                                                                                                                         |
+| `PORT`                       | provided by Railway automatically                                                                                                                                                                                                                                                         |
 
 3. Generate a public domain. Health check is `GET /info` (returns
    `{ merchant, pricePerToken, killed }`).
@@ -92,6 +92,34 @@ correct devnet addresses; set them explicitly only if the programs move.
 
 3. Deploy. `/api/*` rewrites to the server are baked at build time —
    if the server URL ever changes, update the var and redeploy web.
+
+## 1b. Server + keeper (VPS, alternative to Railway)
+
+Live on Ubuntu 22.04 (user `harbor`, Node 22, code at `/opt/harbor` from
+`git archive HEAD` — tracked files only, secrets never in the tree):
+
+- Secrets in `/etc/harbor/` (`harbor:harbor`, `600`): `merchant.json`,
+  `operator.json`, `server.env`, `keeper.env`. Key envs: `PORT=3100`
+  (3000 is taken by another app on the box), `RPC_URL`, `MINT`,
+  `PRICE_PER_TOKEN=10`, `KILL_TOKEN`, `UPSTREAM_PROGRAM_ALLOWLIST`,
+  `STORE_PATH=/var/lib/harbor/store.json` (server), `MODE=live`,
+  `POLL_MS=30000`, `LOG_PATH=/var/lib/harbor/keeper.jsonl` (keeper).
+- systemd units `harbor-server` + `harbor-keeper` (`Restart=always`,
+  enabled; both survive reboot — verified).
+- Firewall: `ufw` allow 22/80/443 only. Caddy already serves another
+  app — do NOT touch `/etc/caddy/Caddyfile`; public API needs a NEW
+  domain with DNS pointing here, then append:
+  `api.<domain> { reverse_proxy 127.0.0.1:3100 }` (Caddy gets TLS
+  automatically). Until then the API is loopback-only; reach it via
+  `ssh -L 3100:127.0.0.1:3100 ubuntu@<vps>` for tests/demos.
+- Redeploys: `git archive HEAD` → extract to `/opt/harbor` →
+  `yarn install --frozen-lockfile && yarn build` →
+  `systemctl restart harbor-server harbor-keeper`. VPS needs Node ≥22
+  (wallet-standard dep engines gate).
+- Keeper startup log redacts the RPC query string (hosted keys live
+  there). If a key ever hits journals, rotate it in the Helius
+  dashboard + all three consumers (local `web/.env.local`,
+  `/etc/harbor/server.env`, `/etc/harbor/keeper.env`).
 
 ## 4. Smoke test (post-deploy)
 
