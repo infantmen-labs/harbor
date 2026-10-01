@@ -8,18 +8,23 @@ import {
 import { readFileSync } from "node:fs";
 
 function loadKeypair(path: string): Keypair {
-  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path, "utf8"))));
+  return Keypair.fromSecretKey(
+    Uint8Array.from(JSON.parse(readFileSync(path, "utf8")))
+  );
 }
 
 async function main(): Promise<void> {
   const connection = new Connection(
     process.env["RPC_URL"] ?? "https://api.devnet.solana.com",
-    "confirmed",
+    "confirmed"
   );
   const payer = loadKeypair(
-    process.env["PAYER_KEYPAIR"] ?? `${process.env["HOME"]}/.config/solana/id.json`,
+    process.env["PAYER_KEYPAIR"] ??
+      `${process.env["HOME"]}/.config/solana/id.json`
   );
-  const merchant = new PublicKey(process.env["MERCHANT_PUBKEY"] ?? payer.publicKey.toBase58());
+  const merchant = new PublicKey(
+    process.env["MERCHANT_PUBKEY"] ?? payer.publicKey.toBase58()
+  );
   const agent = new PublicKey(process.env["AGENT_PUBKEY"] ?? "");
   const decimals = Number(process.env["MINT_DECIMALS"] ?? 6);
   const amount = BigInt(process.env["MINT_AMOUNT"] ?? 1_000_000_000);
@@ -34,9 +39,23 @@ async function main(): Promise<void> {
   }
 
   for (const owner of [merchant, agent]) {
-    const ata = await getOrCreateAssociatedTokenAccount(connection, payer, mint, owner);
-    const sig = await mintTo(connection, payer, mint, ata.address, payer, amount);
-    console.log(`funded ${owner.toBase58()} ata=${ata.address.toBase58()} sig=${sig}`);
+    const ata = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      mint,
+      owner
+    );
+    const sig = await mintTo(
+      connection,
+      payer,
+      mint,
+      ata.address,
+      payer,
+      amount
+    );
+    console.log(
+      `funded ${owner.toBase58()} ata=${ata.address.toBase58()} sig=${sig}`
+    );
   }
 }
 

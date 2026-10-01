@@ -51,7 +51,13 @@ const STATE_STYLES: Record<string, string> = {
   halted: "bg-error-bg text-error",
 };
 
-export function StateBadge({ state, label }: { state: string; label?: string }) {
+export function StateBadge({
+  state,
+  label,
+}: {
+  state: string;
+  label?: string;
+}) {
   const cls = STATE_STYLES[state] ?? "bg-background text-muted";
   return (
     <span

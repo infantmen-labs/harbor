@@ -45,9 +45,13 @@ See `examples/bond-watch` for a complete read-only monitor (bond health
 ## One-command verification
 
 ```sh
-anchor test          # onchain suite (bond, receipts, disputes, composition)
-yarn install         # TS workspaces (sdk, server, agent, keeper)
-yarn --cwd sdk test && yarn --cwd server test && yarn --cwd agent test && yarn --cwd keeper test
+anchor build         # harbor.so (program suites + localnet need it)
+yarn install         # TS workspaces (sdk, log, server, agent, keeper, web)
+yarn lint            # prettier check
+yarn build           # dist/ entrypoints for server, agent, keeper
+yarn test            # TS suites (sdk, server, agent, keeper)
+cargo test -p harbor # program suites via LiteSVM (no validator needed)
+anchor test          # full localnet suite (bond, receipts, disputes, composition)
 ```
 
 ## Local end-to-end

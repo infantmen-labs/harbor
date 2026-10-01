@@ -253,7 +253,9 @@ describe("server sessions", () => {
         blockhash: "11111111111111111111111111111111",
         lastValidBlockHeight: 1_000_000,
       }),
-      sendTransaction: async (tx: { instructions: Array<{ programId: PublicKey }> }) => {
+      sendTransaction: async (tx: {
+        instructions: Array<{ programId: PublicKey }>;
+      }) => {
         sent.push({
           ixs: tx.instructions.length,
           programIds: tx.instructions.map((i) => i.programId.toBase58()),
@@ -275,7 +277,10 @@ describe("server sessions", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      return { status: r.status, json: (await r.json()) as Record<string, unknown> };
+      return {
+        status: r.status,
+        json: (await r.json()) as Record<string, unknown>,
+      };
     };
     try {
       const s = await lpost("/session", {
@@ -291,7 +296,10 @@ describe("server sessions", () => {
         input: "hello world meter me",
         voucherCumulative: "5000",
         voucherSignature: Buffer.from(
-          nacl.sign.detached(channelVoucherBytes(chan, 5000n, 0n), agent.secretKey)
+          nacl.sign.detached(
+            channelVoucherBytes(chan, 5000n, 0n),
+            agent.secretKey
+          )
         ).toString("base64"),
       });
       assert.equal(r.status, 200);
@@ -455,4 +463,3 @@ describe("server sessions", () => {
     }
   });
 });
-

@@ -13,8 +13,9 @@
 #                     (default ./.loop-run — gitignored, override per run)
 #   MERCHANT_KEYPAIR  merchant + upgrade authority (default ~/.config/solana/id.json)
 #   AGENT_KEYPAIR     channel payer, also the dispute claimant (default loop-agent.json)
-#   UPSTREAM_SO       locally-built payment-channels.so (REQUIRED — build per
-#                     docs/proof-bundle.md v0.4.0 notes; no default on purpose)
+#   UPSTREAM_SO       locally-built payment-channels.so (REQUIRED — see
+#                     "Upstream fixture build" in docs/proof-bundle.md;
+#                     no default on purpose)
 #   UPSTREAM_KEYPAIR  keypair matching UPSTREAM_SO's declare_id
 #   BOND_AMOUNT / DEPOSIT / CLAIM / SALT_OK / SALT_FAIL (defaults: 500000/200000/2000/100/101)
 set -euo pipefail

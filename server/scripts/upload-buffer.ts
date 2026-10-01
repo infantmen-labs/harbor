@@ -33,7 +33,7 @@ let cuPrice = 10000;
 async function sendIx(
   keys: Array<{ pubkey: PublicKey; isWritable: boolean; isSigner: boolean }>,
   data: Buffer,
-  signers: Keypair[],
+  signers: Keypair[]
 ): Promise<string> {
   const tx = new Transaction()
     .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: cuPrice }))
@@ -53,15 +53,20 @@ async function sendIx(
 
 async function finalize(so: Buffer): Promise<void> {
   const program = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(readFileSync(process.env["PROGRAM_KEYPAIR"] ?? "", "utf8"))),
+    Uint8Array.from(
+      JSON.parse(readFileSync(process.env["PROGRAM_KEYPAIR"] ?? "", "utf8"))
+    )
   );
   const [programdata] = PublicKey.findProgramAddressSync(
     [program.publicKey.toBuffer()],
-    BPF_LOADER,
+    BPF_LOADER
   );
   // The program account (36 bytes, loader-owned) must exist before deploy.
   {
-    const existing = await connection.getAccountInfo(program.publicKey, "processed");
+    const existing = await connection.getAccountInfo(
+      program.publicKey,
+      "processed"
+    );
     if (existing === null) {
       const rent = await connection.getMinimumBalanceForRentExemption(36);
       const tx = new Transaction().add(
@@ -71,7 +76,7 @@ async function finalize(so: Buffer): Promise<void> {
           lamports: rent,
           space: 36,
           programId: BPF_LOADER,
-        }),
+        })
       );
       await sendAndConfirmTransaction(connection, tx, [authority, program], {
         commitment: "confirmed",
@@ -80,7 +85,10 @@ async function finalize(so: Buffer): Promise<void> {
     }
   }
   // Deploy (fresh) or upgrade (existing) based on program account state.
-  const progInfo = await connection.getAccountInfo(program.publicKey, "processed");
+  const progInfo = await connection.getAccountInfo(
+    program.publicKey,
+    "processed"
+  );
   const isDeployed = progInfo !== null && progInfo.data.length > 36;
   const RENT = new PublicKey("SysvarRent111111111111111111111111111111111");
   const CLOCK = new PublicKey("SysvarC1ock11111111111111111111111111111111");
@@ -134,7 +142,7 @@ async function closeBuffer(): Promise<void> {
       { pubkey: authority.publicKey, isWritable: false, isSigner: true },
     ],
     data,
-    [authority],
+    [authority]
   );
   console.log(`BUFFER_CLOSED sig=${sig}`);
 }
@@ -142,12 +150,14 @@ async function closeBuffer(): Promise<void> {
 async function main(): Promise<void> {
   connection = new Connection(process.env["RPC_URL"] ?? "", "processed");
   buffer = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(readFileSync(process.env["BUFFER_KEYPAIR"] ?? "", "utf8"))),
+    Uint8Array.from(
+      JSON.parse(readFileSync(process.env["BUFFER_KEYPAIR"] ?? "", "utf8"))
+    )
   );
   authority = Keypair.fromSecretKey(
     Uint8Array.from(
-      JSON.parse(readFileSync(process.env["AUTHORITY_KEYPAIR"] ?? "", "utf8")),
-    ),
+      JSON.parse(readFileSync(process.env["AUTHORITY_KEYPAIR"] ?? "", "utf8"))
+    )
   );
   cuPrice = Number(process.env["CU_PRICE"] ?? 10000);
   const so = readFileSync(process.env["SO_PATH"] ?? "");
@@ -166,7 +176,11 @@ async function main(): Promise<void> {
         method: "getAccountInfo",
         params: [
           buffer.publicKey.toBase58(),
-          { commitment: "processed", encoding: "base64", dataSlice: { offset, length } },
+          {
+            commitment: "processed",
+            encoding: "base64",
+            dataSlice: { offset, length },
+          },
         ],
       }),
     });
@@ -174,7 +188,8 @@ async function main(): Promise<void> {
       result?: { value?: { data?: [string, string] } | null };
     };
     const data = json.result?.value?.data;
-    if (data === undefined || data === null) throw new Error("buffer account missing");
+    if (data === undefined || data === null)
+      throw new Error("buffer account missing");
     return Buffer.from(data[0], "base64");
   }
 
@@ -182,7 +197,10 @@ async function main(): Promise<void> {
 
   // Create the buffer account on first run (system-owned until Assigned).
   {
-    const existing = await connection.getAccountInfo(buffer.publicKey, "processed");
+    const existing = await connection.getAccountInfo(
+      buffer.publicKey,
+      "processed"
+    );
     if (existing === null) {
       const rent = await connection.getMinimumBalanceForRentExemption(total);
       const tx = new Transaction().add(
@@ -192,7 +210,7 @@ async function main(): Promise<void> {
           lamports: rent,
           space: total,
           programId: BPF_LOADER,
-        }),
+        })
       );
       await sendAndConfirmTransaction(connection, tx, [authority, buffer], {
         commitment: "confirmed",
@@ -208,16 +226,22 @@ async function main(): Promise<void> {
       const data = Buffer.alloc(4);
       data.writeUInt32LE(0, 0);
       const tx = new Transaction()
-        .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: cuPrice }))
+        .add(
+          ComputeBudgetProgram.setComputeUnitPrice({ microLamports: cuPrice })
+        )
         .add(
           new TransactionInstruction({
             programId: BPF_LOADER,
             keys: [
               { pubkey: buffer.publicKey, isWritable: true, isSigner: false },
-              { pubkey: authority.publicKey, isWritable: false, isSigner: true },
+              {
+                pubkey: authority.publicKey,
+                isWritable: false,
+                isSigner: true,
+              },
             ],
             data,
-          }),
+          })
         );
       await sendAndConfirmTransaction(connection, tx, [authority], {
         commitment: "confirmed",
@@ -257,16 +281,22 @@ async function main(): Promise<void> {
       data.writeBigUInt64LE(BigInt(end - off), 8);
       so.subarray(off, end).copy(data, 16);
       const tx = new Transaction()
-        .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: cuPrice }))
+        .add(
+          ComputeBudgetProgram.setComputeUnitPrice({ microLamports: cuPrice })
+        )
         .add(
           new TransactionInstruction({
             programId: BPF_LOADER,
             keys: [
               { pubkey: buffer.publicKey, isWritable: true, isSigner: false },
-              { pubkey: authority.publicKey, isWritable: false, isSigner: true },
+              {
+                pubkey: authority.publicKey,
+                isWritable: false,
+                isSigner: true,
+              },
             ],
             data,
-          }),
+          })
         );
       for (let r = 0; ; r++) {
         try {
@@ -278,13 +308,20 @@ async function main(): Promise<void> {
         } catch (e) {
           if (r === 0) {
             const logs =
-              typeof (e as { getLogs?: () => Promise<string[]> }).getLogs === "function"
-                ? await (e as { getLogs: () => Promise<string[]> }).getLogs().catch(() => [])
+              typeof (e as { getLogs?: () => Promise<string[]> }).getLogs ===
+              "function"
+                ? await (e as { getLogs: () => Promise<string[]> })
+                    .getLogs()
+                    .catch(() => [])
                 : [];
-            console.log(`chunk ${off} first failure: ${String(e).slice(0, 300)}`);
-            for (const l of logs.slice(0, 12)) console.log(`  | ${l.slice(0, 160)}`);
+            console.log(
+              `chunk ${off} first failure: ${String(e).slice(0, 300)}`
+            );
+            for (const l of logs.slice(0, 12))
+              console.log(`  | ${l.slice(0, 160)}`);
           }
-          if (r % 10 === 0) console.log(`chunk ${off} retry ${r}: ${String(e).slice(0, 100)}`);
+          if (r % 10 === 0)
+            console.log(`chunk ${off} retry ${r}: ${String(e).slice(0, 100)}`);
           await sleep(Math.min(1000 * 2 ** Math.min(r, 6), 15000));
         }
       }

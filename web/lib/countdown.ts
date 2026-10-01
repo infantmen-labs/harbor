@@ -13,7 +13,10 @@ export function formatCountdown(totalSeconds: number): string {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
-export function countdownToDeadline(deadlineSlot: bigint, currentSlot: bigint): string {
+export function countdownToDeadline(
+  deadlineSlot: bigint,
+  currentSlot: bigint
+): string {
   if (currentSlot >= deadlineSlot) return "matured";
   return formatCountdown(slotsToMs(deadlineSlot - currentSlot) / 1000);
 }

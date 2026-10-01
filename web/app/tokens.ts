@@ -44,7 +44,9 @@ export const radius = {
   pill: 9999,
 } as const;
 
-export const spacing = [0, 4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 128, 160] as const;
+export const spacing = [
+  0, 4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 128, 160,
+] as const;
 
 export const layout = {
   maxWidth: 1280,

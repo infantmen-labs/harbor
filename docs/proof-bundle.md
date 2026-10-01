@@ -34,6 +34,22 @@ cluster; cluster features only change the treasury owner). Lesson learned:
 the upstream program derives PDAs from its own ID, so binaries cannot be
 re-addressed with a hex patch — build from source for non-canonical IDs.
 
+### Upstream fixture build (localnet only)
+
+```sh
+git clone https://github.com/solana-foundation/payment-channels.git upstream-pc
+cd upstream-pc
+git checkout 3ffa4d6728ad88e4a9667a76ad9ccd68a302c696
+solana-keygen new -o ~/.config/solana/local-chnl.json --no-bip39-passphrase
+# Point the crate's declare_id! at the new keypair:
+grep -rn "declare_id" program/payment_channels/src/ | head -3
+# (edit the declare_id! line to `solana-keygen pubkey ~/.config/solana/local-chnl.json`)
+cargo build-sbf --manifest-path program/payment_channels/Cargo.toml
+# .so lands at target/deploy/payment_channels.so — pass it as UPSTREAM_SO,
+# and the keypair as UPSTREAM_KEYPAIR. Default cargo features are fine for
+# localnet (cluster TREASURY_OWNER gating only affects mainnet/devnet builds).
+```
+
 ## Mint
 
 - Test mint `8naTPRBsHMbnhFWXFgK7EGqAYvR5HGqBoucsJspLiXpZ` (6 decimals).

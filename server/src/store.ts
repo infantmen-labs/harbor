@@ -101,7 +101,9 @@ export class Store {
 export function meterTokens(input: string): { output: string; tokens: bigint } {
   const h = createHash("sha256").update(input, "utf8").digest();
   const tokens = BigInt(50 + (h[0] % 200));
-  const output = `completion:${h.subarray(0, 8).toString("hex")}:${input.length}`;
+  const output = `completion:${h.subarray(0, 8).toString("hex")}:${
+    input.length
+  }`;
   return { output, tokens };
 }
 

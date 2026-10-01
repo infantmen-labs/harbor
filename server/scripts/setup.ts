@@ -1,6 +1,18 @@
 /** One-time merchant setup: register bond + post collateral (binding happens per session). */
-import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import { bondPda, postBondIx, registerMerchantIx, ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@infantmen-labs/harbor-sdk";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+} from "@solana/web3.js";
+import {
+  bondPda,
+  postBondIx,
+  registerMerchantIx,
+  ATA_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "@infantmen-labs/harbor-sdk";
 import { loadConfig, connectionFor } from "../src/config";
 
 async function main(): Promise<void> {
@@ -14,7 +26,14 @@ async function main(): Promise<void> {
   const existing = await connection.getAccountInfo(bond);
   if (existing === null) {
     const tx = new Transaction().add(
-      registerMerchantIx(cfg.programId, cfg.merchant.publicKey, bond, cfg.mint, slaBps, challengeSlots),
+      registerMerchantIx(
+        cfg.programId,
+        cfg.merchant.publicKey,
+        bond,
+        cfg.mint,
+        slaBps,
+        challengeSlots
+      )
     );
     await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
     console.log(`registered bond ${bond.toBase58()}`);
@@ -22,13 +41,17 @@ async function main(): Promise<void> {
     console.log(`bond exists ${bond.toBase58()}`);
   }
 
-  const merchantAta = await connection.getParsedTokenAccountsByOwner(cfg.merchant.publicKey, {
-    mint: cfg.mint,
-  });
-  if (merchantAta.value.length === 0) throw new Error("merchant has no ATA for mint");
+  const merchantAta = await connection.getParsedTokenAccountsByOwner(
+    cfg.merchant.publicKey,
+    {
+      mint: cfg.mint,
+    }
+  );
+  if (merchantAta.value.length === 0)
+    throw new Error("merchant has no ATA for mint");
   const vault = PublicKey.findProgramAddressSync(
     [bond.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), cfg.mint.toBuffer()],
-    ATA_PROGRAM_ID,
+    ATA_PROGRAM_ID
   )[0];
   const tx = new Transaction().add(
     postBondIx(
@@ -38,8 +61,8 @@ async function main(): Promise<void> {
       cfg.mint,
       merchantAta.value[0].pubkey,
       vault,
-      amount,
-    ),
+      amount
+    )
   );
   await sendAndConfirmTransaction(connection, tx, [cfg.merchant]);
   console.log(`posted ${amount} to ${vault.toBase58()}`);

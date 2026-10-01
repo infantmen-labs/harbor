@@ -12,7 +12,7 @@ export async function sendWalletTx(
   payer: PublicKey,
   signTransaction: (tx: Transaction) => Promise<Transaction>,
   instructions: TransactionInstruction[],
-  onState: (s: TxState) => void,
+  onState: (s: TxState) => void
 ): Promise<string> {
   onState({ status: "pending" });
   try {

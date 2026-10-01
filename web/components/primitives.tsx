@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
 export function Container({ children }: { children: ReactNode }) {
-  return <div className="mx-auto w-full max-w-[1280px] px-5 md:px-8">{children}</div>;
+  return (
+    <div className="mx-auto w-full max-w-[1280px] px-5 md:px-8">{children}</div>
+  );
 }
 
 export function Section({
@@ -51,7 +53,13 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
-export function ErrorBanner({ error, onRetry }: { error: string; onRetry?: () => void }) {
+export function ErrorBanner({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry?: () => void;
+}) {
   return (
     <div className="rounded-[12px] border border-error/30 bg-error-bg px-5 py-4 text-[14px]">
       <span className="font-medium text-error">Something went wrong. </span>

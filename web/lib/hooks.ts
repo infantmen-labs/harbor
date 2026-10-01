@@ -18,7 +18,11 @@ const MAX_BACKOFF_MS = 60_000;
  * exponentially (with jitter) so a struggling endpoint is not hammered;
  * any success resets the delay. No global store needed.
  */
-export function usePoll<T>(fn: () => Promise<T>, ms: number, active = true): PollState<T> {
+export function usePoll<T>(
+  fn: () => Promise<T>,
+  ms: number,
+  active = true
+): PollState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
