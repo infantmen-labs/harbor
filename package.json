@@ -10,8 +10,8 @@
   ],
   "license": "MIT",
   "scripts": {
-    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "lint:fix": "prettier \"**/*.{ts,tsx,js,mjs,cjs,json}\" -w",
+    "lint": "prettier \"**/*.{ts,tsx,js,mjs,cjs,json}\" --check",
     "build": "yarn workspace @infantmen-labs/harbor-sdk build && yarn workspace harbor-log build && yarn workspace harbor-server build && yarn workspace harbor-agent build && yarn workspace harbor-keeper build",
     "test": "yarn workspace @infantmen-labs/harbor-sdk test && yarn workspace harbor-server test && yarn workspace harbor-agent test && yarn workspace harbor-keeper test"
   },

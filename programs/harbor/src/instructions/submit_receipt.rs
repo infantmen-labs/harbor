@@ -1,16 +1,16 @@
 use crate::{constants::*, error::HarborError, state::*};
 use anchor_lang::prelude::*;
 use borsh::to_vec;
-use solana_sha256_hasher::hashv;
 use solana_instructions_sysvar::{
     load_current_index_checked, load_instruction_at_checked, ID as INSTRUCTIONS_SYSVAR_ID,
 };
+use solana_sha256_hasher::hashv;
 
 /// Ed25519 signature-verification precompile:
 /// `Ed25519SigVerify111111111111111111111111111`.
 const ED25519_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
-    3, 125, 70, 214, 124, 147, 251, 190, 18, 249, 66, 143, 131, 141, 64, 255, 5, 112, 116,
-    73, 39, 244, 138, 100, 252, 202, 112, 68, 128, 0, 0, 0,
+    3, 125, 70, 214, 124, 147, 251, 190, 18, 249, 66, 143, 131, 141, 64, 255, 5, 112, 116, 73, 39,
+    244, 138, 100, 252, 202, 112, 68, 128, 0, 0, 0,
 ]);
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -26,6 +26,9 @@ pub struct ReceiptMessage {
     pub signer: Pubkey,
 }
 
+/// Args mirror the receipt consensus layout 1:1; bundling them would
+/// obscure the byte order the layout test pins.
+#[allow(clippy::too_many_arguments)]
 pub fn receipt_message_bytes(
     merchant: &Pubkey,
     binding: &Pubkey,
@@ -37,7 +40,7 @@ pub fn receipt_message_bytes(
     expiry_slot: u64,
     signer: &Pubkey,
 ) -> Vec<u8> {
-    let message = to_vec(&ReceiptMessage {
+    to_vec(&ReceiptMessage {
         merchant: *merchant,
         binding: *binding,
         cumulative_spend,
@@ -48,15 +51,10 @@ pub fn receipt_message_bytes(
         expiry_slot,
         signer: *signer,
     })
-    .unwrap();
-    message
+    .unwrap()
 }
 
-fn verify_ed25519_proof(
-    ix_sysvar: &AccountInfo,
-    signer: &Pubkey,
-    message: &[u8],
-) -> Result<()> {
+fn verify_ed25519_proof(ix_sysvar: &AccountInfo, signer: &Pubkey, message: &[u8]) -> Result<()> {
     let current = load_current_index_checked(ix_sysvar)? as usize;
     let prev_index = current.checked_sub(1).ok_or(HarborError::BadReceiptProof)?;
     let prev = load_instruction_at_checked(prev_index, ix_sysvar)?;
@@ -73,8 +71,14 @@ fn verify_ed25519_proof(
         d.len() >= sig_off + 64 && d.len() >= key_off + 32 && d.len() >= msg_off + msg_len,
         HarborError::BadReceiptProof
     );
-    require!(&d[key_off..key_off + 32] == signer.as_ref(), HarborError::Unauthorized);
-    require!(&d[msg_off..msg_off + msg_len] == message, HarborError::BadReceiptProof);
+    require!(
+        &d[key_off..key_off + 32] == signer.as_ref(),
+        HarborError::Unauthorized
+    );
+    require!(
+        &d[msg_off..msg_off + msg_len] == message,
+        HarborError::BadReceiptProof
+    );
     Ok(())
 }
 
@@ -133,7 +137,10 @@ pub fn handle_submit_receipt(
         cumulative_spend >= ctx.accounts.binding.last_cumulative_spend,
         HarborError::NonMonotonicSpend
     );
-    require!(signer == ctx.accounts.merchant.key(), HarborError::Unauthorized);
+    require!(
+        signer == ctx.accounts.merchant.key(),
+        HarborError::Unauthorized
+    );
 
     let message = receipt_message_bytes(
         &ctx.accounts.merchant.key(),
@@ -146,11 +153,7 @@ pub fn handle_submit_receipt(
         expiry_slot,
         &signer,
     );
-    verify_ed25519_proof(
-        &ctx.accounts.ix_sysvar.to_account_info(),
-        &signer,
-        &message,
-    )?;
+    verify_ed25519_proof(&ctx.accounts.ix_sysvar.to_account_info(), &signer, &message)?;
 
     let receipt = &mut ctx.accounts.receipt;
     receipt.binding = ctx.accounts.binding.key();

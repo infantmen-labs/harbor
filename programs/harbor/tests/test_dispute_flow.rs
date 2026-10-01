@@ -21,10 +21,6 @@ fn token_balance(svm: &LiteSVM, ata: &Pubkey) -> u64 {
     u64::from_le_bytes(acc.data[64..72].try_into().unwrap())
 }
 
-fn lamports(svm: &LiteSVM, addr: &Pubkey) -> u64 {
-    svm.get_account(addr).map(|a| a.lamports).unwrap_or(0)
-}
-
 fn send(svm: &mut LiteSVM, payer: &Keypair, ixs: Vec<Instruction>) -> Result<(), String> {
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(&ixs, Some(&payer.pubkey()), &blockhash);
@@ -79,16 +75,12 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     svm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
     svm.airdrop(&claimant.pubkey(), 10_000_000_000).unwrap();
 
-    let mint_addr = CreateMint::new(svm, &merchant)
-        .decimals(6)
-        .send()
-        .unwrap();
+    let mint_addr = CreateMint::new(svm, &merchant).decimals(6).send().unwrap();
     let mint = a2p(&mint_addr);
 
-    let merchant_ata_addr =
-        CreateAssociatedTokenAccount::new(svm, &merchant, &mint_addr)
-            .send()
-            .unwrap();
+    let merchant_ata_addr = CreateAssociatedTokenAccount::new(svm, &merchant, &mint_addr)
+        .send()
+        .unwrap();
     let merchant_ata = a2p(&merchant_ata_addr);
     MintTo::new(svm, &merchant, &mint_addr, &merchant_ata_addr, 1_000_000)
         .send()
@@ -159,8 +151,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     .unwrap();
 
     let channel = mock_channel(svm, &claimant.pubkey(), &merchant.pubkey(), &mint, 0);
-    let (binding, _) =
-        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
+    let (binding, _) = Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
         svm,
         &merchant,
@@ -245,7 +236,6 @@ fn claim_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
     .0
 }
 
-
 fn treasury_of(mint: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0
 }
@@ -262,13 +252,7 @@ fn treasury_ata_of(treasury: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> 
 }
 
 #[allow(clippy::too_many_arguments)]
-fn open(
-    svm: &mut LiteSVM,
-    s: &Setup,
-    nonce: u64,
-    reason: u8,
-    claim: u64,
-) -> Result<(), String> {
+fn open(svm: &mut LiteSVM, s: &Setup, nonce: u64, reason: u8, claim: u64) -> Result<(), String> {
     send(
         svm,
         &s.claimant,
@@ -298,12 +282,7 @@ fn open(
     )
 }
 
-fn resolve(
-    svm: &mut LiteSVM,
-    s: &Setup,
-    nonce: u64,
-    resolver: &Keypair,
-) -> Result<(), String> {
+fn resolve(svm: &mut LiteSVM, s: &Setup, nonce: u64, resolver: &Keypair) -> Result<(), String> {
     let treasury = treasury_of(&s.mint);
     send(
         svm,
@@ -422,9 +401,7 @@ fn test_receipt_proofs() {
 
     // Valid receipt lands.
     submit(&mut svm, &s, &s.merchant, 1, far_future, 10_000).unwrap();
-    let acc = svm
-        .get_account(&receipt_pda(&s.binding, 1))
-        .unwrap();
+    let acc = svm.get_account(&receipt_pda(&s.binding, 1)).unwrap();
     let log = harbor::ReceiptLog::try_deserialize(&mut acc.data.as_slice()).unwrap();
     assert_eq!(log.nonce, 1);
     assert_eq!(log.cumulative_spend, 10_000);

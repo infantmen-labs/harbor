@@ -1,0 +1,9 @@
+# Prettier never reformats build output or vendored artifacts.
+dist
+.next
+target
+test-ledger
+.loop-run
+*.log
+# Generated: anchor build output, do not hand-edit.
+web/lib/idl.json

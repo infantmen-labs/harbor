@@ -86,9 +86,7 @@ fn test_channel_compose() {
     }
     // LiteSVM 0.10 enforces rent on loaded accounts: fund readonly actors too.
     // The harbor merchant IS the channel payee (bind requires payee == merchant).
-    for k in [&auth_signer] {
-        svm.airdrop(&k.pubkey(), 10_000_000).unwrap();
-    }
+    svm.airdrop(&auth_signer.pubkey(), 10_000_000).unwrap();
 
     let mint_addr = CreateMint::new(&mut svm, &payer)
         .decimals(6)
@@ -100,27 +98,30 @@ fn test_channel_compose() {
         .parse()
         .unwrap();
 
-    let payer_ata_addr =
-        CreateAssociatedTokenAccount::new(&mut svm, &payer, &mint_addr)
-            .send()
-            .unwrap();
-    let payer_ata = a2p(&payer_ata_addr);
-    MintTo::new(&mut svm, &payer, &mint_addr, &payer_ata_addr, DEPOSIT + 100_000)
+    let payer_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &payer, &mint_addr)
         .send()
         .unwrap();
-    let merchant_ata_addr =
-        CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
-            .send()
-            .unwrap();
+    let payer_ata = a2p(&payer_ata_addr);
+    MintTo::new(
+        &mut svm,
+        &payer,
+        &mint_addr,
+        &payer_ata_addr,
+        DEPOSIT + 100_000,
+    )
+    .send()
+    .unwrap();
+    let merchant_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
+        .send()
+        .unwrap();
     let merchant_ata = a2p(&merchant_ata_addr);
     MintTo::new(&mut svm, &payer, &mint_addr, &merchant_ata_addr, 1_000_000)
         .send()
         .unwrap();
-    let claimant_ata_addr =
-        CreateAssociatedTokenAccount::new(&mut svm, &claimant, &mint_addr)
-            .send()
-            .unwrap();
-    let claimant_ata = a2p(&claimant_ata_addr);
+    let claimant_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &claimant, &mint_addr)
+        .send()
+        .unwrap();
+    let _claimant_ata = a2p(&claimant_ata_addr);
     MintTo::new(&mut svm, &payer, &mint_addr, &claimant_ata_addr, 100_000)
         .send()
         .unwrap();
@@ -198,10 +199,7 @@ fn test_channel_compose() {
             ed25519_ix(&auth_signer, &payload),
             Instruction {
                 program_id: chnl,
-                accounts: vec![
-                    meta(channel, true, false),
-                    meta(ix_sysvar, false, false),
-                ],
+                accounts: vec![meta(channel, true, false), meta(ix_sysvar, false, false)],
                 data: vec![2u8],
             },
         ],
@@ -264,8 +262,7 @@ fn test_channel_compose() {
         &ata_program,
     )
     .0;
-    let (binding, _) =
-        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
+    let (binding, _) = Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
 
     // Negative: wrong channel program is rejected (seeds match, owner check fires).
     let (binding2, _) =
@@ -354,7 +351,11 @@ fn test_channel_compose() {
         )],
     )
     .unwrap();
-    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    svm.warp_to_slot(
+        svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>()
+            .slot
+            + 500,
+    );
     let treasury = Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0;
     let treasury_ata = Pubkey::find_program_address(
         &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
@@ -429,9 +430,7 @@ fn test_dishonest_buyer_nets_negative() {
     for k in [&payer, &merchant, &resolver] {
         svm.airdrop(&k.pubkey(), 10_000_000_000).unwrap();
     }
-    for k in [&auth_signer] {
-        svm.airdrop(&k.pubkey(), 10_000_000).unwrap();
-    }
+    svm.airdrop(&auth_signer.pubkey(), 10_000_000).unwrap();
 
     let mint_addr = CreateMint::new(&mut svm, &payer)
         .decimals(6)
@@ -448,18 +447,22 @@ fn test_dishonest_buyer_nets_negative() {
     const CLAIM: u64 = 10_000;
     const FEE: u64 = 500; // CLAIM * 500 / 10_000
     const PENALTY: u64 = 20_000; // CLAIM * 2
-    let payer_ata_addr =
-        CreateAssociatedTokenAccount::new(&mut svm, &payer, &mint_addr)
-            .send()
-            .unwrap();
-    let payer_ata = a2p(&payer_ata_addr);
-    MintTo::new(&mut svm, &payer, &mint_addr, &payer_ata_addr, DEPOSIT + SPARE)
+    let payer_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &payer, &mint_addr)
         .send()
         .unwrap();
-    let merchant_ata_addr =
-        CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
-            .send()
-            .unwrap();
+    let payer_ata = a2p(&payer_ata_addr);
+    MintTo::new(
+        &mut svm,
+        &payer,
+        &mint_addr,
+        &payer_ata_addr,
+        DEPOSIT + SPARE,
+    )
+    .send()
+    .unwrap();
+    let merchant_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
+        .send()
+        .unwrap();
     let merchant_ata = a2p(&merchant_ata_addr);
     MintTo::new(&mut svm, &payer, &mint_addr, &merchant_ata_addr, 1_000_000)
         .send()
@@ -571,8 +574,7 @@ fn test_dishonest_buyer_nets_negative() {
         )],
     )
     .unwrap();
-    let (binding, _) =
-        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
+    let (binding, _) = Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
     send(
         &mut svm,
         &merchant,
@@ -634,7 +636,11 @@ fn test_dishonest_buyer_nets_negative() {
         )],
     )
     .unwrap();
-    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    svm.warp_to_slot(
+        svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>()
+            .slot
+            + 500,
+    );
     let treasury = Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0;
     let treasury_ata = Pubkey::find_program_address(
         &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
@@ -673,6 +679,9 @@ fn test_dishonest_buyer_nets_negative() {
     // Escrow untouched by Harbor paths (merchant settles it separately).
     assert_eq!(token_balance(&svm, &channel_ata), DEPOSIT);
     // Merchant punished as designed; treasury accumulates fee + penalty.
-    assert_eq!(token_balance(&svm, &vault), 500_000 + CLAIM - (CLAIM - FEE) - FEE - PENALTY);
+    assert_eq!(
+        token_balance(&svm, &vault),
+        500_000 + CLAIM - (CLAIM - FEE) - FEE - PENALTY
+    );
     assert_eq!(token_balance(&svm, &treasury_ata), FEE + PENALTY);
 }

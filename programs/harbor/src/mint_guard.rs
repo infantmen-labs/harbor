@@ -5,8 +5,8 @@ use anchor_lang::prelude::*;
 /// built and tested for Tokenkeg (MVP mint is Tokenkeg USDC).
 /// `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`.
 pub const TOKENKEG_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
-    6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235, 121, 172,
-    28, 180, 133, 237, 95, 91, 55, 145, 58, 140, 245, 133, 126, 255, 0, 169,
+    6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235, 121, 172, 28, 180, 133, 237,
+    95, 91, 55, 145, 58, 140, 245, 133, 126, 255, 0, 169,
 ]);
 
 /// True when the mint's program is not the supported Tokenkeg program.
@@ -53,8 +53,7 @@ mod tests {
         // Guards seed-order skew: recompute via the ATA program ID parsed
         // from its trusted base58 encoding, not our byte array.
         use std::str::FromStr;
-        let ata_id =
-            Pubkey::from_str("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL").unwrap();
+        let ata_id = Pubkey::from_str("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL").unwrap();
         let bond = Pubkey::new_from_array([1u8; 32]);
         let mint = Pubkey::new_from_array([2u8; 32]);
         let (a, _) = Pubkey::find_program_address(

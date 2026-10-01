@@ -54,11 +54,7 @@ fn send(svm: &mut LiteSVM, payer: &Keypair, ixs: Vec<Instruction>) -> Result<(),
 }
 
 fn bond_pda(merchant: &Pubkey, mint: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(
-        &[b"bond", merchant.as_ref(), mint.as_ref()],
-        &harbor::id(),
-    )
-    .0
+    Pubkey::find_program_address(&[b"bond", merchant.as_ref(), mint.as_ref()], &harbor::id()).0
 }
 
 #[test]
@@ -78,10 +74,9 @@ fn test_bond_lifecycle() {
     let mint = a2p(&mint_addr);
 
     // Merchant ATA funded with 1_000_000 units.
-    let merchant_ata_addr =
-        CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
-            .send()
-            .unwrap();
+    let merchant_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
+        .send()
+        .unwrap();
     let merchant_ata = a2p(&merchant_ata_addr);
     MintTo::new(
         &mut svm,
@@ -213,8 +208,7 @@ fn test_bond_lifecycle() {
 
     // bind_channel records the binding.
     let channel = mock_channel(&mut svm, &merchant.pubkey(), &merchant.pubkey(), &mint, 0);
-    let (binding, _) =
-        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
+    let (binding, _) = Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
         &mut svm,
         &merchant,

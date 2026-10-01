@@ -1,3 +1,8 @@
+// Anchor's `#[program]` expansion trips `diverging_sub_expression` on code
+// we cannot restructure; allow it crate-wide rather than sprinkling the
+// macro call site (where the attribute does not propagate).
+#![allow(clippy::diverging_sub_expression)]
+
 pub mod constants;
 pub mod error;
 pub mod instructions;
@@ -48,6 +53,9 @@ pub mod harbor {
         halt_binding::handle_halt_binding(ctx)
     }
 
+    // Instruction args are the onchain ABI (mirrored in the IDL and the
+    // TS builder); they cannot be bundled without a protocol change.
+    #[allow(clippy::too_many_arguments)]
     pub fn submit_receipt(
         ctx: Context<SubmitReceipt>,
         cumulative_spend: u64,

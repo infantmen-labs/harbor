@@ -1,6 +1,7 @@
 use {
     anchor_lang::{
-        prelude::Pubkey, solana_program::instruction::{AccountMeta, Instruction},
+        prelude::Pubkey,
+        solana_program::instruction::{AccountMeta, Instruction},
         system_program, AccountDeserialize, InstructionData, ToAccountMetas,
     },
     litesvm::LiteSVM,
@@ -31,27 +32,6 @@ fn send(svm: &mut LiteSVM, payer: &Keypair, ixs: Vec<Instruction>) -> Result<(),
         .map_err(|e| format!("{e:?}"))
 }
 
-fn sys_create(
-    payer: &Pubkey,
-    new_acc: &Pubkey,
-    lamports: u64,
-    space: u64,
-    owner: &Pubkey,
-) -> Instruction {
-    let mut data = vec![0u8, 0, 0, 0];
-    data.extend_from_slice(&lamports.to_le_bytes());
-    data.extend_from_slice(&space.to_le_bytes());
-    data.extend_from_slice(owner.as_ref());
-    Instruction {
-        program_id: system_program::ID,
-        accounts: vec![
-            AccountMeta::new(*payer, true),
-            AccountMeta::new(*new_acc, true),
-        ],
-        data,
-    }
-}
-
 struct Setup {
     merchant: Keypair,
     claimant: Keypair,
@@ -76,14 +56,16 @@ fn setup(svm: &mut LiteSVM) -> Setup {
 
     let mint_addr = CreateMint::new(svm, &merchant).decimals(6).send().unwrap();
     let mint = a2p(&mint_addr);
-    let merchant_ata_addr =
-        CreateAssociatedTokenAccount::new(svm, &merchant, &mint_addr).send().unwrap();
+    let merchant_ata_addr = CreateAssociatedTokenAccount::new(svm, &merchant, &mint_addr)
+        .send()
+        .unwrap();
     let merchant_ata = a2p(&merchant_ata_addr);
     MintTo::new(svm, &merchant, &mint_addr, &merchant_ata_addr, 1_000_000)
         .send()
         .unwrap();
-    let claimant_ata_addr =
-        CreateAssociatedTokenAccount::new(svm, &claimant, &mint_addr).send().unwrap();
+    let claimant_ata_addr = CreateAssociatedTokenAccount::new(svm, &claimant, &mint_addr)
+        .send()
+        .unwrap();
     let claimant_ata = a2p(&claimant_ata_addr);
     MintTo::new(svm, &merchant, &mint_addr, &claimant_ata_addr, 100_000)
         .send()
@@ -95,7 +77,9 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .0;
     let token_program = a2p(&TOKEN_ID);
-    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".parse().unwrap();
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
     let (vault, _) = Pubkey::find_program_address(
         &[bond.as_ref(), token_program.as_ref(), mint.as_ref()],
         &ata_program,
@@ -106,7 +90,11 @@ fn setup(svm: &mut LiteSVM) -> Setup {
         vec![
             Instruction::new_with_bytes(
                 program_id,
-                &harbor::instruction::RegisterMerchant { sla_bps: 50, challenge_slots: 150 }.data(),
+                &harbor::instruction::RegisterMerchant {
+                    sla_bps: 50,
+                    challenge_slots: 150,
+                }
+                .data(),
                 harbor::accounts::RegisterMerchant {
                     merchant: merchant.pubkey(),
                     bond,
@@ -135,8 +123,7 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     .unwrap();
 
     let channel = mock_channel(svm, &claimant.pubkey(), &merchant.pubkey(), &mint, 0);
-    let (binding, _) =
-        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
+    let (binding, _) = Pubkey::find_program_address(&[b"binding", channel.as_ref()], &program_id);
     send(
         svm,
         &merchant,
@@ -159,7 +146,18 @@ fn setup(svm: &mut LiteSVM) -> Setup {
     )
     .unwrap();
 
-    Setup { merchant, claimant, mint, merchant_ata, claimant_ata, bond, binding, channel, vault, token_program }
+    Setup {
+        merchant,
+        claimant,
+        mint,
+        merchant_ata,
+        claimant_ata,
+        bond,
+        binding,
+        channel,
+        vault,
+        token_program,
+    }
 }
 
 /// Test-only mock of the upstream 256-byte Channel struct (pinned layout):
@@ -202,13 +200,14 @@ fn claim_pda(binding: &Pubkey, nonce: u64) -> Pubkey {
     .0
 }
 
-
 fn treasury_of(mint: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"treasury", mint.as_ref()], &harbor::id()).0
 }
 
 fn treasury_ata_of(treasury: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Pubkey {
-    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".parse().unwrap();
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
     Pubkey::find_program_address(
         &[treasury.as_ref(), token_program.as_ref(), mint.as_ref()],
         &ata_program,
@@ -304,7 +303,9 @@ fn withdraw(svm: &mut LiteSVM, s: &Setup, amount: u64) -> Result<(), String> {
 
 fn bond_open_disputes(svm: &LiteSVM, bond: &Pubkey) -> u64 {
     let acc = svm.get_account(bond).unwrap();
-    harbor::MerchantBond::try_deserialize(&mut acc.data.as_slice()).unwrap().open_disputes
+    harbor::MerchantBond::try_deserialize(&mut acc.data.as_slice())
+        .unwrap()
+        .open_disputes
 }
 
 #[test]
@@ -316,7 +317,11 @@ fn test_concurrent_disputes_gate_withdraw() {
     open_dispute(&mut svm, &s, 6, 2, 1_000).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 2);
 
-    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    svm.warp_to_slot(
+        svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>()
+            .slot
+            + 500,
+    );
     resolve_timeout(&mut svm, &s, 5).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 1);
 
@@ -328,7 +333,11 @@ fn test_concurrent_disputes_gate_withdraw() {
 
     resolve_timeout(&mut svm, &s, 6).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 0);
-    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    svm.warp_to_slot(
+        svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>()
+            .slot
+            + 500,
+    );
     withdraw(&mut svm, &s, 1_000).unwrap();
 }
 
@@ -410,7 +419,11 @@ fn test_unauthorized_matrix() {
         &s.merchant,
         vec![Instruction::new_with_bytes(
             program_id,
-            &harbor::instruction::RegisterMerchant { sla_bps: 50, challenge_slots: 150 }.data(),
+            &harbor::instruction::RegisterMerchant {
+                sla_bps: 50,
+                challenge_slots: 150,
+            }
+            .data(),
             harbor::accounts::RegisterMerchant {
                 merchant: s.merchant.pubkey(),
                 bond: s.bond,
@@ -421,7 +434,11 @@ fn test_unauthorized_matrix() {
         )],
     );
     assert!(dbl.is_err());
-    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    svm.warp_to_slot(
+        svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>()
+            .slot
+            + 500,
+    );
     assert!(withdraw(&mut svm, &s, 999_999_999).is_err());
 
     // Early resolve paths reject: immature timeout, undelivered delivery.
@@ -492,9 +509,12 @@ fn craft_mint(svm: &mut LiteSVM, payer: &Keypair, extensions: &[(u16, Vec<u8>)])
         Some(&payer.pubkey()),
         &blockhash,
     );
-    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer, &mint_kp])
+    let tx =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer, &mint_kp]).unwrap();
+    svm.send_transaction(tx)
+        .map(|_| ())
+        .map_err(|e| format!("{e:?}"))
         .unwrap();
-    svm.send_transaction(tx).map(|_| ()).map_err(|e| format!("{e:?}")).unwrap();
     // Populate account data via direct store (test-only setup path).
     let mut acc = svm.get_account(&mint_kp.pubkey()).unwrap();
     acc.data = data;
@@ -523,7 +543,11 @@ fn test_blocked_mint_rejected() {
         &merchant,
         vec![Instruction::new_with_bytes(
             program_id,
-            &harbor::instruction::RegisterMerchant { sla_bps: 50, challenge_slots: 150 }.data(),
+            &harbor::instruction::RegisterMerchant {
+                sla_bps: 50,
+                challenge_slots: 150,
+            }
+            .data(),
             harbor::accounts::RegisterMerchant {
                 merchant: merchant.pubkey(),
                 bond,
@@ -538,7 +562,9 @@ fn test_blocked_mint_rejected() {
     // Fails at the extension deny-list, before any funds move.
     let token_program = a2p(&TOKEN_ID);
     let tokenkeg: Pubkey = TOKENKEG_ID.parse().unwrap();
-    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".parse().unwrap();
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
     let (vault, _) = Pubkey::find_program_address(
         &[bond.as_ref(), token_program.as_ref(), bad_mint.as_ref()],
         &ata_program,
@@ -606,8 +632,7 @@ fn test_blocked_mint_rejected() {
 }
 
 fn bind(svm: &mut LiteSVM, s: &Setup, channel: Pubkey) -> Result<(), String> {
-    let (binding, _) =
-        Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
+    let (binding, _) = Pubkey::find_program_address(&[b"binding", channel.as_ref()], &harbor::id());
     send(
         svm,
         &s.merchant,
@@ -647,7 +672,13 @@ fn test_wrong_mint_binding_rejected() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
     let other_mint = Keypair::new().pubkey();
-    let channel = mock_channel(&mut svm, &s.claimant.pubkey(), &s.merchant.pubkey(), &other_mint, 0);
+    let channel = mock_channel(
+        &mut svm,
+        &s.claimant.pubkey(),
+        &s.merchant.pubkey(),
+        &other_mint,
+        0,
+    );
     assert!(bind(&mut svm, &s, channel).is_err());
 }
 
@@ -655,7 +686,13 @@ fn test_wrong_mint_binding_rejected() {
 fn test_closed_channel_binding_rejected() {
     let mut svm = LiteSVM::new();
     let s = setup(&mut svm);
-    let channel = mock_channel(&mut svm, &s.claimant.pubkey(), &s.merchant.pubkey(), &s.mint, 1);
+    let channel = mock_channel(
+        &mut svm,
+        &s.claimant.pubkey(),
+        &s.merchant.pubkey(),
+        &s.mint,
+        1,
+    );
     assert!(bind(&mut svm, &s, channel).is_err());
 }
 
@@ -731,7 +768,11 @@ fn test_reclaim_same_nonce_rejected() {
     let s = setup(&mut svm);
 
     open_dispute(&mut svm, &s, 11, 1, 1_000).unwrap();
-    svm.warp_to_slot(svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>().slot + 500);
+    svm.warp_to_slot(
+        svm.get_sysvar::<anchor_lang::solana_program::clock::Clock>()
+            .slot
+            + 500,
+    );
     resolve_timeout(&mut svm, &s, 11).unwrap();
     assert_eq!(bond_open_disputes(&svm, &s.bond), 0);
 

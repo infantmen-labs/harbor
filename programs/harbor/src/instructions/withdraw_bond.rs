@@ -45,10 +45,7 @@ pub fn handle_withdraw_bond(ctx: Context<WithdrawBond>, amount: u64) -> Result<(
         .last_change_slot
         .checked_add(WITHDRAW_DELAY_SLOTS)
         .ok_or(HarborError::ArithmeticOverflow)?;
-    require!(
-        Clock::get()?.slot > unlock,
-        HarborError::TimelockNotPassed
-    );
+    require!(Clock::get()?.slot > unlock, HarborError::TimelockNotPassed);
     // Open disputes lock their full outflow (refund + fee + penalty);
     // withdrawals may only touch the unreserved remainder.
     let free = ctx

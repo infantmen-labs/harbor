@@ -45,10 +45,7 @@ pub fn handle_refund_unused(ctx: Context<RefundUnused>) -> Result<()> {
         .last_change_slot
         .checked_add(WITHDRAW_DELAY_SLOTS)
         .ok_or(HarborError::ArithmeticOverflow)?;
-    require!(
-        Clock::get()?.slot > unlock,
-        HarborError::TimelockNotPassed
-    );
+    require!(Clock::get()?.slot > unlock, HarborError::TimelockNotPassed);
 
     // Close the empty vault ATA (Tokenkeg/Token-2022 close discriminant: 9).
     let merchant_key = ctx.accounts.merchant.key();

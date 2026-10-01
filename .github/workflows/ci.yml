@@ -1,0 +1,35 @@
+# Verifies every push/PR the way the README says to:
+# TS workspaces (lint -> build -> test) plus the program
+# (fmt -> clippy -D warnings -> LiteSVM suites, no validator needed).
+# `anchor build` / `anchor test` stay local-only (heavy toolchain);
+# `cargo test -p harbor` runs the same suites hermetically.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      - run: yarn build
+      - run: yarn test
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy -p harbor --all-targets -- -D warnings
+      - run: cargo test -p harbor

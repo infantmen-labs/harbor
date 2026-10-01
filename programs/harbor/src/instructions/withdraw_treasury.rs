@@ -47,10 +47,7 @@ pub fn handle_withdraw_treasury(ctx: Context<WithdrawTreasury>, amount: u64) -> 
         .programdata
         .try_borrow_data()
         .map_err(|_| HarborError::Unauthorized)?;
-    require!(
-        pd.len() >= 45 && pd[12] == 1,
-        HarborError::Unauthorized
-    );
+    require!(pd.len() >= 45 && pd[12] == 1, HarborError::Unauthorized);
     require!(
         &pd[13..45] == ctx.accounts.authority.key().as_ref(),
         HarborError::Unauthorized

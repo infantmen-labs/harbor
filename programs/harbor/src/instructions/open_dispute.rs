@@ -92,7 +92,8 @@ pub fn handle_open_dispute(
         HarborError::BindingMismatch
     );
     {
-        let data = ctx.accounts
+        let data = ctx
+            .accounts
             .channel
             .try_borrow_data()
             .map_err(|_| HarborError::BindingMismatch)?;
