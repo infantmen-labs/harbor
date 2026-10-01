@@ -8,6 +8,13 @@ Harbor composes with this program. It never forks or modifies it.
 - Devnet/testnet/localnet program ID: same address on every cluster
   (`declare_id!` is hardcoded; cluster build features only change the
   treasury owner, never the ID). Verified in program source.
+- Devnet deployment (verified live, Oct 2026): programdata
+  `CghQXkmw2F6p1exMETiZdNeUx9QGraWsNZ4eom1Cuiw1`, upgrade authority
+  `4zTeC5mVqWLruDexgU2mV66p9t5vCA9JyiZqdGDUspap` (Solana Foundation —
+  not ours; none of our keypairs match, and the address is
+  undeployable without its keypair). Harbor's offsets verified
+  empirically against a real devnet channel (256B, disc 1 / ver 1 /
+  status 0, payer@88 / payee@120 / mint@184 decode correctly).
 
 ## Channel model
 
