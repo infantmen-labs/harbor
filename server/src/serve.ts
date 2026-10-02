@@ -14,6 +14,13 @@ if (storePath !== null) {
   console.log(
     `store snapshot: ${storePath} (${store.sessions.size} sessions restored)`
   );
+} else {
+  console.warn(
+    "WARN: no STORE_PATH — sessions live in memory only (local rehearsal)"
+  );
+}
+if (cfg.killToken === null) {
+  console.warn("WARN: no KILL_TOKEN — kill switch is OPEN (local rehearsal)");
 }
 const server = createApp(cfg, store);
 server.listen(cfg.port, () => {

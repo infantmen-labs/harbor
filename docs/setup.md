@@ -130,3 +130,5 @@ on devnet it is the canonical `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`.
   `anchor` shim, not an old global install, is on PATH.
 - Wrong chain (high slot after `--reset`) — you are talking to someone
   else's validator; check `--url` / `RPC_URL`.
+
+Next: `CONTRIBUTING.md` (frozen zones, commit discipline, CI).

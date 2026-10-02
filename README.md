@@ -9,7 +9,8 @@ delivery offchain but never acquit onchain, by design (see
 
 - Program: `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H` (devnet + localnet)
 - Upstream: `solana-foundation/payment-channels` @ `3ffa4d67`
-- Docs: `docs/` (schema, coordination, proof bundle, review, business)
+- Docs: `docs/` (schema, coordination, proof bundle, review, business).
+  New here? Start at `docs/setup.md`, then `CONTRIBUTING.md`.
 
 ## Use the SDK (third parties start here)
 

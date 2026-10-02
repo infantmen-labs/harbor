@@ -17,6 +17,7 @@
     "dev": "yarn --cwd web dev --port 3101",
     "loop": "./scripts/local-loop.sh",
     "setup:check": "./scripts/setup-check.sh",
+    "setup": "./scripts/bootstrap.sh && anchor build && yarn install --frozen-lockfile && yarn build && ./scripts/setup-check.sh",
     "build:all": "yarn build && yarn --cwd web build",
     "test:all": "yarn test && yarn --cwd web build"
   },
