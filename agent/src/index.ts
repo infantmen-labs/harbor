@@ -6,6 +6,8 @@
  * Env: RPC_URL, SERVER_URL, AGENT_KEYPAIR (path), MERCHANT_PUBKEY,
  * MINT, DEPOSIT, REQUESTS, BUDGET_PER_REQUEST, SALT, LOG_PATH.
  */
+// Loads .env from CWD when present; real environment always wins.
+import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import {

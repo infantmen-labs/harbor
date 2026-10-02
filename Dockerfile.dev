@@ -1,0 +1,26 @@
+# Opt-in dev container: Ubuntu + Node 22 + full Solana toolchain.
+# Toolchain install lives in scripts/bootstrap.sh (single source of truth).
+# Untested in CI (no docker there yet) — report breakage with your arch.
+#   docker build -f Dockerfile.dev -t harbor-dev .
+#   docker run -it -v "$PWD:/harbor" -w /harbor harbor-dev
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git build-essential pkg-config libssl-dev ca-certificates bzip2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node 22 LTS + yarn (matches .nvmrc)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm i -g yarn
+
+COPY scripts/bootstrap.sh /opt/bootstrap.sh
+# Bootstrap as root would install to /root; run it at container start so
+# mounts/PATH behave, or bake it in during build:
+RUN /opt/bootstrap.sh
+ENV PATH="/root/.local/share/solana/bin:/root/.avm/bin:/root/.cargo/bin:${PATH}"
+
+WORKDIR /harbor
+CMD ["bash"]

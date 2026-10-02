@@ -6,14 +6,17 @@ Fast path first (scripted, §4). Manual path after it (§5) for debugging.
 
 | Tool               | Version (tested)          | Install                                                               |
 | ------------------ | ------------------------- | --------------------------------------------------------------------- |
-| Node.js            | ≥22 (tested 22.23 + 26.7) | https://nodejs.org — a wallet dep enforces `engines: node >= 22`      |
+| Node.js | ≥22 (`.nvmrc` pins 22, the floor; 26.7 verified locally) | https://nodejs.org — a wallet dep enforces `engines: node >= 22`. No install script here (nvm/nodesource vary); `scripts/bootstrap.sh` checks the rest |
 | yarn               | 1.22.x                    | `npm i -g yarn`                                                       |
 | Rust (stable)      | 1.89                      | https://rustup.rs                                                     |
 | solana-cli (Agave) | 3.1.14                    | https://solana.com/docs/intro/installation                            |
 | anchor-cli         | 1.0.0                     | `avm install 1.0.0` via https://www.anchor-lang.com/docs/installation |
 | git, curl          | any                       | system package manager                                                |
 
-CI runs the same matrix (`.github/workflows/ci.yml`).
+CI runs the same matrix (`.github/workflows/ci.yml`). Fresh machine?
+`./scripts/bootstrap.sh` installs rustup + Solana CLI 3.1.14 + anchor
+1.0.0 (idempotent; checks node/yarn, full container in
+`Dockerfile.dev`).
 
 ## 2. Keys (3 keypairs)
 
@@ -44,16 +47,15 @@ harness dials a validator on :8899 and fails (verified). `cargo test`
 above is the complete suite.
 
 Web (optional for backend loops): `cp web/.env.example web/.env.local`
-then `yarn --cwd web dev --port 3101` (port 3101 — the server owns 3000;
-bare `yarn dev` from root fails: no such script). Backend
-env templates: `server/.env.example`, `agent/.env.example`,
-`keeper/.env.example` (processes read the environment directly — export
-vars or `set -a; source .env; set +a`; never commit real secrets).
+then `yarn dev` (web on :3101 — the server owns :3000). Backend env
+templates: `server/.env.example`, `agent/.env.example`,
+`keeper/.env.example` — copy to `.env` in the package dir (auto-loaded;
+exported vars always win); never commit real secrets.
 
 ## 4. Fast path: one-command localnet loop
 
 ```sh
-./scripts/local-loop.sh
+yarn loop   # ./scripts/local-loop.sh
 ```
 
 No fixture env needed: the loop defaults to the committed local

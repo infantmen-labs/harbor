@@ -288,8 +288,8 @@ returns 402; top-ups learned lazily). Upgrade sig
 ## Tooling publication (live on npm)
 
 - `harbor-sdk` was taken (n1colaslugo, unrelated API-auth SDK), so the
-  package ships as `@infantmen-labs/harbor-sdk@0.3.0` (MIT, `files:
-[dist]`, 21 files). Third-party proof: `examples/bond-watch` reads
+  package ships as `@infantmen-labs/harbor-sdk@0.4.4` (MIT, `files:
+[dist]`). Third-party proof: `examples/bond-watch` reads
   the live devnet bond with SDK + web3.js only — verified against the
   packed tarball pre-publish and the registry install post-publish.
 - Root `yarn build` / `yarn test` orchestrate all workspaces in

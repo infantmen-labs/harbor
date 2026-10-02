@@ -46,7 +46,7 @@ See `examples/bond-watch` for a complete read-only monitor (bond health
 
 ```sh
 anchor build         # harbor.so (program suites + localnet need it)
-yarn install         # TS workspaces (sdk, log, server, agent, keeper, web)
+yarn install --frozen-lockfile  # TS workspaces (sdk, log, server, agent, keeper, web)
 yarn lint            # prettier check
 yarn build           # dist/ entrypoints (sdk, server, agent, keeper)
 yarn test            # TS suites, web unit included (next build: CI only)

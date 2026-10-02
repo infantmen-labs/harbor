@@ -11,7 +11,8 @@
   "dependencies": {
     "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.98.0",
-    "@infantmen-labs/harbor-sdk": "*"
+    "@infantmen-labs/harbor-sdk": "*",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "tweetnacl": "^1.0.3"

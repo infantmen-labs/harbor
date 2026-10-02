@@ -3,6 +3,9 @@
 Read-only bond monitor built **only** on the published `@infantmen-labs/harbor-sdk` plus
 `@solana/web3.js`. No repo code, no Anchor client, no wallet, no funds.
 
+Uses npm (not the repo's yarn workspaces) on purpose: it must resolve the
+SDK from the registry, exactly like a third-party consumer.
+
 ```sh
 npm install
 RPC_URL=https://api.devnet.solana.com BOND=<bond-address> node bond-watch.cjs

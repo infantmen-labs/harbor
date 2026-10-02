@@ -3,6 +3,8 @@
  * as timeout refunds. There is no delivered path: receipts never acquit.
  * Dry-run by default; MODE=live sends transactions.
  */
+// Loads .env from CWD when present; real environment always wins.
+import "dotenv/config";
 import { Connection } from "@solana/web3.js";
 import { JsonlLogger } from "harbor-log";
 import { loadKeeperConfig } from "./config";

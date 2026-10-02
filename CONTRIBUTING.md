@@ -17,7 +17,8 @@ Rules that CI enforces (`.github/workflows/`):
 
 Commit discipline: one theme per commit, no phase or ticket refs in
 messages, docs updated in the same commit as the behavior they describe.
-Local-only planning docs live outside this repo — never commit them.
+SDK/program releases add a `CHANGELOG.md` entry. Local-only planning
+docs live outside this repo — never commit them.
 
 Secrets: never in the tree (`.env*`, keypairs, RPC URLs with keys).
 If one lands in a log, rotate it — see `docs/deploy.md` §1b.

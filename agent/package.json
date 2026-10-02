@@ -10,6 +10,7 @@
   "dependencies": {
     "@solana/web3.js": "^1.98.0",
     "@infantmen-labs/harbor-sdk": "*",
-    "harbor-log": "*"
+    "harbor-log": "*",
+    "dotenv": "^16.4.5"
   }
 }

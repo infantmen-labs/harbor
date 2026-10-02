@@ -1,3 +1,5 @@
+// Loads .env from CWD when present; real environment always wins.
+import "dotenv/config";
 import { loadConfig } from "./config";
 import { createApp } from "./index";
 import { Store } from "./store";
