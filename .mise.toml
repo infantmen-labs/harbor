@@ -1,0 +1,6 @@
+# Alternative to scripts/bootstrap.sh for mise users. Only node + yarn
+# are pinned here — Rust follows rust-toolchain.toml automatically, and
+# Solana CLI / anchor stay in bootstrap.sh (no stable mise backends).
+[tools]
+node = "22"
+yarn = "1.22"

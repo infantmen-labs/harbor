@@ -55,7 +55,8 @@ exported vars always win); never commit real secrets.
 ## 4. Fast path: one-command localnet loop
 
 ```sh
-yarn loop   # ./scripts/local-loop.sh
+./scripts/setup-check.sh   # pre-flight: versions, keys, ports, artifacts
+yarn loop                  # ./scripts/local-loop.sh (--fast halves the dispute window)
 ```
 
 No fixture env needed: the loop defaults to the committed local
@@ -75,10 +76,11 @@ Success looks like: `LOOP PASS` + `bond: … disputes:0 reserved:0`.
 ## 5. Manual path (same steps the script runs)
 
 ```sh
-# Validator + programs (fresh ledger each time)
+# Validator + programs (fresh ledger each time; committed fixture pair
+# needs no env — override UPSTREAM_SO/UPSTREAM_KEYPAIR for your own build)
 solana-test-validator --reset --quiet --ledger ./.loop-run/ledger --rpc-port 8900 &
-solana program deploy target/deploy/harbor.so --program-id target/deploy/harbor-keypair.json --url http://127.0.0.1:8900
-solana program deploy "$UPSTREAM_SO" --program-id "$UPSTREAM_KEYPAIR" --url http://127.0.0.1:8900
+solana program deploy target/deploy/harbor.so --program-id scripts/fixtures/harbor-keypair.json --url http://127.0.0.1:8900
+solana program deploy scripts/fixtures/payment_channels.local.so --program-id scripts/fixtures/local-chnl.json --url http://127.0.0.1:8900
 solana airdrop 2 --url http://127.0.0.1:8900 --keypair ~/.config/solana/id.json
 
 # Mint + bond (merchant funds agent + claimant inside mint.js)
@@ -95,10 +97,24 @@ AGENT_KEYPAIR=~/.config/solana/loop-agent.json MERCHANT_PUBKEY=<merchant> MINT="
 DEPOSIT=200000 REQUESTS=3 BUDGET_PER_REQUEST=5000 SALT=100 node agent/dist/src/index.js
 # Expect: request 1/2/3 ok + `settled at …`
 
-# Kill → fail → dispute → keeper resolve: see the demo runbook for the
-# exact sequence (kill endpoint, fail run, keeper dispute script with
-# NONCE/CLAIM_SPEND, keeper MODE=live RUN_ONCE=1). Devnet values for the
-# canonical programs are in docs/proof-bundle.md.
+# Kill the merchant, run the fail path (nothing settles), revive
+curl -X POST http://127.0.0.1:3001/admin/kill -H 'content-type: application/json' -d '{"killed":true}'
+CHANNEL_PROGRAM_ID=<upstream-id> RPC_URL=http://127.0.0.1:8900 SERVER_URL=http://127.0.0.1:3001 \
+AGENT_KEYPAIR=~/.config/solana/loop-agent.json MERCHANT_PUBKEY=<merchant> MINT="$MINT" \
+DEPOSIT=200000 REQUESTS=2 BUDGET_PER_REQUEST=5000 SALT=101 node agent/dist/src/index.js
+# Expect: `request 1 failed` + `no successful requests; skipping settle` (note the channel address)
+curl -X POST http://127.0.0.1:3001/admin/kill -H 'content-type: application/json' -d '{"killed":false}'
+
+# Dispute nonce 1 as the claimant (= channel payer), then resolve
+RPC_URL=http://127.0.0.1:8900 CLAIMANT_KEYPAIR=~/.config/solana/loop-agent.json \
+BOND=<bond> BINDING=<binding> CHANNEL=<fail-channel> MINT="$MINT" \
+NONCE=1 REASON=1 CLAIM_SPEND=2000 node keeper/dist/scripts/dispute.js
+# BINDING = binding PDA for the fail channel (scripts/lib/binding-pda.mjs with FAIL_CHANNEL set)
+OPERATOR_KEYPAIR=~/.config/solana/id.json RPC_URL=http://127.0.0.1:8900 \
+POLL_MS=5000 MODE=live RUN_ONCE=1 node keeper/dist/src/index.js
+# Expect after maturity: `pass: resolved=1 pending=0`
+# (the loop script waits for maturity automatically; manually, poll until
+# current slot passes the dispute's deadlineSlot, then run keeper)
 ```
 
 `<upstream-id>` on localnet is `solana-keygen pubkey $UPSTREAM_KEYPAIR`;

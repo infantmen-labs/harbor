@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "server (:3100)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/dist/src/serve.js",
+      "envFile": "${workspaceFolder}/server/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "agent (happy path)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/agent/dist/src/index.js",
+      "envFile": "${workspaceFolder}/agent/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "keeper (RUN_ONCE)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/keeper/dist/src/index.js",
+      "env": {
+        "RUN_ONCE": "1"
+      },
+      "envFile": "${workspaceFolder}/keeper/.env",
+      "console": "integratedTerminal"
+    }
+  ]
+}

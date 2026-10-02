@@ -15,7 +15,10 @@
     "build": "yarn workspace @infantmen-labs/harbor-sdk build && yarn workspace harbor-log build && yarn workspace harbor-server build && yarn workspace harbor-agent build && yarn workspace harbor-keeper build",
     "test": "yarn workspace @infantmen-labs/harbor-sdk test && yarn workspace harbor-server test && yarn workspace harbor-agent test && yarn workspace harbor-keeper test && yarn workspace web test",
     "dev": "yarn --cwd web dev --port 3101",
-    "loop": "./scripts/local-loop.sh"
+    "loop": "./scripts/local-loop.sh",
+    "setup:check": "./scripts/setup-check.sh",
+    "build:all": "yarn build && yarn --cwd web build",
+    "test:all": "yarn test && yarn --cwd web build"
   },
   "dependencies": {
     "@anchor-lang/core": "^1.0.0",

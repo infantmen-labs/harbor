@@ -13,7 +13,8 @@ Rules that CI enforces (`.github/workflows/`):
 - The program is backend-frozen: no changes under `programs/` except
   critical security fixes. The web app is likewise frozen (see
   `web/README.md`); `yarn build`/`yarn test` at root skip `next build`
-  by design — CI covers it.
+  by design — CI covers it, or run `yarn build:all` / `yarn test:all`
+  for the everything-including-web pass.
 
 Commit discipline: one theme per commit, no phase or ticket refs in
 messages, docs updated in the same commit as the behavior they describe.

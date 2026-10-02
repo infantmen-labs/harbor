@@ -13,8 +13,11 @@ test-ledger
 # local-only
 *.log
 .env
-# editor + tooling fallout
-.vscode/
+# editor + tooling fallout (shared launch/debug configs are committed)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
 *.tsbuildinfo
 coverage/
 

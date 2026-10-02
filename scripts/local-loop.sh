@@ -8,6 +8,10 @@
 # -> keeper resolve, then verifies the settlement math to the unit.
 # Leaves the stack running for the demo video; re-running resets it.
 #
+# Usage: ./scripts/local-loop.sh [--fast]
+#   --fast shortens the dispute challenge window to the onchain minimum
+#   (75 slots) — same asserts, shorter maturity wait.
+#
 # Env (secrets never hardcoded; everything local to LOOP_DIR):
 #   LOOP_DIR          working dir for ledger, logs, pidfiles, run logs
 #                     (default ./.loop-run — gitignored, override per run)
@@ -36,6 +40,8 @@ DEPOSIT="${DEPOSIT:-200000}"
 CLAIM="${CLAIM:-2000}"
 SALT_OK="${SALT_OK:-100}"
 SALT_FAIL="${SALT_FAIL:-101}"
+CHALLENGE_SLOTS=150
+if [ "${1:-}" = "--fast" ]; then CHALLENGE_SLOTS=75; fi
 LOOP_DIR="${LOOP_DIR:-./.loop-run}"
 LEDGER="$LOOP_DIR/ledger"
 VALIDATOR_PID="$LOOP_DIR/validator.pid"
@@ -131,11 +137,8 @@ MINT_OUT=$(RPC_URL="$RPC_URL" PAYER_KEYPAIR="$MERCHANT_KEYPAIR" MERCHANT_PUBKEY=
 MINT=$(echo "$MINT_OUT" | grep '^MINT=' | cut -d= -f2)
 [ -n "$MINT" ] || { echo "FATAL: mint.js printed no MINT= (output above)" >&2; exit 1; }
 echo "== mint $MINT"
-RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" BOND_AMOUNT="$BOND_AMOUNT" node server/dist/scripts/setup.js
-BOND=$(node --input-type=module -e "
-import {PublicKey} from '@solana/web3.js';
-import {bondPda} from './sdk/dist/src/index.js';
-console.log(bondPda(new PublicKey('$MERCHANT_PUBKEY'), new PublicKey('$MINT'))[0].toBase58());")
+RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" BOND_AMOUNT="$BOND_AMOUNT" CHALLENGE_SLOTS="$CHALLENGE_SLOTS" node server/dist/scripts/setup.js
+BOND=$(MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" node scripts/lib/bond-pda.mjs)
 [ -n "$BOND" ] || { echo "FATAL: bond PDA derivation printed nothing" >&2; exit 1; }
 echo "== bond $BOND"
 
@@ -168,32 +171,12 @@ FAIL_CHANNEL=$(echo "$FAIL_OUT" | grep -oE "^channel [A-Za-z0-9]+" | head -1 | c
 curl -sS -m 10 -X POST "$SERVER_URL/admin/kill" -H 'content-type: application/json' -d '{"killed":false}' > /dev/null
 echo "== fail channel $FAIL_CHANNEL"
 
-BINDING=$(node --input-type=module -e "
-import {PublicKey} from '@solana/web3.js';
-const prog = new PublicKey('BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H');
-const ch = new PublicKey('$FAIL_CHANNEL');
-console.log(PublicKey.findProgramAddressSync([Buffer.from('binding'), ch.toBuffer()], prog)[0].toBase58());")
+BINDING=$(FAIL_CHANNEL="$FAIL_CHANNEL" node scripts/lib/binding-pda.mjs)
 echo "== dispute (agent claims $CLAIM)"
 RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H CLAIMANT_KEYPAIR="$AGENT_KEYPAIR" BOND="$BOND" BINDING="$BINDING" CHANNEL="$FAIL_CHANNEL" MINT="$MINT" NONCE=1 REASON=1 CLAIM_SPEND="$CLAIM" node keeper/dist/scripts/dispute.js
 
 echo "== wait for maturity"
-node --input-type=module -e "
-import {Connection, PublicKey} from '@solana/web3.js';
-import {disputePda} from './sdk/dist/src/index.js';
-import {decodeDispute} from './sdk/dist/src/index.js';
-const c = new Connection('$RPC_URL', 'confirmed');
-const [d] = disputePda(new PublicKey('$BINDING'), 1n);
-const t0 = Date.now();
-let matured = false;
-while (Date.now() - t0 < 300000) {
-  const info = await c.getAccountInfo(d).catch(() => null);
-  const slot = await c.getSlot().catch(() => 0);
-  if (info && slot > Number(decodeDispute(info.data).deadlineSlot)) { matured = true; break; }
-  await new Promise((r) => setTimeout(r, 5000));
-}
-if (!matured) throw new Error('dispute did not mature within 300s');
-console.log('matured');
-"
+RPC_URL="$RPC_URL" BINDING="$BINDING" node scripts/lib/wait-maturity.mjs
 
 echo "== keeper resolve"
 RESOLVE_OUT=$(OPERATOR_KEYPAIR="$MERCHANT_KEYPAIR" RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" POLL_MS=5000 MODE=live LOG_PATH="$LOOP_DIR"/loop-keeper.log.jsonl RUN_ONCE=1 node keeper/dist/src/index.js)
@@ -201,28 +184,7 @@ echo "$RESOLVE_OUT" | tail -1
 echo "$RESOLVE_OUT" | grep -q "resolved=1" || { echo "FATAL: keeper resolved nothing (see $LOOP_DIR/loop-keeper.log.jsonl)" >&2; exit 1; }
 
 echo "== verify"
-RPC_URL="$RPC_URL" MINT="$MINT" BOND="$BOND" CLAIM="$CLAIM" BOND_AMOUNT="$BOND_AMOUNT" AGENT="$AGENT_PUBKEY" node --input-type=module -e "
-import {Connection, PublicKey} from '@solana/web3.js';
-import {getAssociatedTokenAddress} from '@solana/spl-token';
-import {treasuryPda, decodeBond} from './sdk/dist/src/index.js';
-const c = new Connection(process.env.RPC_URL, 'confirmed');
-const info = await c.getAccountInfo(new PublicKey(process.env.BOND));
-if (info === null) throw new Error('bond account missing');
-const b = decodeBond(info.data);
-const claim = BigInt(process.env.CLAIM);
-const fee = (claim * 500n) / 10000n;
-const penalty = claim * 2n;
-const wantBond = BigInt(process.env.BOND_AMOUNT) - penalty;
-const okBond = b.amount === wantBond && b.reserved === 0n && b.openDisputes === 0n;
-const mint = new PublicKey(process.env.MINT);
-const [treasury] = treasuryPda(mint);
-const tBal = BigInt((await c.getTokenAccountBalance(await getAssociatedTokenAddress(mint, treasury, true))).value.amount);
-const okTreasury = tBal === fee + penalty;
-console.log(\`bond: \${b.amount} (want \${wantBond}) disputes:\${b.openDisputes} reserved:\${b.reserved}\`);
-console.log(\`treasury: \${tBal} (want \${fee + penalty})\`);
-console.log(okBond && okTreasury ? 'LOOP PASS' : 'LOOP FAIL');
-process.exit(okBond && okTreasury ? 0 : 1);
-"
+RPC_URL="$RPC_URL" MINT="$MINT" BOND="$BOND" CLAIM="$CLAIM" BOND_AMOUNT="$BOND_AMOUNT" node scripts/lib/verify-loop.mjs
 
 SUCCESS=1
 echo "== stack left running: RPC $RPC_URL | server $SERVER_URL | logs $LOOP_DIR/*.log"
