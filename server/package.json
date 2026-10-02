@@ -1,6 +1,7 @@
 {
   "name": "harbor-server",
   "version": "0.4.3",
+  "license": "MIT",
   "scripts": {
     "build": "tsc -p .",
     "start": "node dist/src/serve.js",

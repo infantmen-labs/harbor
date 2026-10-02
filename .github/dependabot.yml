@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Workspaces resolve together; the example pins the registry SDK
+    # (examples/bond-watch has its own lockfile, covered here too).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

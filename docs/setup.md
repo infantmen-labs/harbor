@@ -33,32 +33,34 @@ Fund them: localnet via `solana airdrop 2 <addr> --url localhost`
 git clone <repo> && cd harbor   # no submodules
 anchor build         # target/deploy/harbor.so — program suites + localnet need it
 yarn install --frozen-lockfile
-yarn lint            # prettier check (config: package.json, ignores: .prettierignore)
+yarn lint            # prettier check (defaults, no config file; ignores: .prettierignore)
 yarn build           # dist/ entrypoints for sdk, server, agent, keeper
 yarn test            # TS suites: sdk, server, agent, keeper
 cargo test -p harbor # program suites via LiteSVM (hermetic, no validator)
 ```
 
-`anchor test --skip-local-validator` runs the same suites via Anchor
-(the Anchor.toml test script is `cargo test`, so a validator boot is pure
-overhead — skip it).
+Do NOT use `anchor test` here: even with `--skip-local-validator` the
+harness dials a validator on :8899 and fails (verified). `cargo test`
+above is the complete suite.
 
 Web (optional for backend loops): `cp web/.env.example web/.env.local`
-then `yarn dev --port 3101` (port 3101 — the server owns 3000). Backend
+then `yarn --cwd web dev --port 3101` (port 3101 — the server owns 3000;
+bare `yarn dev` from root fails: no such script). Backend
 env templates: `server/.env.example`, `agent/.env.example`,
 `keeper/.env.example` (processes read the environment directly — export
 vars or `set -a; source .env; set +a`; never commit real secrets).
 
 ## 4. Fast path: one-command localnet loop
 
-Needs a locally-built upstream `.so` (build once per
-`docs/proof-bundle.md` → "Upstream fixture build"):
-
 ```sh
-UPSTREAM_SO=/path/to/payment_channels.so \
-UPSTREAM_KEYPAIR=~/.config/solana/local-chnl.json \
 ./scripts/local-loop.sh
 ```
+
+No fixture env needed: the loop defaults to the committed local
+upstream pair (`scripts/fixtures/` — source-built from the pinned
+commit, localnet-only). Override with `UPSTREAM_SO` / `UPSTREAM_KEYPAIR`
+for your own build (procedure: `docs/proof-bundle.md` → "Upstream
+fixture build"; rebuild only when the pin changes).
 
 Spins an isolated stack (fresh validator + RPC `:8900`, server `:3001`
 in `./.loop-run`), runs happy → kill → fail → dispute → keeper resolve,

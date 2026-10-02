@@ -13,10 +13,12 @@
 #                     (default ./.loop-run — gitignored, override per run)
 #   MERCHANT_KEYPAIR  merchant + upgrade authority (default ~/.config/solana/id.json)
 #   AGENT_KEYPAIR     channel payer, also the dispute claimant (default loop-agent.json)
-#   UPSTREAM_SO       locally-built payment-channels.so (REQUIRED — see
-#                     "Upstream fixture build" in docs/proof-bundle.md;
-#                     no default on purpose)
-#   UPSTREAM_KEYPAIR  keypair matching UPSTREAM_SO's declare_id
+#   UPSTREAM_SO       locally-built payment-channels.so (default:
+#                     scripts/fixtures/pair below; override for your own
+#                     build — see "Upstream fixture build" in
+#                     docs/proof-bundle.md)
+#   UPSTREAM_KEYPAIR  keypair matching UPSTREAM_SO's declare_id (default:
+#                     the committed fixture keypair)
 #   BOND_AMOUNT / DEPOSIT / CLAIM / SALT_OK / SALT_FAIL (defaults: 500000/200000/2000/100/101)
 set -euo pipefail
 
@@ -27,8 +29,8 @@ RPC_URL="${RPC_URL:-http://127.0.0.1:8900}"
 SERVER_URL="${SERVER_URL:-http://127.0.0.1:3001}"
 MERCHANT_KEYPAIR="${MERCHANT_KEYPAIR:-$HOME/.config/solana/id.json}"
 AGENT_KEYPAIR="${AGENT_KEYPAIR:-$HOME/.config/solana/loop-agent.json}"
-UPSTREAM_SO="${UPSTREAM_SO:-}"
-UPSTREAM_KEYPAIR="${UPSTREAM_KEYPAIR:-$HOME/.config/solana/local-chnl.json}"
+UPSTREAM_SO="${UPSTREAM_SO:-$ROOT/scripts/fixtures/payment_channels.local.so}"
+UPSTREAM_KEYPAIR="${UPSTREAM_KEYPAIR:-$ROOT/scripts/fixtures/local-chnl.json}"
 BOND_AMOUNT="${BOND_AMOUNT:-500000}"
 DEPOSIT="${DEPOSIT:-200000}"
 CLAIM="${CLAIM:-2000}"

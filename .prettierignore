@@ -1,5 +1,6 @@
 # Prettier never reformats build output or vendored artifacts.
 dist
+dist-test
 .next
 target
 test-ledger
@@ -7,3 +8,5 @@ test-ledger
 *.log
 # Generated: anchor build output, do not hand-edit.
 web/lib/idl.json
+# Key material: must stay byte-stable, never reformatted.
+scripts/fixtures/local-chnl.json

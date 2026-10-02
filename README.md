@@ -49,10 +49,12 @@ anchor build         # harbor.so (program suites + localnet need it)
 yarn install         # TS workspaces (sdk, log, server, agent, keeper, web)
 yarn lint            # prettier check
 yarn build           # dist/ entrypoints for server, agent, keeper
-yarn test            # TS suites (sdk, server, agent, keeper)
-cargo test -p harbor # program suites via LiteSVM (no validator needed)
-anchor test --skip-local-validator  # same suites via Anchor (no validator boot;
-                                    # Anchor.toml test script IS cargo test)
+yarn test            # TS suites (sdk, server, agent, keeper, web unit)
+cargo test -p harbor # program suites via LiteSVM (no validator needed;
+                      # this IS what Anchor.toml wires to `anchor test`, which
+                      # additionally demands a validator on :8899 — skip it)
+                     # (next build runs in CI only; root build/test skip web
+                      # by design — the app is backend-frozen, see web/README)
 ```
 
 ## Local end-to-end

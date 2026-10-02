@@ -51,6 +51,8 @@ cargo build-sbf --manifest-path program/payment_channels/Cargo.toml
 Note: this is NOT `programs/harbor/tests/fixtures/payment_channels.so` —
 that fixture keeps the canonical declare ID (LiteSVM maps bytes at any
 address, so it works there) and cannot be `solana program deploy`ed.
+`scripts/fixtures/` already contains a build from the pin with a local
+declare ID — rebuild only when the pin changes.
 ```
 
 ## Mint

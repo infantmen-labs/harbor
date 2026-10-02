@@ -13,6 +13,10 @@ test-ledger
 # local-only
 *.log
 .env
+# editor + tooling fallout
+.vscode/
+*.tsbuildinfo
+coverage/
 
 # local-loop.sh working dir (ledger, logs, pidfiles)
 .loop-run/
