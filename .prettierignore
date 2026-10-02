@@ -10,3 +10,4 @@ test-ledger
 web/lib/idl.json
 # Key material: must stay byte-stable, never reformatted.
 scripts/fixtures/local-chnl.json
+scripts/fixtures/harbor-keypair.json

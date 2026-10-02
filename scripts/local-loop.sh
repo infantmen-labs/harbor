@@ -42,6 +42,21 @@ VALIDATOR_PID="$LOOP_DIR/validator.pid"
 SERVER_PID="$LOOP_DIR/server.pid"
 mkdir -p "$LOOP_DIR"
 
+# Cleanup on abort only: a passing run intentionally leaves the stack up
+# for the demo; any other exit kills what this script started (pidfiles
+# never point at strangers — see the stop block below).
+SUCCESS=0
+cleanup() {
+  if [ "$SUCCESS" != 1 ]; then
+    for p in "$VALIDATOR_PID" "$SERVER_PID"; do
+      if [ -f "$p" ] && kill -0 "$(cat "$p")" 2>/dev/null; then
+        kill "$(cat "$p")" 2>/dev/null || true
+      fi
+    done
+  fi
+}
+trap cleanup EXIT
+
 need() { command -v "$1" >/dev/null 2>&1 || { echo "missing: $1"; exit 1; }; }
 need solana; need solana-keygen; need node; need curl
 [ -f "$MERCHANT_KEYPAIR" ] || { echo "missing merchant keypair: $MERCHANT_KEYPAIR"; exit 1; }
@@ -101,7 +116,9 @@ SLOT2=$(solana --url "$RPC_URL" slot 2>/dev/null || true)
 echo "== chain advancing ($SLOT -> $SLOT2)"
 
 echo "== deploy programs"
-solana program deploy target/deploy/harbor.so --program-id target/deploy/harbor-keypair.json --upgrade-authority "$MERCHANT_KEYPAIR" --url "$RPC_URL" > /dev/null
+HARBOR_KEYPAIR="$ROOT/scripts/fixtures/harbor-keypair.json"
+[ -f "$HARBOR_KEYPAIR" ] || { echo "missing $HARBOR_KEYPAIR (committed fixture)"; exit 1; }
+solana program deploy target/deploy/harbor.so --program-id "$HARBOR_KEYPAIR" --upgrade-authority "$MERCHANT_KEYPAIR" --url "$RPC_URL" > /dev/null
 solana program deploy "$UPSTREAM_SO" --program-id "$UPSTREAM_KEYPAIR" --url "$RPC_URL" > /dev/null
 echo "== harbor + upstream live"
 
@@ -112,12 +129,14 @@ solana transfer "$AGENT_PUBKEY" 0.5 --url "$RPC_URL" --allow-unfunded-recipient 
 echo "== mint + bond"
 MINT_OUT=$(RPC_URL="$RPC_URL" PAYER_KEYPAIR="$MERCHANT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" AGENT_PUBKEY="$AGENT_PUBKEY" MINT_DECIMALS=6 MINT_AMOUNT=2000000000 node server/dist/scripts/mint.js)
 MINT=$(echo "$MINT_OUT" | grep '^MINT=' | cut -d= -f2)
+[ -n "$MINT" ] || { echo "FATAL: mint.js printed no MINT= (output above)" >&2; exit 1; }
 echo "== mint $MINT"
 RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" BOND_AMOUNT="$BOND_AMOUNT" node server/dist/scripts/setup.js
 BOND=$(node --input-type=module -e "
 import {PublicKey} from '@solana/web3.js';
 import {bondPda} from './sdk/dist/src/index.js';
 console.log(bondPda(new PublicKey('$MERCHANT_PUBKEY'), new PublicKey('$MINT'))[0].toBase58());")
+[ -n "$BOND" ] || { echo "FATAL: bond PDA derivation printed nothing" >&2; exit 1; }
 echo "== bond $BOND"
 
 echo "== server $SERVER_URL"
@@ -165,17 +184,21 @@ import {decodeDispute} from './sdk/dist/src/index.js';
 const c = new Connection('$RPC_URL', 'confirmed');
 const [d] = disputePda(new PublicKey('$BINDING'), 1n);
 const t0 = Date.now();
+let matured = false;
 while (Date.now() - t0 < 300000) {
   const info = await c.getAccountInfo(d).catch(() => null);
   const slot = await c.getSlot().catch(() => 0);
-  if (info && slot > Number(decodeDispute(info.data).deadlineSlot)) break;
+  if (info && slot > Number(decodeDispute(info.data).deadlineSlot)) { matured = true; break; }
   await new Promise((r) => setTimeout(r, 5000));
 }
+if (!matured) throw new Error('dispute did not mature within 300s');
 console.log('matured');
 "
 
 echo "== keeper resolve"
-OPERATOR_KEYPAIR="$MERCHANT_KEYPAIR" RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" POLL_MS=5000 MODE=live LOG_PATH="$LOOP_DIR"/loop-keeper.log.jsonl RUN_ONCE=1 node keeper/dist/src/index.js | tail -1
+RESOLVE_OUT=$(OPERATOR_KEYPAIR="$MERCHANT_KEYPAIR" RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" POLL_MS=5000 MODE=live LOG_PATH="$LOOP_DIR"/loop-keeper.log.jsonl RUN_ONCE=1 node keeper/dist/src/index.js)
+echo "$RESOLVE_OUT" | tail -1
+echo "$RESOLVE_OUT" | grep -q "resolved=1" || { echo "FATAL: keeper resolved nothing (see $LOOP_DIR/loop-keeper.log.jsonl)" >&2; exit 1; }
 
 echo "== verify"
 RPC_URL="$RPC_URL" MINT="$MINT" BOND="$BOND" CLAIM="$CLAIM" BOND_AMOUNT="$BOND_AMOUNT" AGENT="$AGENT_PUBKEY" node --input-type=module -e "
@@ -201,4 +224,5 @@ console.log(okBond && okTreasury ? 'LOOP PASS' : 'LOOP FAIL');
 process.exit(okBond && okTreasury ? 0 : 1);
 "
 
+SUCCESS=1
 echo "== stack left running: RPC $RPC_URL | server $SERVER_URL | logs $LOOP_DIR/*.log"

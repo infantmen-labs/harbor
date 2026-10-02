@@ -27,8 +27,10 @@ Program ID: `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`
 `GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ`).
 
 Upstream channel program on localnet: source-built from pinned commit
-`3ffa4d67` with a local declare ID
-(`7EQY39s1mXBjSVgPTpTE5TwVXG95XezutJD72oxTLMBg`). Mainnet/devnet use the
+`3ffa4d67` with a local declare ID — currently the committed fixture
+pair (`scripts/fixtures/`, ID `8g1PkcJovA978mCpFQL9cKYLRoGPQLoZLdY83BxbvK7f`;
+earlier rehearsals used `7EQY39s1mXBjSVgPTpTE5TwVXG95XezutJD72oxTLMBg`).
+Mainnet/devnet use the
 canonical `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX` (same ID on every
 cluster; cluster features only change the treasury owner). Lesson learned:
 the upstream program derives PDAs from its own ID, so binaries cannot be

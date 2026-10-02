@@ -13,7 +13,7 @@ liveness attestations and never acquit a claim (see
 yarn build
 
 # 2. Watch (dry-run logs intent, live sends):
-OPERATOR_KEYPAIR=~/.config/solana/id.json \
+OPERATOR_KEYPAIR=~/.config/solana/harbor-operator.json \
 RPC_URL=https://api.devnet.solana.com \
 HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H \
 UPSTREAM_PROGRAM_ALLOWLIST=CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX \
@@ -21,6 +21,11 @@ POLL_MS=30000 MODE=dry-run LOG_PATH=keeper.log.jsonl \
 RUN_ONCE=1 \
 yarn start
 ```
+
+Operator convention: devnet/production use a dedicated operator key
+(`harbor-operator.json`). `scripts/local-loop.sh` intentionally passes
+the merchant key instead — throwaway localnet, one funded key, and the
+operator can only resolve already-matured disputes either way.
 
 ## Env
 

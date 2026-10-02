@@ -14,3 +14,12 @@ env. Override with `UPSTREAM_SO` / `UPSTREAM_KEYPAIR` for your own build.
 Do NOT use these on devnet: devnet runs the genuine SF deployment at the
 canonical `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX` (see
 `docs/upstream-pin.md`).
+
+- `harbor-keypair.json` — the Harbor program-ID keypair
+  (`BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`), so fresh clones can
+  `solana program deploy` the localnet program at its canonical address
+  (all SDK PDAs derive from that address — a random one breaks every
+  derivation). SAFE TO COMMIT: on any cluster where the program exists
+  the address is taken (deploys refuse) and upgrades/close need the
+  upgrade authority (the merchant), never this key. Localnet-only
+  convenience, same class as the throwaway above.

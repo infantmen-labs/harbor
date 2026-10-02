@@ -35,6 +35,27 @@ jobs:
       - run: cargo clippy -p harbor --all-targets -- -D warnings
       - run: cargo test -p harbor
 
+  # anchor build is the only step that exercises the BPF backend
+  # (cargo test compiles the program natively). Toolchain pinned to the
+  # locally-verified pair: Agave 3.1.14 + anchor 1.0.0.
+  anchor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Solana CLI (Agave 3.1.14)
+        run: |
+          curl -sSfL https://github.com/anza-xyz/agave/releases/download/v3.1.14/solana-release-x86_64-unknown-linux-gnu.tar.bz2 -o /tmp/solana.tar.bz2
+          tar -xjf /tmp/solana.tar.bz2 -C /tmp
+          echo "/tmp/solana-release/bin" >> "$GITHUB_PATH"
+      - name: Install anchor 1.0.0 via avm
+        run: |
+          cargo install --git https://github.com/solana-foundation/anchor avm --locked --force
+          echo "$HOME/.avm/bin" >> "$GITHUB_PATH"
+          avm install 1.0.0
+          anchor --version
+      - run: anchor build
+
   # The web app is backend-frozen (see web/README.md) so it changes rarely,
   # but an unbuilt Next app rots silently — this job holds the line.
   web:

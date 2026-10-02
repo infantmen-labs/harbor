@@ -48,13 +48,11 @@ See `examples/bond-watch` for a complete read-only monitor (bond health
 anchor build         # harbor.so (program suites + localnet need it)
 yarn install         # TS workspaces (sdk, log, server, agent, keeper, web)
 yarn lint            # prettier check
-yarn build           # dist/ entrypoints for server, agent, keeper
-yarn test            # TS suites (sdk, server, agent, keeper, web unit)
-cargo test -p harbor # program suites via LiteSVM (no validator needed;
-                      # this IS what Anchor.toml wires to `anchor test`, which
-                      # additionally demands a validator on :8899 — skip it)
-                     # (next build runs in CI only; root build/test skip web
-                      # by design — the app is backend-frozen, see web/README)
+yarn build           # dist/ entrypoints (sdk, server, agent, keeper)
+yarn test            # TS suites, web unit included (next build: CI only)
+cargo test -p harbor # program suites, hermetic LiteSVM, no validator.
+                     # (Anchor.toml wires `anchor test` to this — but the
+                     # harness still dials :8899, so don't use it here.)
 ```
 
 ## Local end-to-end
@@ -64,11 +62,12 @@ cargo test -p harbor # program suites via LiteSVM (no validator needed;
                            # dispute -> keeper resolve, math verified to the unit
 ```
 
-Needs `anchor build` + `yarn build` first, a locally-built upstream
-`.so` via `UPSTREAM_SO` (required — build per `docs/proof-bundle.md`
-v0.4.0 notes), and keypairs via `MERCHANT_KEYPAIR` / `AGENT_KEYPAIR`
-env. All run state (ledger, logs, pidfiles) stays in `./.loop-run`
-(gitignored, override with `LOOP_DIR`).
+Needs `anchor build` + `yarn build` first, and keypairs via
+`MERCHANT_KEYPAIR` / `AGENT_KEYPAIR` env. The upstream fixture pair is
+committed (`scripts/fixtures/`); override with `UPSTREAM_SO` /
+`UPSTREAM_KEYPAIR` for your own build (procedure: `docs/proof-bundle.md`
+→ "Upstream fixture build"). All run state (ledger, logs, pidfiles)
+stays in `./.loop-run` (gitignored, override with `LOOP_DIR`).
 
 ## Layout
 

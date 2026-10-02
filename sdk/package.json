@@ -17,6 +17,7 @@
   "types": "dist/src/index.d.ts",
   "scripts": {
     "build": "tsc -p .",
+    "clean": "rm -rf dist",
     "test": "node --test dist/test/vectors.test.js"
   },
   "dependencies": {
