@@ -4,14 +4,14 @@ Fast path first (scripted, §4). Manual path after it (§5) for debugging.
 
 ## 1. Prerequisites
 
-| Tool | Version (tested) | Install |
-| ---- | ---------------- | ------- |
-| Node.js | ≥22 (tested 22.23 + 26.7) | https://nodejs.org — a wallet dep enforces `engines: node >= 22` |
-| yarn | 1.22.x | `npm i -g yarn` |
-| Rust (stable) | 1.89 | https://rustup.rs |
-| solana-cli (Agave) | 3.1.14 | https://solana.com/docs/intro/installation |
-| anchor-cli | 1.0.0 | `avm install 1.0.0` via https://www.anchor-lang.com/docs/installation |
-| git, curl | any | system package manager |
+| Tool               | Version (tested)          | Install                                                               |
+| ------------------ | ------------------------- | --------------------------------------------------------------------- |
+| Node.js            | ≥22 (tested 22.23 + 26.7) | https://nodejs.org — a wallet dep enforces `engines: node >= 22`      |
+| yarn               | 1.22.x                    | `npm i -g yarn`                                                       |
+| Rust (stable)      | 1.89                      | https://rustup.rs                                                     |
+| solana-cli (Agave) | 3.1.14                    | https://solana.com/docs/intro/installation                            |
+| anchor-cli         | 1.0.0                     | `avm install 1.0.0` via https://www.anchor-lang.com/docs/installation |
+| git, curl          | any                       | system package manager                                                |
 
 CI runs the same matrix (`.github/workflows/ci.yml`).
 
@@ -39,7 +39,9 @@ yarn test            # TS suites: sdk, server, agent, keeper
 cargo test -p harbor # program suites via LiteSVM (hermetic, no validator)
 ```
 
-`anchor test` runs the full localnet suite on top of this (slower).
+`anchor test --skip-local-validator` runs the same suites via Anchor
+(the Anchor.toml test script is `cargo test`, so a validator boot is pure
+overhead — skip it).
 
 Web (optional for backend loops): `cp web/.env.example web/.env.local`
 then `yarn dev --port 3101` (port 3101 — the server owns 3000). Backend

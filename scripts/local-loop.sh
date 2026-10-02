@@ -44,10 +44,12 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "missing: $1"; exit 1; }; }
 need solana; need solana-keygen; need node; need curl
 [ -f "$MERCHANT_KEYPAIR" ] || { echo "missing merchant keypair: $MERCHANT_KEYPAIR"; exit 1; }
 [ -f "$AGENT_KEYPAIR" ] || { echo "missing agent keypair: $AGENT_KEYPAIR"; exit 1; }
-[ -n "$UPSTREAM_SO" ] && [ -f "$UPSTREAM_SO" ] || { echo "set UPSTREAM_SO to a locally-built payment-channels.so (clone/patch/cargo build-sbf per docs/proof-bundle.md v0.4.0 notes)"; exit 1; }
+[ -n "$UPSTREAM_SO" ] && [ -f "$UPSTREAM_SO" ] || { echo "set UPSTREAM_SO to a locally-built payment-channels.so (see 'Upstream fixture build' in docs/proof-bundle.md)"; exit 1; }
 [ -f "$UPSTREAM_KEYPAIR" ] || { echo "missing upstream keypair: $UPSTREAM_KEYPAIR"; exit 1; }
 [ -f target/deploy/harbor.so ] || { echo "missing target/deploy/harbor.so: run anchor build"; exit 1; }
-[ -d server/dist ] || { echo "missing server/dist: run yarn build"; exit 1; }
+for d in sdk/dist server/dist agent/dist keeper/dist; do
+  [ -d "$d" ] || { echo "missing $d: run yarn build"; exit 1; }
+done
 
 MERCHANT_PUBKEY="$(solana-keygen pubkey "$MERCHANT_KEYPAIR")"
 AGENT_PUBKEY="$(solana-keygen pubkey "$AGENT_KEYPAIR")"
@@ -177,11 +179,11 @@ echo "== verify"
 RPC_URL="$RPC_URL" MINT="$MINT" BOND="$BOND" CLAIM="$CLAIM" BOND_AMOUNT="$BOND_AMOUNT" AGENT="$AGENT_PUBKEY" node --input-type=module -e "
 import {Connection, PublicKey} from '@solana/web3.js';
 import {getAssociatedTokenAddress} from '@solana/spl-token';
-import {treasuryPda} from './sdk/dist/src/index.js';
-import H from './web/dist-test/lib/harbor.js';
+import {treasuryPda, decodeBond} from './sdk/dist/src/index.js';
 const c = new Connection(process.env.RPC_URL, 'confirmed');
-const bonds = await H.listBonds(c);
-const b = bonds.find((x) => x.address === process.env.BOND);
+const info = await c.getAccountInfo(new PublicKey(process.env.BOND));
+if (info === null) throw new Error('bond account missing');
+const b = decodeBond(info.data);
 const claim = BigInt(process.env.CLAIM);
 const fee = (claim * 500n) / 10000n;
 const penalty = claim * 2n;

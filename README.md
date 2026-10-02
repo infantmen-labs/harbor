@@ -51,7 +51,8 @@ yarn lint            # prettier check
 yarn build           # dist/ entrypoints for server, agent, keeper
 yarn test            # TS suites (sdk, server, agent, keeper)
 cargo test -p harbor # program suites via LiteSVM (no validator needed)
-anchor test          # full localnet suite (bond, receipts, disputes, composition)
+anchor test --skip-local-validator  # same suites via Anchor (no validator boot;
+                                    # Anchor.toml test script IS cargo test)
 ```
 
 ## Local end-to-end

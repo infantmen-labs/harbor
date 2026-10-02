@@ -1,0 +1,23 @@
+# Weekly + on-demand smoke: the third-party example against devnet.
+# Read-only (no keys, no funds): public RPC + canonical bond. Catches
+# SDK breaking changes that unit tests miss (wire format, registry pack).
+name: example-smoke
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  bond-watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix examples/bond-watch
+      - run: node examples/bond-watch/bond-watch.cjs
+        env:
+          RPC_URL: https://api.devnet.solana.com
+          BOND: 2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP

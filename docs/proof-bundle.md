@@ -48,6 +48,9 @@ cargo build-sbf --manifest-path program/payment_channels/Cargo.toml
 # .so lands at target/deploy/payment_channels.so — pass it as UPSTREAM_SO,
 # and the keypair as UPSTREAM_KEYPAIR. Default cargo features are fine for
 # localnet (cluster TREASURY_OWNER gating only affects mainnet/devnet builds).
+Note: this is NOT `programs/harbor/tests/fixtures/payment_channels.so` —
+that fixture keeps the canonical declare ID (LiteSVM maps bytes at any
+address, so it works there) and cannot be `solana program deploy`ed.
 ```
 
 ## Mint
@@ -143,9 +146,9 @@ treasury. Full spec in `docs/ui-contracts.md` Amendments (v0.2.0).
   (programdata head byte-verified against the new 363,248-byte binary;
   IDL republished and fetch-verified).
 - Migration (no state carry-over by design): old devnet bond withdrawn
-  + `refund_unused` closed (`2u2NkK8HPheREVQuRdrw9cM2dHryDugBXybgnuQLS6UgzZ6RgpkLYDyXLBGXtRGY5RHjL33BwEKoDcoAe2VNKV45`),
-  then re-registered + 500,000 re-posted to the same PDA
-  `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP`.
+  - `refund_unused` closed (`2u2NkK8HPheREVQuRdrw9cM2dHryDugBXybgnuQLS6UgzZ6RgpkLYDyXLBGXtRGY5RHjL33BwEKoDcoAe2VNKV45`),
+    then re-registered + 500,000 re-posted to the same PDA
+    `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP`.
 - v0.2 devnet loop: happy channel `3rD2hFGgyED4xuhaggWGWXFKCqReposwUUGvUiaNR99H`
   (3 receipts, settled 15000) → kill → fail channel
   `EhZv4fhkpCC8cPnmJUyrH3QmAxf4HK7NMHCDuhe3hZVp` → dispute
@@ -282,7 +285,7 @@ returns 402; top-ups learned lazily). Upgrade sig
 
 - `harbor-sdk` was taken (n1colaslugo, unrelated API-auth SDK), so the
   package ships as `@infantmen-labs/harbor-sdk@0.3.0` (MIT, `files:
-  [dist]`, 21 files). Third-party proof: `examples/bond-watch` reads
+[dist]`, 21 files). Third-party proof: `examples/bond-watch` reads
   the live devnet bond with SDK + web3.js only — verified against the
   packed tarball pre-publish and the registry install post-publish.
 - Root `yarn build` / `yarn test` orchestrate all workspaces in

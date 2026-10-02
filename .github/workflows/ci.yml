@@ -33,3 +33,17 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy -p harbor --all-targets -- -D warnings
       - run: cargo test -p harbor
+
+  # The web app is backend-frozen (see web/README.md) so it changes rarely,
+  # but an unbuilt Next app rots silently — this job holds the line.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn workspace web test
+      - run: yarn workspace web build
