@@ -35,6 +35,9 @@ channel escrow balance is unchanged after a Harbor slash.
 
 1. A Harbor dispute SHOULD open before `settle_and_seal` for the best demo
    narrative, but safety never depends on ordering — the pools are disjoint.
+   Live confirmation: an independent demand buyer settled successes then
+   disputed the actually-failed nonce 2 on the same channel — reserved
+   exactly 3x, resolved exactly 95%/2x, successes untouched.
 2. Harbor never pauses or gates upstream `distribute`. It cannot (different
    program) and need not (no shared state).
 3. Harbor challenge windows (`challenge_slots`) and the upstream reclaim

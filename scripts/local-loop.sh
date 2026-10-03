@@ -176,7 +176,7 @@ echo "== dispute (agent claims $CLAIM)"
 RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H CLAIMANT_KEYPAIR="$AGENT_KEYPAIR" BOND="$BOND" BINDING="$BINDING" CHANNEL="$FAIL_CHANNEL" MINT="$MINT" NONCE=1 REASON=1 CLAIM_SPEND="$CLAIM" node keeper/dist/scripts/dispute.js
 
 echo "== wait for maturity"
-RPC_URL="$RPC_URL" BINDING="$BINDING" node scripts/lib/wait-maturity.mjs
+RPC_URL="$RPC_URL" BINDING="$BINDING" NONCE=1 node scripts/lib/wait-maturity.mjs
 
 echo "== keeper resolve"
 RESOLVE_OUT=$(OPERATOR_KEYPAIR="$MERCHANT_KEYPAIR" RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" POLL_MS=5000 MODE=live LOG_PATH="$LOOP_DIR"/loop-keeper.log.jsonl RUN_ONCE=1 node keeper/dist/src/index.js)
