@@ -74,10 +74,18 @@ const [eventAuthority] = PublicKey.findProgramAddressSync(
   [Buffer.from("event_authority")],
   programId
 );
-// Default/localnet upstream builds use the 0xBEEF sentinel treasury owner.
-const treasuryOwner = new PublicKey(
-  Buffer.from(Array.from({ length: 32 }, (_, i) => (i % 2 === 0 ? 0xbe : 0xef)))
-);
+// Treasury owner is a build-time upstream constant. Localnet fixtures use
+// the 0xBEEF sentinel (source default). The canonical devnet deployment
+// embeds `4zTeC5mV…DUspap` (== its upgrade authority; mapped by
+// offset-matching the world-readable programdata against the sentinel
+// build — see docs/upstream-pin.md). Set TREASURY_OWNER to override.
+const treasuryOwner = process.env.TREASURY_OWNER
+  ? new PublicKey(process.env.TREASURY_OWNER)
+  : new PublicKey(
+      Buffer.from(
+        Array.from({ length: 32 }, (_, i) => (i % 2 === 0 ? 0xbe : 0xef))
+      )
+    );
 const treasuryAta = ataFor(treasuryOwner, mint);
 
 // 1. requestClose (payer-signed) → Closing(2).

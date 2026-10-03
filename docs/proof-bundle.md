@@ -296,6 +296,34 @@ returns 402; top-ups learned lazily). Upgrade sig
   dependency order (caught a real fresh-clone gap: keeper/server
   resolved `harbor-log` types before it was built).
 
+## Devnet reclaim (post-0.6.0, canonical program, 2026-10-03)
+
+Closes the last reclaim remainder from the independent demand-buyer
+validation (their run14 note: localnet proven, devnet treasury owner
+unmapped). Channel `AjJsYGkXY8iWM9vrXMNqS5MPp7i88nEhN8oSAVYb6dsG`
+(deposit 50000, grace 60s, opened by the loop agent through the hosted
+merchant), 1 request, settled at 5000:
+
+- `requestClose` (payer) → CLOSING; `seal` cranked past the 60s grace
+  (pre-grace `0x899` ignored) → SEALED.
+- `withdrawPayer`: agent +45000 exact (escrow 50000 − settled 5000);
+  `payer_withdrawn_at` stamped onchain.
+- Treasury owner mapped empirically: canonical devnet programdata is
+  byte-length-identical to our sentinel-built fixture; the constant at
+  the sentinel's offset is `4zTeC5…DUspap` (== upgrade authority).
+  Probe costs, honestly: `distribute` first failed `0x961`
+  (`TreasuryAccountMismatch`) against both the sentinel and the
+  mainnet owner; two empty probe ATAs created en route
+  (`ATA(0xBEEF-owner)`, `ATA(Cs2zdf…)`, ~0.004 devnet SOL rent total,
+  uncloseable without those owners' signatures — stranded, disclosed).
+- `distribute` with `ATA(4zTeC5…, mint)`: sig `4nc1r53niaBJkPnUU1hi…`,
+  merchant +5000 exact (= settled), and — current slot past
+  `open_slot + OPEN_SLOT_WINDOW` — the SEALED direct-close path ran:
+  escrow closed, **channel PDA fully deallocated**, rent home. The
+  rent-reclaim step localnet had to skip as gated is here closed live.
+- Agent balance math exact end-to-end: 1,944,499,350 − 50,000 (open)
+  - 45,000 (refund) = 1,944,494,350 observed.
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past

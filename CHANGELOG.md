@@ -5,7 +5,12 @@ workspaces version together. Full history: `git log`.
 
 ## Unreleased
 
-(nothing pending)
+- Devnet reclaim proven live on the canonical program (withdrawPayer
+  +45000 exact, distribute +5000 with the empirically mapped devnet
+  `TREASURY_OWNER` `4zTeC5…DUspap`, full channel deallocation past the
+  open-slot window); `reclaim-proof.mjs` takes `TREASURY_OWNER` (env);
+  mapping method + probe costs recorded in `docs/upstream-pin.md` and
+  `docs/proof-bundle.md`.
 
 ## 0.6.0 (SDK + server + agent + keeper; program/web/log unchanged)
 

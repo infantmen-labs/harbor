@@ -15,6 +15,14 @@ Harbor composes with this program. It never forks or modifies it.
   undeployable without its keypair). Harbor's offsets verified
   empirically against a real devnet channel (256B, disc 1 / ver 1 /
   status 0, payer@88 / payee@120 / mint@184 decode correctly).
+- Devnet `TREASURY_OWNER` (build-time constant, not in the public
+  source — devnet shows the sentinel with a TODO at the pin): also
+  `4zTeC5mVqWLruDexgU2mV66p9t5vCA9JyiZqdGDUspap`. Mapped by
+  offset-matching the world-readable programdata ELF against our
+  sentinel-built fixture (byte-length-identical at 66,240; constant at
+  fixture's sentinel offset), then proven live: `distribute` with
+  `ATA(4zTeC5…, mint)` succeeds, with the sentinel and with the
+  mainnet owner it fails `TreasuryAccountMismatch (0x961)`.
 
 ## Channel model
 
