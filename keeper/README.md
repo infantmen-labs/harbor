@@ -50,3 +50,13 @@ merchant-signed liveness attestations and never acquit a claim (see
 `docs/ui-contracts.md` Amendments v0.2.0). Upstream channel
 `settle`/`distribute` stays operator-side; the keeper never finalizes
 anything with an open dispute because resolution IS the finalization.
+
+## Liveness (for dependants)
+
+A single pass is not guaranteed to catch a dispute (RPC races, timing)
+— run the poll loop, the documented deployment mode. A hosted keeper
+watches the canonical program on devnet and resolves any matured
+dispute; verify onchain (dispute account closed, claimant refunded).
+No SLA is promised: operate your own keeper for production, or confirm
+maturity + resolution yourself with `decodeDispute` before assuming
+coverage.

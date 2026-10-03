@@ -5,8 +5,26 @@ import {
   RENT_SYSVAR_ID,
   SYSTEM_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  channelPda,
-} from "@infantmen-labs/harbor-sdk";
+} from "./ids";
+import { channelPda } from "./pda";
+import { u64le } from "./u64";
+
+/**
+ * Upstream payment-channels instruction builders. These encode the pinned
+ * upstream layouts (see docs/upstream-pin.md) so third-party buyers never
+ * reimplement consensus-critical bytes by copy-paste. Previously lived in
+ * the reference agent; moved here verbatim (byte-identical output).
+ */
+
+function m(pubkey: PublicKey, writable: boolean, signer: boolean) {
+  return { pubkey, isWritable: writable, isSigner: signer };
+}
+
+function u32(v: number): Buffer {
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE(v);
+  return b;
+}
 
 /** Upstream `open`. Layout: disc(1) | salt(8) | deposit(8) | grace(4) | slot(8) | recipients u32. */
 export function openChannelIx(args: {
@@ -26,10 +44,10 @@ export function openChannelIx(args: {
 }): TransactionInstruction {
   const data = Buffer.concat([
     Buffer.from([1]),
-    u64(args.salt),
-    u64(args.deposit),
+    u64le(args.salt),
+    u64le(args.deposit),
     u32(args.gracePeriod),
-    u64(args.openSlot),
+    u64le(args.openSlot),
     u32(0),
   ]);
   return new TransactionInstruction({
@@ -85,7 +103,7 @@ export function topUpIx(args: {
       m(args.mint, false, false),
       m(TOKEN_PROGRAM_ID, false, false),
     ],
-    data: Buffer.concat([Buffer.from([3]), u64(args.amount)]),
+    data: Buffer.concat([Buffer.from([3]), u64le(args.amount)]),
   });
 }
 
@@ -108,20 +126,4 @@ export function deriveChannel(
     openSlot
   );
   return { channel };
-}
-
-function m(pubkey: PublicKey, writable: boolean, signer: boolean) {
-  return { pubkey, isWritable: writable, isSigner: signer };
-}
-
-function u64(v: bigint): Buffer {
-  const b = Buffer.alloc(8);
-  b.writeBigUInt64LE(v);
-  return b;
-}
-
-function u32(v: number): Buffer {
-  const b = Buffer.alloc(4);
-  b.writeUInt32LE(v);
-  return b;
 }

@@ -1,6 +1,6 @@
 {
   "name": "harbor-agent",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "license": "MIT",
   "scripts": {
     "build": "tsc -p .",

@@ -16,13 +16,16 @@ import {
   TOKEN_PROGRAM_ID,
   buildEd25519Ix,
   channelVoucherBytes,
+  deriveChannel,
+  openChannelIx,
   receiptMessageBytes,
   sendWithRetry,
+  settleIx,
   signEd25519,
+  topUpIx,
   verifyEd25519,
 } from "@infantmen-labs/harbor-sdk";
 import { JsonlLogger } from "harbor-log";
-import { deriveChannel, openChannelIx, settleIx, topUpIx } from "./channel";
 
 function env(name: string, fallback?: string): string {
   const v = process.env[name] ?? fallback;

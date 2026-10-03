@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { HARBOR_PROGRAM_ID } from "./ids";
+import { ATA_PROGRAM_ID, TOKEN_PROGRAM_ID } from "./ids";
 import { u64le } from "./u64";
 
 export function bondPda(
@@ -83,6 +84,14 @@ export function channelPda(
     ],
     channelProgram
   );
+}
+
+/** Canonical associated token address for (owner, mint). */
+export function ataFor(owner: PublicKey, mint: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ATA_PROGRAM_ID
+  )[0];
 }
 
 export function channelAta(

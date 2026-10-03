@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { Keypair } from "@solana/web3.js";
-import { openChannelIx, settleIx, topUpIx } from "../src/channel";
+import { openChannelIx, settleIx, topUpIx } from "@infantmen-labs/harbor-sdk";
 
 const K = () => Keypair.generate().publicKey;
 

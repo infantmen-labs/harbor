@@ -9,9 +9,19 @@ import {
   channelVoucherBytes,
   decodeBond,
   decodeDispute,
+  StaleVoucher,
+  VoucherUnderquoted,
+  assertVoucherCoversQuote,
+  ataFor,
+  decodeBinding,
+  deriveChannel,
+  openChannelIx,
   receiptMessageBytes,
   sendWithRetry,
+  settleIx,
   signEd25519,
+  suggestClaimSpend,
+  topUpIx,
   u64le,
   verifyEd25519,
   writeI64LE,
@@ -251,5 +261,259 @@ describe("portable u64 encoders", () => {
     assert.throws(() => u64le(-1n), RangeError);
     assert.throws(() => u64le(2n ** 64n), RangeError);
     assert.throws(() => writeI64LE(Buffer.alloc(8), 2n ** 63n, 0), RangeError);
+  });
+});
+
+describe("upstream channel builders (moved from agent, byte-identical)", () => {
+  const PROGRAM = P(1);
+  const args = {
+    programId: PROGRAM,
+    payer: P(2),
+    payee: P(3),
+    mint: P(4),
+    authorizedSigner: P(5),
+    channel: P(6),
+    payerAta: P(7),
+    channelAta: P(8),
+    eventAuthority: P(9),
+    salt: 42n,
+    deposit: 5_000_000n,
+    gracePeriod: 7200,
+    openSlot: 99n,
+  };
+
+  it("open encodes disc | salt | deposit | grace | slot | recipients", () => {
+    const ix = openChannelIx(args);
+    const d = Buffer.from(ix.data);
+    assert.equal(d.readUInt8(0), 1);
+    assert.equal(d.readBigUInt64LE(1), 42n);
+    assert.equal(d.readBigUInt64LE(9), 5_000_000n);
+    assert.equal(d.readUInt32LE(17), 7200);
+    assert.equal(d.readBigUInt64LE(21), 99n);
+    assert.equal(d.readUInt32LE(29), 0);
+    assert.equal(d.length, 33);
+    assert.equal(ix.keys.length, 14);
+    assert.ok(ix.programId.equals(PROGRAM));
+  });
+
+  it("settle is a bare discriminator with channel + sysvar", () => {
+    const ix = settleIx(PROGRAM, P(6));
+    assert.deepEqual(Array.from(ix.data), [2]);
+    assert.equal(ix.keys.length, 2);
+  });
+
+  it("top_up encodes disc | amount with 6 accounts", () => {
+    const ix = topUpIx({
+      programId: PROGRAM,
+      payer: P(2),
+      channel: P(6),
+      payerAta: P(7),
+      channelAta: P(8),
+      mint: P(4),
+      amount: 9n,
+    });
+    const d = Buffer.from(ix.data);
+    assert.equal(d.readUInt8(0), 3);
+    assert.equal(d.readBigUInt64LE(1), 9n);
+    assert.equal(d.length, 9);
+    assert.equal(ix.keys.length, 6);
+  });
+
+  it("deriveChannel matches channelPda", () => {
+    const { channel } = deriveChannel(P(1), P(2), P(3), P(4), P(5), 42n, 99n);
+    assert.equal(channel.toBase58().length, 44);
+  });
+});
+
+describe("decodeBinding", () => {
+  function bindingBytes(): Buffer {
+    const b = Buffer.alloc(162);
+    P(6).toBuffer().copy(b, 8);
+    P(11).toBuffer().copy(b, 40);
+    P(12).toBuffer().copy(b, 72);
+    P(13).toBuffer().copy(b, 104);
+    b.writeBigUInt64LE(2000n, 136);
+    b.writeBigUInt64LE(4n, 144);
+    b.writeBigUInt64LE(15000n, 152);
+    b.writeUInt8(0, 160);
+    return b;
+  }
+
+  it("decodes every field at its documented offset", () => {
+    const d = decodeBinding(bindingBytes());
+    assert.ok(d.channel.equals(P(6)));
+    assert.ok(d.merchant.equals(P(11)));
+    assert.ok(d.bond.equals(P(12)));
+    assert.ok(d.channelProgram.equals(P(13)));
+    assert.equal(d.maxSpend, 2000n);
+    assert.equal(d.lastNonce, 4n);
+    assert.equal(d.lastCumulativeSpend, 15000n);
+    assert.equal(d.halted, false);
+  });
+});
+
+describe("assertVoucherCoversQuote", () => {
+  it("passes when the marginal authorization covers the quote", () => {
+    assertVoucherCoversQuote({
+      lastCumulative: 10000n,
+      voucherCumulative: 12050n,
+      quotedCost: 2000n,
+    });
+  });
+
+  it("throws VoucherUnderquoted on short authorization", () => {
+    assert.throws(
+      () =>
+        assertVoucherCoversQuote({
+          lastCumulative: 10000n,
+          voucherCumulative: 11000n,
+          quotedCost: 2000n,
+        }),
+      VoucherUnderquoted
+    );
+  });
+
+  it("throws StaleVoucher when behind the watermark", () => {
+    assert.throws(
+      () =>
+        assertVoucherCoversQuote({
+          lastCumulative: 10000n,
+          voucherCumulative: 9000n,
+          quotedCost: 1n,
+        }),
+      StaleVoucher
+    );
+  });
+});
+
+describe("suggestClaimSpend", () => {
+  const BINDING = P(20);
+  const CLAIMANT = P(21);
+  const MINT = P(22);
+  const BOND = P(23);
+
+  function bondBytes(amount: bigint, reserved: bigint): Buffer {
+    const b = Buffer.alloc(115);
+    P(11).toBuffer().copy(b, 8);
+    MINT.toBuffer().copy(b, 40);
+    b.writeBigUInt64LE(amount, 72);
+    b.writeBigUInt64LE(reserved, 106);
+    return b;
+  }
+
+  function bindingBytes(maxSpend: bigint, lastNonce: bigint): Buffer {
+    const b = Buffer.alloc(162);
+    P(6).toBuffer().copy(b, 8);
+    P(11).toBuffer().copy(b, 40);
+    BOND.toBuffer().copy(b, 72);
+    P(13).toBuffer().copy(b, 104);
+    b.writeBigUInt64LE(maxSpend, 136);
+    b.writeBigUInt64LE(lastNonce, 144);
+    return b;
+  }
+
+  function mockConn(opts: {
+    binding: Buffer | null;
+    bondAmount: bigint;
+    bondReserved: bigint;
+    funded: bigint;
+    ataExists: boolean;
+  }) {
+    const ata = ataFor(CLAIMANT, MINT);
+    return {
+      getAccountInfo: async (k: unknown) => {
+        const key = (k as { toBase58(): string }).toBase58();
+        if (key === BINDING.toBase58())
+          return opts.binding === null ? null : { data: opts.binding };
+        if (key === BOND.toBase58())
+          return { data: bondBytes(opts.bondAmount, opts.bondReserved) };
+        if (key === ata.toBase58())
+          return opts.ataExists ? { data: Buffer.alloc(165) } : null;
+        return null;
+      },
+      getTokenAccountBalance: async () => ({
+        value: { amount: opts.funded.toString() },
+      }),
+    };
+  }
+
+  const base = {
+    binding: BINDING,
+    claimant: CLAIMANT,
+    mint: MINT,
+  };
+
+  it("caps at binding maxSpend and defaults nonce to lastNonce + 1", async () => {
+    const conn = mockConn({
+      binding: bindingBytes(2000n, 4n),
+      bondAmount: 500000n,
+      bondReserved: 0n,
+      funded: 100000n,
+      ataExists: true,
+    });
+    const s = await suggestClaimSpend(conn as never, base);
+    assert.equal(s.nonce, 5n);
+    assert.equal(s.maxSpend, 2000n);
+    assert.equal(s.funded, 100000n);
+    assert.equal(s.claimSpend, 2000n);
+  });
+
+  it("caps at funded balance when the claimant is thin", async () => {
+    const conn = mockConn({
+      binding: bindingBytes(2000n, 4n),
+      bondAmount: 500000n,
+      bondReserved: 0n,
+      funded: 500n,
+      ataExists: true,
+    });
+    const s = await suggestClaimSpend(conn as never, base);
+    assert.equal(s.claimSpend, 500n);
+  });
+
+  it("caps at bond capacity floor(free / 3)", async () => {
+    const conn = mockConn({
+      binding: bindingBytes(2000n, 4n),
+      bondAmount: 3000n,
+      bondReserved: 0n,
+      funded: 100000n,
+      ataExists: true,
+    });
+    const s = await suggestClaimSpend(conn as never, base);
+    assert.equal(s.bondFree, 3000n);
+    assert.equal(s.bondCap, 1000n);
+    assert.equal(s.claimSpend, 1000n);
+  });
+
+  it("suggests 0 when the ATA is missing (do not open)", async () => {
+    const conn = mockConn({
+      binding: bindingBytes(2000n, 4n),
+      bondAmount: 500000n,
+      bondReserved: 0n,
+      funded: 0n,
+      ataExists: false,
+    });
+    const s = await suggestClaimSpend(conn as never, base);
+    assert.equal(s.funded, 0n);
+    assert.equal(s.claimSpend, 0n);
+  });
+
+  it("throws on missing binding and passes explicit nonce", async () => {
+    const conn = mockConn({
+      binding: null,
+      bondAmount: 0n,
+      bondReserved: 0n,
+      funded: 0n,
+      ataExists: false,
+    });
+    await assert.rejects(suggestClaimSpend(conn as never, base), /binding/);
+    const conn2 = mockConn({
+      binding: bindingBytes(2000n, 4n),
+      bondAmount: 500000n,
+      bondReserved: 0n,
+      funded: 100000n,
+      ataExists: true,
+    });
+    const s = await suggestClaimSpend(conn2 as never, { ...base, nonce: 9n });
+    assert.equal(s.nonce, 9n);
   });
 });

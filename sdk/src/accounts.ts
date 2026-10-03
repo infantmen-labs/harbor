@@ -27,6 +27,17 @@ export interface Dispute {
   claimSpend: bigint;
 }
 
+export interface Binding {
+  channel: PublicKey;
+  merchant: PublicKey;
+  bond: PublicKey;
+  channelProgram: PublicKey;
+  maxSpend: bigint;
+  lastNonce: bigint;
+  lastCumulativeSpend: bigint;
+  halted: boolean;
+}
+
 function u64(d: Uint8Array, o: number): bigint {
   return (
     BigInt(d[o]!) |
@@ -61,6 +72,23 @@ export function decodeBond(data: Uint8Array): Bond {
     openDisputes: u64(data, 90),
     lastChangeSlot: u64(data, 98),
     reserved: u64(data, 106),
+  };
+}
+
+/** ChannelBinding layout: disc(8) + channel(32) + merchant(32) +
+ * bond(32) + channel_program(32) + maxSpend(8) + lastNonce(8) +
+ * lastCumulativeSpend(8) + halted(1) + bump(1) = 162 bytes.
+ * Offsets verified against a live devnet binding. */
+export function decodeBinding(data: Uint8Array): Binding {
+  return {
+    channel: pk(data, 8),
+    merchant: pk(data, 40),
+    bond: pk(data, 72),
+    channelProgram: pk(data, 104),
+    maxSpend: u64(data, 136),
+    lastNonce: u64(data, 144),
+    lastCumulativeSpend: u64(data, 152),
+    halted: data[160] !== 0,
   };
 }
 
