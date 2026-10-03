@@ -37,6 +37,7 @@ describe("server sessions", () => {
       pricePerToken: 10n,
       skipChain: true,
       killToken: null,
+      receiptExpirySlots: null,
       channelProgramAllowlist: [CHNL.toBase58()],
     };
     appCfg = cfg;

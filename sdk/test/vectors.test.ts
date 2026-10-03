@@ -15,13 +15,21 @@ import {
   ataFor,
   decodeBinding,
   deriveChannel,
+  distributeIx,
+  isReceiptExpired,
   openChannelIx,
+  reclaimIx,
+  receiptExpirySlot,
   receiptMessageBytes,
+  refundUnusedIx,
+  requestCloseIx,
+  sealIx,
   sendWithRetry,
   settleIx,
   signEd25519,
   suggestClaimSpend,
   topUpIx,
+  withdrawPayerIx,
   u64le,
   verifyEd25519,
   writeI64LE,
@@ -515,5 +523,105 @@ describe("suggestClaimSpend", () => {
     });
     const s = await suggestClaimSpend(conn2 as never, { ...base, nonce: 9n });
     assert.equal(s.nonce, 9n);
+  });
+});
+
+describe("upstream close lifecycle builders", () => {
+  const PROGRAM = P(1);
+
+  it("requestClose carries disc 5 with payer signer + channel", () => {
+    const ix = requestCloseIx({
+      programId: PROGRAM,
+      payer: P(2),
+      channel: P(6),
+    });
+    assert.deepEqual(Array.from(ix.data), [5]);
+    assert.equal(ix.keys.length, 2);
+    assert.equal(ix.keys[0]?.isSigner, true);
+  });
+
+  it("seal carries disc 6 with channel only", () => {
+    const ix = sealIx({ programId: PROGRAM, channel: P(6) });
+    assert.deepEqual(Array.from(ix.data), [6]);
+    assert.equal(ix.keys.length, 1);
+  });
+
+  it("withdrawPayer carries disc 8 with 6 accounts", () => {
+    const ix = withdrawPayerIx({
+      programId: PROGRAM,
+      payer: P(2),
+      channel: P(6),
+      channelAta: P(8),
+      payerAta: P(7),
+      mint: P(4),
+    });
+    assert.deepEqual(Array.from(ix.data), [8]);
+    assert.equal(ix.keys.length, 6);
+    assert.equal(ix.keys[0]?.isSigner, true);
+  });
+
+  it("reclaim carries disc 9 with channel + rentPayer", () => {
+    const ix = reclaimIx({
+      programId: PROGRAM,
+      channel: P(6),
+      rentPayer: P(2),
+    });
+    assert.deepEqual(Array.from(ix.data), [9]);
+    assert.equal(ix.keys.length, 2);
+  });
+});
+
+describe("receipt expiry readers", () => {
+  const F = {
+    merchant: P(1),
+    binding: P(2),
+    cumulativeSpend: 10_000n,
+    meterHash: new Uint8Array(32).fill(3),
+    outputHash: new Uint8Array(32).fill(4),
+    status: 0,
+    nonce: 7n,
+    expirySlot: 999n,
+    signer: P(1),
+  };
+
+  it("reads back the encoded expiry slot", () => {
+    const msg = receiptMessageBytes(F);
+    assert.equal(receiptExpirySlot(msg), 999n);
+  });
+
+  it("expires strictly past the slot (mirrors onchain <= gate)", () => {
+    const msg = receiptMessageBytes(F);
+    assert.equal(isReceiptExpired(msg, 998), false);
+    assert.equal(isReceiptExpired(msg, 999), false);
+    assert.equal(isReceiptExpired(msg, 1000), true);
+  });
+});
+
+describe("refundUnusedIx", () => {
+  it("carries the tabled discriminator with 6 accounts", () => {
+    const ix = refundUnusedIx(P(0), P(1), P(2), P(3), P(4), P(5));
+    assert.deepEqual(Array.from(ix.data), [239, 108, 1, 110, 2, 81, 44, 174]);
+    assert.equal(ix.keys.length, 6);
+    assert.equal(ix.keys[0]?.isSigner, true);
+  });
+});
+
+describe("distributeIx (empty plan)", () => {
+  it("encodes disc 7 + zero count with 11 fixed accounts, no signers", () => {
+    const ix = distributeIx({
+      programId: P(1),
+      channel: P(6),
+      payer: P(2),
+      rentPayer: P(2),
+      channelAta: P(8),
+      payerAta: P(7),
+      payeeAta: P(10),
+      treasuryAta: P(11),
+      mint: P(4),
+      eventAuthority: P(9),
+    });
+    assert.deepEqual(Array.from(ix.data), [7, 0, 0, 0, 0]);
+    assert.equal(ix.keys.length, 11);
+    assert.ok(ix.keys.every((k) => k.isSigner === false));
   });
 });

@@ -1,8 +1,7 @@
 /** Watchtower opens a dispute on behalf of a claimant after a failed delivery. */
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import {
-  ATA_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
+  ataFor,
   claimPda,
   disputePda,
   openDisputeIx,
@@ -14,13 +13,6 @@ function loadKeypair(path: string): Keypair {
   return Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(readFileSync(path, "utf8")))
   );
-}
-
-function ataFor(owner: PublicKey, mint: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ATA_PROGRAM_ID
-  )[0];
 }
 
 async function main(): Promise<void> {

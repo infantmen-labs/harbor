@@ -1,11 +1,11 @@
 import bs58 from "bs58";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
-  ATA_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
+  ataFor,
   resolveTimeoutIx,
   sendWithRetry,
   treasuryPda,
+  vaultAta,
 } from "@infantmen-labs/harbor-sdk";
 import { JsonlLogger } from "harbor-log";
 import {
@@ -16,20 +16,6 @@ import {
   decodeDispute,
 } from "./accounts";
 import { KeeperConfig } from "./config";
-
-function vaultAta(bond: PublicKey, mint: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [bond.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ATA_PROGRAM_ID
-  )[0];
-}
-
-function ataFor(owner: PublicKey, mint: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ATA_PROGRAM_ID
-  )[0];
-}
 
 /** Binding layout: disc(8) + channel(32) + merchant(32) + bond(32) + ... */
 function bindingBond(bindingData: Buffer): PublicKey {

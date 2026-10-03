@@ -57,6 +57,8 @@ exported vars always win); never commit real secrets.
 ```sh
 ./scripts/setup-check.sh   # pre-flight: versions, keys, ports, artifacts
 yarn loop                  # ./scripts/local-loop.sh (--fast halves the dispute window)
+yarn loop --with-reclaim --with-merchant-paths   # + upstream reclaim lifecycle
+                                                 # + merchant-side paths (halt is one-way; run last)
 ```
 
 No fixture env needed: the loop defaults to the committed local

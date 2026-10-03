@@ -107,6 +107,121 @@ export function topUpIx(args: {
   });
 }
 
+/**
+ * Upstream forced-close lifecycle (buyer reclaim path). All no-arg beyond
+ * the discriminator; discriminators from the pinned upstream IDL
+ * (requestClose 5, seal 6, withdrawPayer 8, reclaim 9).
+ *
+ * Reclaim flow: `requestClose` (payer starts grace) → wait past grace →
+ * `seal` → `withdrawPayer` (unspent remainder back to the payer) →
+ * `reclaim` (deallocate channel, rent to rentPayer). Cooperative
+ * alternative: `settleAndSeal` (needs payee signature — not built here).
+ */
+export function requestCloseIx(args: {
+  programId: PublicKey;
+  payer: PublicKey;
+  channel: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: args.programId,
+    keys: [m(args.payer, false, true), m(args.channel, true, false)],
+    data: Buffer.from([5]),
+  });
+}
+
+export function sealIx(args: {
+  programId: PublicKey;
+  channel: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: args.programId,
+    keys: [m(args.channel, true, false)],
+    data: Buffer.from([6]),
+  });
+}
+
+export function withdrawPayerIx(args: {
+  programId: PublicKey;
+  payer: PublicKey;
+  channel: PublicKey;
+  channelAta: PublicKey;
+  payerAta: PublicKey;
+  mint: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: args.programId,
+    keys: [
+      m(args.payer, false, true),
+      m(args.channel, true, false),
+      m(args.channelAta, true, false),
+      m(args.payerAta, true, false),
+      m(args.mint, false, false),
+      m(TOKEN_PROGRAM_ID, false, false),
+    ],
+    data: Buffer.from([8]),
+  });
+}
+
+export function reclaimIx(args: {
+  programId: PublicKey;
+  channel: PublicKey;
+  rentPayer: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: args.programId,
+    keys: [m(args.channel, true, false), m(args.rentPayer, true, false)],
+    data: Buffer.from([9]),
+  });
+}
+
+/**
+ * Upstream `distribute` with an explicit recipient list (empty = payee
+ * remainder only). Data: disc(7) | count(u32 LE) | entries. The onchain
+ * program rehashes the revealed plan and compares against the commitment
+ * stored at `open` — agent-opened channels commit to the empty plan
+ * (count 0), so empty args verify for them.
+ *
+ * Fixed accounts: channel(mut) | payer | rentPayer(mut) | channelAta(mut)
+ * | payerAta(mut) | payeeAta(mut) | treasuryAta(mut) | mint |
+ * tokenProgram | eventAuthority | selfProgram, then recipient ATAs in plan
+ * order. Permissionless crank: payer is deliberately NOT marked signer
+ * (the upstream docs require payer-side signatures only for topUp,
+ * requestClose and withdrawPayer — the fee payer signs the tx itself).
+ */
+export function distributeIx(args: {
+  programId: PublicKey;
+  channel: PublicKey;
+  payer: PublicKey;
+  rentPayer: PublicKey;
+  channelAta: PublicKey;
+  payerAta: PublicKey;
+  payeeAta: PublicKey;
+  treasuryAta: PublicKey;
+  mint: PublicKey;
+  eventAuthority: PublicKey;
+  recipientAtas?: PublicKey[];
+}): TransactionInstruction {
+  const data = Buffer.concat([Buffer.from([7]), u32(0)]);
+  return new TransactionInstruction({
+    programId: args.programId,
+    keys: [
+      m(args.channel, true, false),
+      m(args.payer, false, false),
+      m(args.rentPayer, true, false),
+      m(args.channelAta, true, false),
+      m(args.payerAta, true, false),
+      m(args.payeeAta, true, false),
+      m(args.treasuryAta, true, false),
+      m(args.mint, false, false),
+      m(TOKEN_PROGRAM_ID, false, false),
+      m(args.eventAuthority, false, false),
+      m(args.programId, false, false),
+      ...(args.recipientAtas ?? []).map((a) => m(a, true, false)),
+    ],
+    data,
+  });
+}
+
 export function deriveChannel(
   programId: PublicKey,
   payer: PublicKey,

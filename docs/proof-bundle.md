@@ -301,5 +301,10 @@ returns 402; top-ups learned lazily). Upgrade sig
 - This validator ran without transaction-history retention, so past
   signatures are proven by broadcast receipts + live state, not by
   re-query. Re-run the video pass with history enabled.
+- Audit practice for pruned history: RPC tx history is retention-bound
+  (localnet aggressively, devnet eventually). Contemporaneous evidence
+  dirs (broadcast receipts + account state at runtime) ARE the archive —
+  a verifier must distinguish STALE (infra pruned it) from FAIL (chain
+  contradicts it). Fresh runs verify cleanly; old runs need the logs.
 - The devnet loop above replays the localnet flows 1:1 against the
   canonical programs; hosting runbook is `docs/deploy.md`.

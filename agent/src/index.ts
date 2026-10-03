@@ -68,6 +68,7 @@ async function main(): Promise<void> {
   const salt = BigInt(env("SALT", `${Date.now() % 1_000_000}`));
   const log = new JsonlLogger(env("LOG_PATH", "agent-run.jsonl"));
   const requestDelayMs = Number(env("REQUEST_DELAY_MS", "0"));
+  const gracePeriod = Number(env("GRACE_PERIOD_SECS", "7200"));
 
   // The merchant is the payee: channel escrow settles to them, and the
   // bond only binds channels that pay the bonded merchant (squat defense).
@@ -112,7 +113,7 @@ async function main(): Promise<void> {
         eventAuthority,
         salt,
         deposit,
-        gracePeriod: 7200,
+        gracePeriod,
         openSlot: BigInt(clockSlot),
       })
     );

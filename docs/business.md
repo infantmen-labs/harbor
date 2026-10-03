@@ -35,9 +35,11 @@ not to single-claim size.
 
 ## Distribution
 
-- x402/MPP facilitators: Harbor receipts as a require-flag before release.
 - Agent frameworks and gateway operators bundling bonded endpoints.
 - Direct: metered-API companies already fielding agent traffic.
+
+(Future, not implemented: x402/MPP facilitator use with Harbor receipts
+as a require-flag. No code exists; do not treat it as a feature.)
 
 ## Moat
 

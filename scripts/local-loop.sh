@@ -8,9 +8,17 @@
 # -> keeper resolve, then verifies the settlement math to the unit.
 # Leaves the stack running for the demo video; re-running resets it.
 #
-# Usage: ./scripts/local-loop.sh [--fast]
+# Usage: ./scripts/local-loop.sh [--fast] [--with-reclaim]
 #   --fast shortens the dispute challenge window to the onchain minimum
 #   (75 slots) — same asserts, shorter maturity wait.
+#   --with-reclaim runs the full upstream reclaim lifecycle after verify
+#   (short-grace channel: requestClose → seal → withdrawPayer →
+#   distribute → reclaim-if-past-window). Bond math already verified;
+#   reclaim moves upstream escrow only.
+#   --with-merchant-paths exercises the merchant-side paths the main
+#   loop never touches (short-expiry receipts + Expired gate, halt,
+#   treasury withdraw, fresh register/post/withdraw/refund_unused).
+#   Halts the loop binding (one-way) — run it last.
 #
 # Env (secrets never hardcoded; everything local to LOOP_DIR):
 #   LOOP_DIR          working dir for ledger, logs, pidfiles, run logs
@@ -41,7 +49,16 @@ CLAIM="${CLAIM:-2000}"
 SALT_OK="${SALT_OK:-100}"
 SALT_FAIL="${SALT_FAIL:-101}"
 CHALLENGE_SLOTS=150
-if [ "${1:-}" = "--fast" ]; then CHALLENGE_SLOTS=75; fi
+WITH_RECLAIM=0
+WITH_MERCHANT_PATHS=0
+for arg in "$@"; do
+  case "$arg" in
+    --fast) CHALLENGE_SLOTS=75 ;;
+    --with-reclaim) WITH_RECLAIM=1 ;;
+    --with-merchant-paths) WITH_MERCHANT_PATHS=1 ;;
+    *) echo "unknown flag: $arg (want --fast, --with-reclaim, --with-merchant-paths)" >&2; exit 1 ;;
+  esac
+done
 LOOP_DIR="${LOOP_DIR:-./.loop-run}"
 LEDGER="$LOOP_DIR/ledger"
 VALIDATOR_PID="$LOOP_DIR/validator.pid"
@@ -52,9 +69,10 @@ mkdir -p "$LOOP_DIR"
 # for the demo; any other exit kills what this script started (pidfiles
 # never point at strangers — see the stop block below).
 SUCCESS=0
+TMP_SERVER_PID="$LOOP_DIR/tmp-server.pid"
 cleanup() {
   if [ "$SUCCESS" != 1 ]; then
-    for p in "$VALIDATOR_PID" "$SERVER_PID"; do
+    for p in "$VALIDATOR_PID" "$SERVER_PID" "$TMP_SERVER_PID"; do
       if [ -f "$p" ] && kill -0 "$(cat "$p")" 2>/dev/null; then
         kill "$(cat "$p")" 2>/dev/null || true
       fi
@@ -175,6 +193,9 @@ BINDING=$(FAIL_CHANNEL="$FAIL_CHANNEL" node scripts/lib/binding-pda.mjs)
 echo "== dispute (agent claims $CLAIM)"
 RPC_URL="$RPC_URL" HARBOR_PROGRAM_ID=BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H CLAIMANT_KEYPAIR="$AGENT_KEYPAIR" BOND="$BOND" BINDING="$BINDING" CHANNEL="$FAIL_CHANNEL" MINT="$MINT" NONCE=1 REASON=1 CLAIM_SPEND="$CLAIM" node keeper/dist/scripts/dispute.js
 
+echo "== disputed-bond gate (buyer would refuse here)"
+RPC_URL="$RPC_URL" BOND="$BOND" CLAIM="$CLAIM" node scripts/lib/gate-check.mjs
+
 echo "== wait for maturity"
 RPC_URL="$RPC_URL" BINDING="$BINDING" NONCE=1 node scripts/lib/wait-maturity.mjs
 
@@ -185,6 +206,47 @@ echo "$RESOLVE_OUT" | grep -q "resolved=1" || { echo "FATAL: keeper resolved not
 
 echo "== verify"
 RPC_URL="$RPC_URL" MINT="$MINT" BOND="$BOND" CLAIM="$CLAIM" BOND_AMOUNT="$BOND_AMOUNT" node scripts/lib/verify-loop.mjs
+
+if [ "$WITH_RECLAIM" -eq 1 ]; then
+  echo "== reclaim channel (short grace, 1 request)"
+  RECLAIM_OUT=$(CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL="$SERVER_URL" AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT=50000 REQUESTS=1 BUDGET_PER_REQUEST=5000 REQUEST_DELAY_MS=400 SALT=102 GRACE_PERIOD_SECS=60 LOG_PATH="$LOOP_DIR"/loop-reclaim.jsonl node agent/dist/src/index.js)
+  echo "$RECLAIM_OUT" | grep -E "channel|settled"
+  RECLAIM_CHANNEL=$(echo "$RECLAIM_OUT" | grep -oE "^channel [A-Za-z0-9]+" | head -1 | cut -d' ' -f2)
+  [ -n "$RECLAIM_CHANNEL" ] || { echo "FATAL: could not parse reclaim channel" >&2; exit 1; }
+  echo "== reclaim lifecycle on $RECLAIM_CHANNEL"
+  RPC_URL="$RPC_URL" CHANNEL_PROGRAM="$UPSTREAM_ID" CHANNEL="$RECLAIM_CHANNEL" PAYER_KEYPAIR="$AGENT_KEYPAIR" MINT="$MINT" node scripts/lib/reclaim-proof.mjs
+fi
+
+if [ "$WITH_MERCHANT_PATHS" -eq 1 ]; then
+  echo "== short-expiry server (:3102, RECEIPT_EXPIRY_SLOTS=20)"
+  PORT=3102 RPC_URL="$RPC_URL" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" MINT="$MINT" PRICE_PER_TOKEN=10 RECEIPT_EXPIRY_SLOTS=20 UPSTREAM_PROGRAM_ALLOWLIST="$UPSTREAM_ID" nohup node server/dist/src/serve.js > "$LOOP_DIR/tmp-server.log" 2>&1 &
+  echo $! > "$TMP_SERVER_PID"
+  sleep 4
+  curl -sS -m 8 "http://127.0.0.1:3102/info" | grep -q "\"merchant\":\"$MERCHANT_PUBKEY\"" || { echo "FATAL: tmp server did not boot" >&2; exit 1; }
+  echo "== short-expiry request"
+  EXPIRY_OUT=$(CHANNEL_PROGRAM_ID="$UPSTREAM_ID" RPC_URL="$RPC_URL" SERVER_URL=http://127.0.0.1:3102 AGENT_KEYPAIR="$AGENT_KEYPAIR" MERCHANT_PUBKEY="$MERCHANT_PUBKEY" MINT="$MINT" DEPOSIT=50000 REQUESTS=1 BUDGET_PER_REQUEST=5000 SALT=103 LOG_PATH="$LOOP_DIR"/loop-expiry.jsonl node agent/dist/src/index.js)
+  echo "$EXPIRY_OUT" | grep -E "channel|settled"
+  EXPIRY_CHANNEL=$(echo "$EXPIRY_OUT" | grep -oE "^channel [A-Za-z0-9]+" | head -1 | cut -d' ' -f2)
+  [ -n "$EXPIRY_CHANNEL" ] || { echo "FATAL: could not parse expiry channel" >&2; exit 1; }
+  RPC_URL="$RPC_URL" SERVER_URL=http://127.0.0.1:3102 CHANNEL="$EXPIRY_CHANNEL" NONCE=1 node scripts/lib/expiry-check.mjs
+  kill "$(cat "$TMP_SERVER_PID")" 2>/dev/null || true
+  rm -f "$TMP_SERVER_PID"
+
+  echo "== expired submit (expect Expired)"
+  RPC_URL="$RPC_URL" BOND="$BOND" BINDING="$BINDING" MINT="$MINT" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" node scripts/lib/submit-expired.mjs
+
+  echo "== halt loop binding (one-way)"
+  RPC_URL="$RPC_URL" BINDING="$BINDING" MERCHANT_KEYPAIR="$MERCHANT_KEYPAIR" node scripts/lib/halt-binding.mjs
+
+  echo "== treasury withdraw 1000"
+  RPC_URL="$RPC_URL" MINT="$MINT" AUTHORITY_KEYPAIR="$MERCHANT_KEYPAIR" AMOUNT=1000 node scripts/lib/treasury-withdraw.mjs
+
+  echo "== fresh merchant lifecycle"
+  rm -f "$LOOP_DIR/fresh.json"
+  solana-keygen new --no-bip39-passphrase --silent -o "$LOOP_DIR/fresh.json" > /dev/null
+  solana airdrop 1 --url "$RPC_URL" --keypair "$LOOP_DIR/fresh.json" > /dev/null
+  RPC_URL="$RPC_URL" MINT="$MINT" FRESH_KEYPAIR="$LOOP_DIR/fresh.json" MINT_AUTH_KEYPAIR="$MERCHANT_KEYPAIR" BOND_AMOUNT=5000 node scripts/lib/fresh-lifecycle.mjs
+fi
 
 SUCCESS=1
 echo "== stack left running: RPC $RPC_URL | server $SERVER_URL | logs $LOOP_DIR/*.log"

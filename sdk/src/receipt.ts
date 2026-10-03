@@ -45,3 +45,31 @@ export function receiptMessageBytes(f: ReceiptFields): Buffer {
 }
 
 export const RECEIPT_MESSAGE_LEN = 185;
+
+/**
+ * Byte offset of expirySlot in the 185-byte receipt message
+ * (merchant 32 | binding 32 | cumulative 8 | meter 32 | output 32 |
+ * status 1 | nonce 8 | expiry 8 | signer 32).
+ */
+export const RECEIPT_EXPIRY_OFFSET = 145;
+
+/** Reads the expiry slot from encoded receipt message bytes. */
+export function receiptExpirySlot(message: Uint8Array): bigint {
+  let v = 0n;
+  for (let i = 0; i < 8; i++) {
+    v |= BigInt(message[RECEIPT_EXPIRY_OFFSET + i]!) << BigInt(i * 8);
+  }
+  return v;
+}
+
+/**
+ * Buyer-side expiry check: a receipt is expired once the chain passes its
+ * expiry slot (mirrors the onchain `slot <= expiry_slot` gate in
+ * submit_receipt — expired receipts fail submit with `Expired`).
+ */
+export function isReceiptExpired(
+  message: Uint8Array,
+  slot: bigint | number
+): boolean {
+  return BigInt(slot) > receiptExpirySlot(message);
+}

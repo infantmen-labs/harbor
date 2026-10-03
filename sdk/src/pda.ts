@@ -94,6 +94,11 @@ export function ataFor(owner: PublicKey, mint: PublicKey): PublicKey {
   )[0];
 }
 
+/** Bond vault: the canonical ATA of the bond PDA (holds collateral). */
+export function vaultAta(bond: PublicKey, mint: PublicKey): PublicKey {
+  return ataFor(bond, mint);
+}
+
 export function channelAta(
   channel: PublicKey,
   tokenProgram: PublicKey,

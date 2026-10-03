@@ -5,7 +5,16 @@ workspaces version together. Full history: `git log`.
 
 ## Unreleased
 
-(nothing pending)
+- Upstream close lifecycle in SDK (`requestCloseIx` / `sealIx` /
+  `withdrawPayerIx` / `distributeIx` / `reclaimIx`, empty-plan
+  distribute verified live) + `refundUnusedIx` + `vaultAta` (keeper
+  deduped onto it) + receipt-expiry readers.
+- Server `RECEIPT_EXPIRY_SLOTS`; agent `GRACE_PERIOD_SECS`.
+- Loop: `--with-reclaim` (full reclaim lifecycle proven:
+  withdraw +45000 exact, merchant +5000, Distributed) and
+  `--with-merchant-paths` (short-expiry + Expired gate, halt,
+  treasury withdraw, fresh register/post/withdraw/refund_unused);
+  mid-dispute gate check on every run.
 
 ## 0.5.0 (SDK + agent; program/server/keeper/web unchanged)
 

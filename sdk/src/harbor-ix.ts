@@ -264,6 +264,29 @@ export function openDisputeIx(
   );
 }
 
+/**
+ * Closes an EMPTY bond (amount == 0, no open disputes) and its empty
+ * vault. Discriminator already tabled above (method-validated against
+ * submit_receipt); accounts mirror RefundUnused in the program.
+ */
+export function refundUnusedIx(
+  programId: PublicKey,
+  merchant: PublicKey,
+  bond: PublicKey,
+  mint: PublicKey,
+  vault: PublicKey,
+  merchantAta: PublicKey
+) {
+  return keys(programId, D.refundUnused, Buffer.alloc(0), [
+    { key: merchant, w: true, s: true },
+    { key: bond, w: true },
+    { key: mint },
+    { key: vault, w: true },
+    { key: merchantAta, w: true },
+    { key: TOKEN_PROGRAM_ID, w: false },
+  ]);
+}
+
 export function haltBindingIx(
   programId: PublicKey,
   merchant: PublicKey,

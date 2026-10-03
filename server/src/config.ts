@@ -17,6 +17,12 @@ export interface Config {
    */
   killToken: string | null;
   /**
+   * Receipt lifetime in slots from issuance. Null (default) = effectively
+   * never expires. Set low (with a scratch merchant) to exercise the
+   * onchain `Expired` path: receipts submitted past expiry fail.
+   */
+  receiptExpirySlots: bigint | null;
+  /**
    * Upstream channel programs the server will bind as the merchant. An
    * attacker pointing /session at a fake program gets a 400 before any
    * signature — the merchant key never signs binds for unknown programs.
@@ -51,6 +57,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     pricePerToken: BigInt(env["PRICE_PER_TOKEN"] ?? 10),
     skipChain: env["SKIP_CHAIN"] === "1",
     killToken: env["KILL_TOKEN"] ?? null,
+    receiptExpirySlots:
+      env["RECEIPT_EXPIRY_SLOTS"] !== undefined &&
+      env["RECEIPT_EXPIRY_SLOTS"] !== ""
+        ? BigInt(env["RECEIPT_EXPIRY_SLOTS"] as string)
+        : null,
     channelProgramAllowlist: (
       env["UPSTREAM_PROGRAM_ALLOWLIST"] ??
       "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"

@@ -35,8 +35,11 @@ complete third-party monitor built on SDK + web3.js only.
 ## Buyer patterns (demand-side integration)
 
 Upstream channel builders (`openChannelIx` / `topUpIx` / `settleIx`,
-`deriveChannel`) live here so buyers never reimplement
-consensus-critical bytes by copy-paste. The proven demand-side flow:
+`deriveChannel`, plus the close lifecycle `requestCloseIx` / `sealIx` /
+`withdrawPayerIx` / `distributeIx` / `reclaimIx`) live here so buyers
+never reimplement consensus-critical bytes by copy-paste. `vaultAta`,
+`decodeBinding`, and receipt-expiry readers round out the buyer surface.
+The proven demand-side flow:
 
 1. **Gate on collateral.** Derive `bondPda(merchant, mint)` offline,
    `decodeBond` it, refuse when `amount − reserved` is below your

@@ -24,6 +24,13 @@ import { Session, StoredReceipt, Store, meterTokens, sha256Hex } from "./store";
 
 const EXPIRY_SLOT = (1n << 63n) - 1n;
 
+async function expirySlotFor(cfg: Config, conn?: Connection): Promise<bigint> {
+  // Nullish (not just null): hand-built configs in tests predate the field.
+  if (cfg.receiptExpirySlots == null) return EXPIRY_SLOT;
+  const connection = conn ?? connectionFor(cfg);
+  return BigInt(await connection.getSlot("confirmed")) + cfg.receiptExpirySlots;
+}
+
 function json(res: ServerResponse, code: number, body: unknown): void {
   res.writeHead(code, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
@@ -217,6 +224,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     }
     const meterHash = Buffer.from(sha256Hex(input), "hex");
     const outputHash = Buffer.from(sha256Hex(output), "hex");
+    const expirySlot = await expirySlotFor(cfg, conn);
     const msg = receiptMessageBytes({
       merchant: cfg.merchant.publicKey,
       binding: session.binding,
@@ -225,7 +233,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
       outputHash,
       status: 0,
       nonce,
-      expirySlot: EXPIRY_SLOT,
+      expirySlot,
       signer: cfg.merchant.publicKey,
     });
     const signature = Buffer.from(
@@ -249,7 +257,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
           outputHash,
           status: 0,
           nonce,
-          expirySlot: EXPIRY_SLOT,
+          expirySlot,
           signer: cfg.merchant.publicKey,
         }
       ).catch((e) => console.error("receipt submit failed:", e));
@@ -262,7 +270,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
       outputHash: outputHash.toString("hex"),
       status: 0,
       nonce: nonce.toString(),
-      expirySlot: EXPIRY_SLOT.toString(),
+      expirySlot: expirySlot.toString(),
       signer: cfg.merchant.publicKey.toBase58(),
       signature,
     };
