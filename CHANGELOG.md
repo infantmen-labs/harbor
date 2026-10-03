@@ -5,10 +5,15 @@ workspaces version together. Full history: `git log`.
 
 ## Unreleased
 
+(nothing pending)
+
+## 0.6.0 (SDK + server + agent + keeper; program/web/log unchanged)
+
 - Upstream close lifecycle in SDK (`requestCloseIx` / `sealIx` /
   `withdrawPayerIx` / `distributeIx` / `reclaimIx`, empty-plan
   distribute verified live) + `refundUnusedIx` + `vaultAta` (keeper
-  deduped onto it) + receipt-expiry readers.
+  deduped onto it) + receipt-expiry readers. Live on npm;
+  `examples/bond-watch` re-pinned with registry lockfile.
 - Server `RECEIPT_EXPIRY_SLOTS`; agent `GRACE_PERIOD_SECS`.
 - Loop: `--with-reclaim` (full reclaim lifecycle proven:
   withdraw +45000 exact, merchant +5000, Distributed) and
