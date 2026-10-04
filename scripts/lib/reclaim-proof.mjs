@@ -95,7 +95,9 @@ if (st.status !== 2) throw new Error(`expected Closing(2), got ${st.status}`);
 console.log("close requested: status=Closing");
 
 // 2. Crank seal until Sealed(1) — seal is permissionless; pre-grace attempts
-// fail with SealGracePeriodNotElapsed (expected, ignored).
+// fail with SealGracePeriodNotElapsed (expected, ignored). SEAL_TIMEOUT_SECS
+// bounds the crank (default 300; long-grace channels need ~grace seconds).
+const sealTimeoutMs = BigInt(process.env.SEAL_TIMEOUT_SECS ?? "300") * 1000n;
 const t0 = Date.now();
 let firstSealErr = null;
 for (;;) {
@@ -104,7 +106,7 @@ for (;;) {
   } catch (e) {
     // Pre-grace SealGracePeriodNotElapsed is expected — keep cranking.
     // Anything persistent fails loud at the timeout below; log the first
-    // error so a real bug is diagnosable without waiting 300s blind.
+    // error so a real bug is diagnosable without waiting blind.
     if (firstSealErr === null) {
       firstSealErr = e instanceof Error ? e.message : String(e);
       console.log(`seal attempt (pre-grace ok): ${firstSealErr.slice(0, 120)}`);
@@ -112,8 +114,8 @@ for (;;) {
   }
   st = await channelState();
   if (st.status === 1) break;
-  if (Date.now() - t0 > 300000)
-    throw new Error("channel never sealed within 300s");
+  if (BigInt(Date.now() - t0) > sealTimeoutMs)
+    throw new Error(`channel never sealed within ${sealTimeoutMs / 1000n}s`);
   await new Promise((r) => setTimeout(r, 5000));
 }
 console.log(`sealed: settled=${st.settled}`);
