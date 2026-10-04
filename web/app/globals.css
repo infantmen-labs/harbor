@@ -50,25 +50,3 @@ body {
   background: var(--harbor-background);
   color: var(--harbor-foreground);
 }
-
-/* Feed entry + countdown pulse. Only motion in the app. */
-@keyframes harbor-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes harbor-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
