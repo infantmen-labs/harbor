@@ -19,6 +19,7 @@ import {
   requestCloseIx,
   sealIx,
   sendWithRetry,
+  withdrawPayerIx,
   ATA_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "../../sdk/dist/src/index.js";
