@@ -50,6 +50,18 @@ async function tokenBal(ata) {
   return b === null ? null : BigInt(b.value.amount);
 }
 
+// Baselines must never silently default: a null read here means RPC trouble,
+// not a zero balance — retry, then fail loud. (A poisoned zero once marked a
+// fully-correct distribute as failed.)
+async function mustBal(ata, label) {
+  for (let i = 0; i < 5; i++) {
+    const b = await tokenBal(ata);
+    if (b !== null) return b;
+    await sleep(2000);
+  }
+  throw new Error(`${label} unreadable after retries`);
+}
+
 async function chanState(ch) {
   const info = await conn.getAccountInfo(ch);
   if (info === null) return null;
@@ -149,8 +161,8 @@ async function closeOne(addr, st, save) {
   }
   if (s !== null && s.status === 1) {
     const chAta = chAtaFor(ch);
-    const escrowBefore = await tokenBal(chAta);
-    const payerBefore = await tokenBal(payerAta);
+    const escrowBefore = await mustBal(chAta, "escrow");
+    const payerBefore = await mustBal(payerAta, "payer");
     if (escrowBefore === null || escrowBefore === 0n)
       throw new Error(`${addr.slice(0, 8)}: empty escrow`);
     if (s.withdrawnAt !== 0n) {
@@ -168,7 +180,7 @@ async function closeOne(addr, st, save) {
           mint,
         }),
       ]);
-      const delta = (await tokenBal(payerAta)) - payerBefore;
+      const delta = (await mustBal(payerAta, "payer-after")) - payerBefore;
       if (delta !== escrowBefore - s.settled)
         throw new Error(
           `${addr.slice(0, 8)}: payer delta ${delta} != ${escrowBefore} - ${
@@ -178,7 +190,7 @@ async function closeOne(addr, st, save) {
       console.log(`${addr.slice(0, 8)}: withdrawPayer +${delta}`);
     }
     const payeeAta = ataFor(s.payee, mint);
-    const mBefore = (await tokenBal(payeeAta)) ?? 0n;
+    const mBefore = await mustBal(payeeAta, "payee");
     await send([
       distributeIx({
         programId,
@@ -193,7 +205,7 @@ async function closeOne(addr, st, save) {
         eventAuthority,
       }),
     ]);
-    const mDelta = ((await tokenBal(payeeAta)) ?? 0n) - mBefore;
+    const mDelta = (await mustBal(payeeAta, "payee-after")) - mBefore;
     if (mDelta !== s.settled)
       throw new Error(
         `${addr.slice(0, 8)}: merchant delta ${mDelta} != settled ${s.settled}`
