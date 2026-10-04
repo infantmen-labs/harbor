@@ -229,26 +229,59 @@ async function closeOne(addr, st, save) {
   save();
 }
 
+async function requestCloseOne(addr, st, save) {
+  const ch = new PublicKey(addr);
+  const s = await chanState(ch);
+  if (s === null || s.status !== 0) {
+    console.log(
+      `${addr.slice(0, 8)}: not Open (gone or status ${s?.status}) — skip close`
+    );
+    return;
+  }
+  await send([
+    requestCloseIx({ programId, payer: payer.publicKey, channel: ch }),
+  ]);
+  console.log(`${addr.slice(0, 8)}: requestClose → Closing`);
+  st.closed = true;
+  save();
+}
+
 const addrs = await channelList();
 console.log(`sweeping ${addrs.length} channels`);
 const state = loadState();
 let failed = 0;
-for (const addr of addrs) {
+async function run(addr, fn) {
   state[addr] ??= {};
-  if (state[addr].done) {
-    console.log(`${addr.slice(0, 8)}: already done (state file) — skip`);
-    continue;
-  }
   try {
-    await closeOne(addr, state[addr], () => saveState(state));
+    await fn(addr, state[addr], () => saveState(state));
   } catch (e) {
     failed++;
     console.error(
-      `${addr.slice(0, 8)} FAILED: ${e instanceof Error ? e.message : e}`
+      `${addr.slice(0, 8)} FAILED: ${
+        e instanceof Error ? e.message : String(e)
+      }`
     );
     state[addr].error = e instanceof Error ? e.message : String(e);
     saveState(state);
   }
+}
+// Phase 1: start every grace clock now so all windows elapse together.
+console.log("phase 1: requestClose all Open channels");
+for (const addr of addrs) {
+  if (state[addr]?.closed || state[addr]?.done) {
+    console.log(`${addr.slice(0, 8)}: already closed/done (state file) — skip`);
+    continue;
+  }
+  await run(addr, requestCloseOne);
+}
+// Phase 2: seal → withdraw → distribute → reclaim per channel.
+console.log("phase 2: seal/distribute/reclaim per channel");
+for (const addr of addrs) {
+  if (state[addr]?.done) {
+    console.log(`${addr.slice(0, 8)}: already done (state file) — skip`);
+    continue;
+  }
+  await run(addr, closeOne);
 }
 console.log(failed === 0 ? "SWEEP PASS" : `SWEEP DONE WITH ${failed} FAILURES`);
 process.exit(failed === 0 ? 0 : 1);
