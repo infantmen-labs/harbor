@@ -1,7 +1,8 @@
 # Harbor web app
 
-Next.js App Router + Tailwind v4 + wallet adapter. Three routes: `/`
-(landing), `/live` (mission control), `/merchant` (production surface).
+Next.js App Router + Tailwind v4 + wallet adapter. Single route: `/`
+(landing). The `/live` mission-control and `/merchant` onboarding pages
+were retired; the dashboard UI is being rebuilt from this landing page.
 
 ## Quickstart (local dev)
 
@@ -38,11 +39,10 @@ versioned backend bump.
 - `NEXT_PUBLIC_PROGRAM_ID` — Harbor program (default: devnet deployment).
 - `NEXT_PUBLIC_CHANNEL_PROGRAM_ID` — upstream payment-channels program
   (default: canonical ID).
-- `NEXT_PUBLIC_KILL_TOKEN` — bearer token for the Kill button (must
-  match the server's `KILL_TOKEN`; unset = open).
+- `NEXT_PUBLIC_KILL_TOKEN` — reserved for the rebuilt dashboard's Kill
+  control (must match the server's `KILL_TOKEN` when it lands).
 
 ## Scripts
 
 - `yarn dev --port 3101` / `yarn build` / `yarn start` (run from root
   with `yarn --cwd web ...`, or from this directory directly).
-- `?mock=1` renders the full fail-path story from fixtures, no network.

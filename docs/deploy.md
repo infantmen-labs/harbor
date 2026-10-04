@@ -125,8 +125,8 @@ Live on Ubuntu 22.04 (user `harbor`, Node 22, code at `/opt/harbor` from
 
 ```sh
 curl https://<server>/info                                     # killed: false
-open https://<web>/live                                       # bond 2G19xBTW…, no-dispute state
-open https://<web>/live?mock=1                                # offline fallback only
+open https://<web>/                                           # landing renders, no dead routes
+curl "https://<server>/receipt/<channel>/1"                   # signed receipt json (after a happy run)
 ```
 
 Then the live loop: agent happy run → receipts `signed ✓` →

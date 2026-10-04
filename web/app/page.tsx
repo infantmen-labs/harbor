@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PROGRAM_ID, CHANNEL_PROGRAM_ID } from "@/lib/env";
 import { explorerUrl, shorten } from "@/lib/explorer";
 import { DOC_LINKS, INSTALL_CMD, NPM_URL, REPO_URL } from "@/lib/site";
@@ -47,18 +46,14 @@ export default function Landing() {
           the bond covers the rebate leg, not the payment leg.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link
-            href="/live"
+          <a
+            href={NPM_URL}
+            target="_blank"
+            rel="noreferrer"
             className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
           >
-            See it fail live
-          </Link>
-          <Link
-            href="/merchant"
-            className="rounded-[8px] border border-border bg-surface px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
-          >
-            Become a merchant
-          </Link>
+            {INSTALL_CMD} ↗
+          </a>
           <a
             href={REPO_URL}
             target="_blank"
@@ -223,12 +218,14 @@ export default function Landing() {
             </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/live"
+            <a
+              href={explorerUrl("address", PROGRAM_ID)}
+              target="_blank"
+              rel="noreferrer"
               className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
             >
-              Open mission control
-            </Link>
+              Program on explorer ↗
+            </a>
           </div>
         </div>
       </section>
