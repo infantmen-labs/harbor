@@ -1,8 +1,9 @@
 # Harbor production deploy (devnet)
 
-Three services. Deploy in order: **server → keeper → web** (the web
-build bakes the server URL into its `/api` proxy at build time, so the
-server must have its public URL first).
+Backend runbook: merchant server + keeper. The web app (landing +
+docs) deploys separately — see `web/README.md`, the only web deploy
+doc. Deploy the backend first: the web build bakes the server URL
+into its `/api` proxy at build time.
 
 Live deployment record (fill in as you go):
 
@@ -10,7 +11,6 @@ Live deployment record (fill in as you go):
 | ---------------- | ----------------------------------------- |
 | Server (Railway) | _pending_                                 |
 | Keeper (Railway) | runs inside Railway, no public URL needed |
-| Web (Vercel)     | _pending_                                 |
 
 Chain artifacts (devnet):
 
@@ -43,7 +43,7 @@ macOS: `base64 -i <file> | tr -d '\n'`.
 
 | Var                          | Value                                                                                                                                                                                                                                                                                     |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RPC_URL`                    | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value; the local copy lives in `web/.env.local`, gitignored)                                                                                                                      |
+| `RPC_URL`                    | `<QUICKNODE_DEVNET_URL>` (your devnet endpoint URL from the QuickNode dashboard — never commit the real value)                                                                                                                                                                            |
 | `MINT`                       | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54`                                                                                                                                                                                                                                            |
 | `PRICE_PER_TOKEN`            | `10`                                                                                                                                                                                                                                                                                      |
 | `MERCHANT_KEYPAIR_B64`       | base64 of the merchant keypair (see §0)                                                                                                                                                                                                                                                   |
@@ -77,23 +77,7 @@ sh -c 'echo "$OPERATOR_KEYPAIR_B64" | base64 -d > /tmp/operator.json && OPERATOR
 `HARBOR_PROGRAM_ID` and `UPSTREAM_PROGRAM_ALLOWLIST` default to the
 correct devnet addresses; set them explicitly only if the programs move.
 
-## 3. Web (Vercel)
-
-1. Import the repo, **Root Directory = `web`**
-   (Vercel installs the yarn workspaces from the repo root automatically).
-2. Environment (Production **and** Preview), set **before the first build**:
-
-| Var                              | Value                                           |
-| -------------------------------- | ----------------------------------------------- |
-| `NEXT_PUBLIC_RPC_URL`            | QuickNode devnet URL (same as server `RPC_URL`) |
-| `NEXT_PUBLIC_SERVER_URL`         | `https://<server>` from §1 (no trailing slash)  |
-| `NEXT_PUBLIC_PROGRAM_ID`         | `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`  |
-| `NEXT_PUBLIC_CHANNEL_PROGRAM_ID` | `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`  |
-
-3. Deploy. `/api/*` rewrites to the server are baked at build time —
-   if the server URL ever changes, update the var and redeploy web.
-
-## 1b. Server + keeper (VPS, alternative to Railway)
+## 3. Server + keeper (VPS, alternative to Railway)
 
 Live on Ubuntu 22.04 (user `harbor`, Node 22, code at `/opt/harbor` from
 `git archive HEAD` — tracked files only, secrets never in the tree):
@@ -118,14 +102,13 @@ Live on Ubuntu 22.04 (user `harbor`, Node 22, code at `/opt/harbor` from
   (wallet-standard dep engines gate).
 - Keeper startup log redacts the RPC query string (hosted keys live
   there). If a key ever hits journals, rotate it in the Helius
-  dashboard + all three consumers (local `web/.env.local`,
-  `/etc/harbor/server.env`, `/etc/harbor/keeper.env`).
+  dashboard + both consumers (`/etc/harbor/server.env`,
+  `/etc/harbor/keeper.env`).
 
 ## 4. Smoke test (post-deploy)
 
 ```sh
 curl https://<server>/info                                     # killed: false
-open https://<web>/                                           # landing renders, no dead routes
 curl "https://<server>/receipt/<channel>/1"                   # signed receipt json (after a happy run)
 ```
 
@@ -140,15 +123,15 @@ treasury). Example: claim 3,670 → refund 3,487, penalty 7,340.
 - **Kill switch is bearer-gated** (`POST /admin/kill` with
   `killed:true` requires `Authorization: Bearer $KILL_TOKEN`; Revive is
   public). It is demo control, not a funds control — bond funds are
-  onchain and safe. Set `KILL_TOKEN` on Railway **and** as
-  `NEXT_PUBLIC_KILL_TOKEN` on Vercel so the UI's Kill button works.
-- **RPC budget**: the UI polls with backoff+jitter and web3.js retries
-  are disabled; the QuickNode endpoint absorbs judging traffic. If you
-  rotate the RPC URL, update it in Railway (server + keeper) and Vercel
-  (web) together.
+  onchain and safe. Never mirror the token into a `NEXT_PUBLIC_*`
+  var (readable by every visitor); a Kill control must call a
+  server-side route that holds the token.
+- **RPC budget**: server polls onchain escrow per over-ceiling request
+  and the keeper scans disputes every round — size the endpoint for
+  both. If you rotate the RPC URL, update server + keeper together.
 - **Restarting keeper is safe**: it scans all open disputes every poll
   and only acts past deadline; at-least-once resolution is idempotent
   onchain (a resolved dispute account is closed).
 - **Redeploys**: push to the connected branch; Railway rebuilds from
-  `railway.json`, Vercel rebuilds the web app. No migration step exists
-  — onchain state is never touched by deploys.
+  `railway.json`. No migration step exists — onchain state is never
+  touched by deploys.
