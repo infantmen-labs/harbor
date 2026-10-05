@@ -39,8 +39,8 @@ export default async function Landing() {
   const bond = await getBondState();
   return (
     <>
-      <main id="main">
-        <nav className="sticky top-0 z-10 border-b border-border bg-background">
+      <main id="main" className="overflow-hidden">
+        <nav className="sticky top-0 z-10 border-b border-border bg-background/95">
           <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-3 md:px-8">
             <span className="font-display text-[15px] font-medium text-foreground">
               Harbor
@@ -73,15 +73,16 @@ export default async function Landing() {
               href={NPM_URL}
               target="_blank"
               rel="noreferrer"
-              className="ml-auto rounded-[8px] bg-foreground px-4 py-2 text-[14px] font-medium text-background hover:opacity-90"
+              className="ml-auto rounded-[8px] bg-foreground px-4 py-2 text-[14px] font-medium text-background hover:bg-accent hover:text-ink-bg"
             >
               {INSTALL_CMD}
             </a>
           </div>
         </nav>
-        <section className="mx-auto w-full max-w-[1280px] px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
-          <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
-            Developer infrastructure for bonded API payments
+        <section className="harbor-grid harbor-glow relative mx-auto w-full max-w-[1280px] border-x border-border px-5 pb-16 pt-24 md:px-8 md:pb-28 md:pt-32">
+          <div className="relative z-[1] max-w-[980px]">
+          <p className="font-mono text-[13px] font-medium uppercase tracking-[0.08em] text-accent">
+            <span className="mr-3 text-muted">//</span> Developer infrastructure for bonded API payments
           </p>
           <h1 className="mt-4 max-w-[16ch] font-display text-[48px] font-medium leading-[100%] tracking-[-0.02em] md:text-[88px]">
             Bonded optimistic refunds for agent API payments.
@@ -101,7 +102,7 @@ export default async function Landing() {
               href={NPM_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:opacity-90"
+              className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
             >
               {INSTALL_CMD} ↗
             </a>
@@ -127,6 +128,7 @@ export default async function Landing() {
               <span className="opacity-50">$ </span>
               {INSTALL_CMD}
             </p>
+          </div>
           </div>
         </section>
 
@@ -271,7 +273,7 @@ export default async function Landing() {
                 href={NPM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:opacity-90"
+                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
               >
                 {INSTALL_CMD}
               </a>
@@ -390,7 +392,7 @@ export default async function Landing() {
                 href={explorerUrl("address", PROGRAM_ID)}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:opacity-90"
+                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
               >
                 Program on explorer ↗
               </a>
@@ -427,7 +429,7 @@ export default async function Landing() {
                 href={NPM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:opacity-90"
+                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
               >
                 {INSTALL_CMD} ↗
               </a>
