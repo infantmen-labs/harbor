@@ -97,6 +97,24 @@ body {
   }
 }
 
+@media (max-width: 767px) {
+  nav a[href*="npm"] {
+    margin-left: auto;
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  section[id] {
+    scroll-margin-top: 4.5rem;
+  }
+
+  pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }

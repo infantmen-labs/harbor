@@ -40,32 +40,32 @@ export default async function Landing() {
   return (
     <>
       <main id="main" className="overflow-hidden">
-        <nav className="sticky top-0 z-10 border-b border-border bg-background/95">
-          <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-3 md:px-8">
+        <nav className="sticky top-0 z-10 border-b border-white/[0.08] bg-[#030303]/90 backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-4 md:px-12">
             <span className="font-display text-[15px] font-medium text-foreground">
               Harbor
             </span>
             <a
               href="#how"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               How
             </a>
             <a
               href="#sdk"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               SDK
             </a>
             <a
               href="#evidence"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               Evidence
             </a>
             <a
               href="#faq"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               FAQ
             </a>
@@ -168,7 +168,7 @@ export default async function Landing() {
 
         <section
           id="how"
-          className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24"
+          className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24"
         >
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Integrate in an afternoon
@@ -208,7 +208,7 @@ export default async function Landing() {
           id="sdk"
           className="border-y border-border bg-background-secondary"
         >
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+          <div className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
             <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
               What ships in the SDK
             </p>
@@ -267,7 +267,7 @@ export default async function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+        <section className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Cost model
           </p>
@@ -298,7 +298,7 @@ export default async function Landing() {
           id="evidence"
           className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
         >
-          <div className="rounded-[16px] border border-border bg-surface p-6 md:p-10">
+          <div className="border border-white/[0.1] bg-surface p-5 md:p-10">
             <h2 className="font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
               Built for the adversarial case first.
             </h2>
@@ -396,7 +396,7 @@ export default async function Landing() {
         </section>
 
         <section className="border-t border-border bg-background-secondary">
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+          <div className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
             <h2 className="max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
               Bond your first merchant endpoint this afternoon.
             </h2>
@@ -425,7 +425,7 @@ export default async function Landing() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 font-mono text-[13px] text-muted md:px-8">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-col items-start gap-4 px-5 py-7 font-mono text-[12px] text-muted sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 md:px-12">
           <span className="font-display text-[15px] font-medium text-foreground">
             Harbor
           </span>
