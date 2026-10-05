@@ -149,7 +149,7 @@ export default async function Landing() {
 
         <section
           id="bond"
-          className="border-y border-border bg-background-secondary"
+          className="harbor-scroll-reveal border-y border-border bg-background-secondary"
         >
           <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
             <BondMetric
@@ -192,7 +192,7 @@ export default async function Landing() {
           </p>
         </section>
 
-        <section className="border-b border-border bg-background-secondary">
+        <section className="harbor-scroll-reveal border-b border-border bg-background-secondary">
           <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
             <HowMetric label="Claim 2000" value="Refund 1900 + burn 4000" />
             <HowMetric label="Reserve lock" value="6000 — exactly 3×" />
@@ -203,7 +203,7 @@ export default async function Landing() {
 
         <section
           id="how"
-          className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24"
+          className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24"
         >
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Integrate in an afternoon
@@ -241,9 +241,9 @@ export default async function Landing() {
 
         <section
           id="sdk"
-          className="border-y border-border bg-background-secondary"
+          className="harbor-scroll-reveal border-y border-border bg-background-secondary"
         >
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
+          <div className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
             <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
               What ships in the SDK
             </p>
@@ -302,7 +302,7 @@ export default async function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
+        <section className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Cost model
           </p>
@@ -331,7 +331,7 @@ export default async function Landing() {
 
         <section
           id="evidence"
-          className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
+          className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
         >
           <div className="border border-white/[0.1] bg-surface p-5 md:p-10">
             <h2 className="font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
@@ -417,7 +417,7 @@ export default async function Landing() {
 
         <section
           id="faq"
-          className="mx-auto w-full max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28"
+          className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28"
         >
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Objections, answered
@@ -430,8 +430,8 @@ export default async function Landing() {
           </div>
         </section>
 
-        <section className="border-t border-border bg-background-secondary">
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
+        <section className="harbor-scroll-reveal border-t border-border bg-background-secondary">
+          <div className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
             <h2 className="max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
               Bond your first merchant endpoint this afternoon.
             </h2>
