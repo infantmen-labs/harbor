@@ -5,8 +5,7 @@
  * so no dead link ever ships. Nothing here is secret.
  */
 
-// TODO(user): set the public repo URL (e.g. https://github.com/ORG/harbor).
-export const REPO_URL = "https://github.com/REPO_URL_PENDING";
+export const REPO_URL = "https://github.com/infantmen-labs/harbor";
 
 /** False while REPO_URL is still the placeholder — callers must hide
  *  repo links instead of rendering a 404. */
