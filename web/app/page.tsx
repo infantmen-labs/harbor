@@ -1,6 +1,7 @@
 import { PROGRAM_ID, CHANNEL_PROGRAM_ID } from "@/lib/env";
 import { explorerUrl, shorten } from "@/lib/explorer";
 import { DOC_LINKS, INSTALL_CMD, NPM_URL, REPO_URL } from "@/lib/site";
+import { getBondState } from "@/lib/bond";
 
 const SNIPPET = `import {
   bondPda, openDisputeIx, receiptMessageBytes, verifyEd25519,
@@ -23,9 +24,43 @@ const ix = openDisputeIx(
   mint, claimantAta, vault, nonce, reason, claimSpend,
 );`;
 
-export default function Landing() {
+export default async function Landing() {
+  const bond = await getBondState();
   return (
     <main>
+      <nav className="sticky top-0 z-10 border-b border-border bg-background">
+        <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-3 md:px-8">
+          <span className="font-display text-[15px] font-bold text-foreground">
+            Harbor
+          </span>
+          <a
+            href="#how"
+            className="text-[14px] text-muted hover:text-foreground"
+          >
+            How
+          </a>
+          <a
+            href="#sdk"
+            className="text-[14px] text-muted hover:text-foreground"
+          >
+            SDK
+          </a>
+          <a
+            href="#evidence"
+            className="text-[14px] text-muted hover:text-foreground"
+          >
+            Evidence
+          </a>
+          <a
+            href={NPM_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-auto rounded-[8px] bg-foreground px-4 py-2 text-[14px] font-medium text-background hover:opacity-90"
+          >
+            {INSTALL_CMD}
+          </a>
+        </div>
+      </nav>
       <section className="mx-auto w-full max-w-[1280px] px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
         <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
           Developer infrastructure for bonded API payments
@@ -36,10 +71,8 @@ export default function Landing() {
         <p className="mt-6 max-w-[52ch] text-[17px] leading-[150%] text-foreground-secondary md:text-[18px]">
           Harbor is a bonded-refund layer for metered APIs: a Solana program, a
           TypeScript SDK, and a keeper. Merchants post a bond, agents pay
-          through payment channels, and any claim past the challenge window
-          refunds automatically — plus a penalty to the backstop. Receipts
-          attest delivery offchain but never acquit onchain, by design. No
-          chargebacks, no accounts, no judges.
+          through payment channels, and claims past the challenge window refund
+          automatically — plus a penalty to the backstop.
         </p>
         <p className="mt-3 max-w-[52ch] text-[14px] leading-[150%] text-muted">
           Caveat, stated plainly: failed-voucher escrow still settles upstream —
@@ -53,6 +86,12 @@ export default function Landing() {
             className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
           >
             {INSTALL_CMD} ↗
+          </a>
+          <a
+            href="#bond"
+            className="rounded-[8px] border border-border bg-surface px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+          >
+            See the live bond ↓
           </a>
           <a
             href={REPO_URL}
@@ -71,7 +110,51 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="border-y border-border bg-background-secondary">
+      <section
+        id="bond"
+        className="border-y border-border bg-background-secondary"
+      >
+        <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
+          <BondMetric
+            label="Bonded"
+            value={bond.amount.toLocaleString("en-US")}
+          />
+          <BondMetric
+            label="Reserved"
+            value={bond.reserved.toLocaleString("en-US")}
+          />
+          <BondMetric
+            label="Open disputes"
+            value={bond.openDisputes.toString()}
+          />
+          <BondMetric
+            label="Backstop treasury"
+            value={bond.treasury.toLocaleString("en-US")}
+          />
+        </div>
+        <p className="mx-auto w-full max-w-[1280px] px-5 pb-6 font-mono text-[13px] text-muted md:px-8">
+          {bond.stale ? (
+            <>
+              as of slot {bond.slot.toLocaleString("en-US")} (cached snapshot)
+            </>
+          ) : (
+            <>
+              live from devnet · as of slot {bond.slot.toLocaleString("en-US")}{" "}
+              · refreshes hourly ·{" "}
+              <a
+                href={explorerUrl("address", PROGRAM_ID)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline underline-offset-2"
+              >
+                verify on explorer
+              </a>
+            </>
+          )}
+        </p>
+      </section>
+
+      <section className="border-b border-border bg-background-secondary">
         <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
           <HowMetric label="Problem" value="Failed API calls after payment" />
           <HowMetric label="Today" value="Eat the loss" />
@@ -80,7 +163,10 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+      <section
+        id="how"
+        className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24"
+      >
         <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
           Integrate in an afternoon
         </p>
@@ -113,7 +199,10 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="border-y border-border bg-background-secondary">
+      <section
+        id="sdk"
+        className="border-y border-border bg-background-secondary"
+      >
         <div className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             What ships in the SDK
@@ -161,7 +250,10 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28">
+      <section
+        id="evidence"
+        className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
+      >
         <div className="rounded-[16px] border border-border bg-surface p-6 md:p-10">
           <h2 className="font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
             Built for the adversarial case first.
@@ -279,6 +371,17 @@ export default function Landing() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function BondMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
+        {label}
+      </p>
+      <p className="mt-2 font-mono text-[24px] md:text-[30px]">{value}</p>
+    </div>
   );
 }
 
