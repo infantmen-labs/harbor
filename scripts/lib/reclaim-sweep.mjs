@@ -190,6 +190,20 @@ async function closeOne(addr, st, save) {
       console.log(`${addr.slice(0, 8)}: withdrawPayer +${delta}`);
     }
     const payeeAta = ataFor(s.payee, mint);
+    if ((await conn.getAccountInfo(payeeAta)) === null) {
+      // Ancient channels may name payees that never got an ATA for this
+      // mint; distribute validates the canonical ATA, so create it
+      // (permissionless, payer funds rent).
+      console.log(`${addr.slice(0, 8)}: creating payee ATA (permissionless)`);
+      await send([
+        createAssociatedTokenAccountInstruction(
+          payer.publicKey,
+          payeeAta,
+          s.payee,
+          mint
+        ),
+      ]);
+    }
     const mBefore = await mustBal(payeeAta, "payee");
     await send([
       distributeIx({
