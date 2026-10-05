@@ -2,6 +2,7 @@ import { PROGRAM_ID, CHANNEL_PROGRAM_ID } from "@/lib/env";
 import { explorerUrl, shorten } from "@/lib/explorer";
 import { DOC_LINKS, INSTALL_CMD, NPM_URL, REPO_URL } from "@/lib/site";
 import { getBondState } from "@/lib/bond";
+import { Faq } from "./faq";
 
 const SNIPPET = `import {
   bondPda, openChannelIx, receiptMessageBytes, verifyEd25519,
@@ -54,6 +55,12 @@ export default async function Landing() {
             className="text-[14px] text-muted hover:text-foreground"
           >
             Evidence
+          </a>
+          <a
+            href="#faq"
+            className="text-[14px] text-muted hover:text-foreground"
+          >
+            FAQ
           </a>
           <a
             href={NPM_URL}
@@ -270,6 +277,33 @@ export default async function Landing() {
         </div>
       </section>
 
+      <section className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+        <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
+          Cost model
+        </p>
+        <h2 className="mt-4 max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
+          Priced in protocol, not in sales calls.
+        </h2>
+        <dl className="mt-8 grid gap-px overflow-hidden rounded-[12px] border border-border bg-border md:grid-cols-2">
+          <CostRow
+            term="Open a dispute"
+            detail="0.01 SOL stake, returned on resolve, plus tx fees and payer-paid rent for the dispute and claim accounts."
+          />
+          <CostRow
+            term="Resolve a dispute"
+            detail="Claimant +95%. Backstop treasury +5% fee and 2x penalty, paid from the bond. No judge, no invoice."
+          />
+          <CostRow
+            term="Fabricate a claim"
+            detail="Nets −5% − fees − rent at every scale: the refund can never exceed the locked claim."
+          />
+          <CostRow
+            term="Happy path"
+            detail="Voucher + settle transaction fees only. Receipt accounts cost rent, paid by the payer."
+          />
+        </dl>
+      </section>
+
       <section
         id="evidence"
         className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
@@ -364,6 +398,49 @@ export default async function Landing() {
         </div>
       </section>
 
+      <section
+        id="faq"
+        className="mx-auto w-full max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28"
+      >
+        <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
+          Objections, answered
+        </p>
+        <h2 className="mt-4 max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
+          Asked by skeptics, answered with mechanism.
+        </h2>
+        <div className="mt-8 max-w-[768px]">
+          <Faq />
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-background-secondary">
+        <div className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+          <h2 className="max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
+            Bond your first merchant endpoint this afternoon.
+          </h2>
+          <p className="mt-3 max-w-[52ch] text-[16px] leading-[150%] text-foreground-secondary">
+            Install the SDK, point it at the devnet bond, and run the loop. The
+            collateral is already there.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a
+              href={NPM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-[8px] bg-foreground px-6 py-3 font-mono text-[15px] font-medium text-background hover:opacity-90"
+            >
+              {INSTALL_CMD} ↗
+            </a>
+            <a
+              href="#how"
+              className="rounded-[8px] border border-border bg-surface px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+            >
+              See how it works ↑
+            </a>
+          </div>
+        </div>
+      </section>
+
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 font-mono text-[13px] text-muted md:px-8">
           <span className="font-display text-[15px] font-bold text-foreground">
@@ -413,6 +490,17 @@ export default async function Landing() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function CostRow({ term, detail }: { term: string; detail: string }) {
+  return (
+    <div className="bg-background px-6 py-5">
+      <dt className="font-display text-[18px] font-medium">{term}</dt>
+      <dd className="mt-1 text-[15px] leading-[150%] text-foreground-secondary">
+        {detail}
+      </dd>
+    </div>
   );
 }
 
