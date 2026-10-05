@@ -347,7 +347,7 @@ export default async function Landing() {
                 rel="noreferrer"
                 className="text-accent underline underline-offset-2"
               >
-                26 devnet escrows closed, exact
+                28 devnet escrows closed, exact
               </a>
             </p>
           </div>
