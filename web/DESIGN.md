@@ -111,23 +111,33 @@ with a real number behind it).
 
 ## 8. Motion
 
-Quiet to the point of stillness. Hero renders instantly — no entrance
-delay, no delay chains. `scroll-behavior: smooth` for anchor jumps
-(currently declared twice — unguarded copy plus a redundant
-`prefers-reduced-motion` gate; collapse to the gated form).
-Durations: 100ms color, 200ms disclosure, 500ms max. Easing
-`cubic-bezier(0.16, 1, 0.3, 1)`, never linear entrances. Everything
-non-essential gated behind `prefers-reduced-motion`.
+Zero-JS animation system (pure CSS scroll-driven + keyframes — no
+rAF loops, no observers, no motion deps):
+
+- **Scroll reveals** (`.harbor-scroll-reveal`): opacity 0 + 28px rise
+  → visible, `animation-timeline: view()`, entry→24% cover. Fires
+  once per element by construction (no JS flags to manage). Applied
+  per section/container — never per-card grids that would strobe.
+- **Hero motion**: looping muted video (`HeroMedia`, poster fallback)
+  - 9s grid scanline sweep (`harbor-scan`, 0.35 peak opacity) +
+    ambient dot overlay (`body::before`, static 5px grid, masked).
+    At most one moving layer draws the eye at a time.
+- **Hovers**: color/border transitions 200ms on CTAs and cards. No
+  lifts, no spins, no scale — ever.
+- Durations: 100ms color, 200ms disclosure/hover, 9s ambient sweep.
+  Easing ease-in-out for ambient loops; entrances decelerating, never
+  linear.
+- **Reduced motion**: `.harbor-scroll-reveal`, grid scan, and video
+  (poster instead) all gate off; anchor jumps fall back to instant
+  scroll. Decorative layers are `aria-hidden` regardless.
 
 ## 9. Imagery
 
-One image total: `public/hero-tree.png` (dark arboreal render, 1.6MB).
-Served as a background layer under gradient masks (`harbor-hero-art`),
-never as content — decorative, `aria-hidden`, opacity 0.9 desktop /
-0.62 mobile with repositioned crop. FAILED BUDGET, flagged openly:
-1.6MB exceeds the 500KB hero ceiling — compress to AVIF/WebP ≤500KB
-(or drop the layer; the grid + glow carry the composition alone)
-before this ships to production.
+One image total: `public/hero-tree.avif` (dark arboreal render,
+1376×768, AVIF q32, 96KB — down from 1.6MB PNG). Served as a
+background layer under gradient masks (`harbor-hero-art`), never as
+content — decorative, `aria-hidden`, opacity 0.9 desktop / 0.62 mobile
+with repositioned crop. Within the 500KB hero ceiling.
 
 ## 10. Accepted deviations (from the original light spec)
 

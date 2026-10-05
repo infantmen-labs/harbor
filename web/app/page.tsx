@@ -9,6 +9,7 @@ import {
 } from "@/lib/site";
 import { getBondState } from "@/lib/bond";
 import { Faq } from "./faq";
+import { HeroMedia } from "./hero-media";
 
 const SNIPPET = `import {
   bondPda, openChannelIx, receiptMessageBytes, verifyEd25519,
@@ -39,7 +40,7 @@ export default async function Landing() {
   const bond = await getBondState();
   return (
     <>
-      <main id="main" className="overflow-hidden">
+      <main id="main">
         <nav className="sticky top-0 z-10 border-b border-white/[0.08] bg-[#030303]/90 backdrop-blur-md">
           <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-4 md:px-12">
             <span className="font-display text-[15px] font-medium text-foreground">
@@ -80,8 +81,9 @@ export default async function Landing() {
           </div>
         </nav>
         <section className="harbor-hero relative mx-auto flex min-h-[calc(100svh-57px)] w-full max-w-[1280px] items-center overflow-hidden border-x border-border px-5 pb-20 pt-24 md:px-12 md:pb-24 md:pt-20">
+          <HeroMedia />
           <div
-            className="harbor-hero-art absolute inset-0"
+            className="harbor-hero-shade absolute inset-0"
             aria-hidden="true"
           />
           <div
@@ -107,19 +109,22 @@ export default async function Landing() {
                 href={NPM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-12 items-center rounded-full bg-foreground px-6 text-[14px] font-medium text-background hover:bg-accent hover:text-ink-bg"
+                className="inline-flex min-h-12 items-center rounded-full bg-foreground px-6 text-[14px] font-medium text-background transition-colors duration-200 hover:bg-accent hover:text-ink-bg"
               >
                 {INSTALL_CMD} ↗
               </a>
               <a
                 href="#bond"
-                className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/[0.04] px-6 text-[14px] font-medium text-foreground hover:bg-white/[0.1]"
+                className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/[0.04] px-6 text-[14px] font-medium text-foreground transition-colors duration-200 hover:bg-white/[0.1]"
               >
                 See the live bond ↓
               </a>
             </div>
           </div>
-          <div className="absolute bottom-8 left-5 z-[1] flex gap-8 md:bottom-10 md:left-12 md:gap-14">
+        </section>
+
+        <section className="border-b border-border">
+          <div className="mx-auto flex w-full max-w-[1280px] flex-wrap gap-x-14 gap-y-8 px-5 py-12 md:px-12">
             <div>
               <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
                 Bonded
