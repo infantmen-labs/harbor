@@ -163,8 +163,16 @@ async function closeOne(addr, st, save) {
     const chAta = chAtaFor(ch);
     const escrowBefore = await mustBal(chAta, "escrow");
     const payerBefore = await mustBal(payerAta, "payer");
-    if (escrowBefore === null || escrowBefore === 0n)
-      throw new Error(`${addr.slice(0, 8)}: empty escrow`);
+    if (escrowBefore === 0n && s.settled > 0n)
+      throw new Error(
+        `${addr.slice(0, 8)}: empty escrow with settled ${
+          s.settled
+        } unaccounted`
+      );
+    if (escrowBefore === 0n)
+      console.log(
+        `${addr.slice(0, 8)}: escrow already empty — distribute to close`
+      );
     if (s.withdrawnAt !== 0n) {
       console.log(
         `${addr.slice(0, 8)}: already withdrawn — skip to distribute`
