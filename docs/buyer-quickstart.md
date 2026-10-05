@@ -1,11 +1,31 @@
 # Buyer quickstart: metered API purchases with bonded refunds
 
 You need Node 22+, nothing else — no repo clone, no validator, no anchor.
-All state below reads the live devnet program unless noted.
+Steps 1–2 below read the live devnet program directly. Steps 3–5 buy
+against a merchant server: run your own (`server/README.md`) or point
+at a deployed one — there is no public demo server yet (see
+[Deploy to production](./deploy)).
+
+Live devnet endpoints (also in [Deploy to production](./deploy)):
+
+| What             | Address                                                     |
+| ---------------- | ----------------------------------------------------------- |
+| Harbor program   | `BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H`              |
+| Channels program | `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`              |
+| tUSDC mint       | `HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54` (6 decimals) |
+| Demo merchant    | `GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ`              |
+| Demo bond        | `2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP`              |
+
+Amounts are mint base units throughout (6 decimals: `1_000_000` = 1 tUSDC).
 
 ```sh
 npm i @infantmen-labs/harbor-sdk @solana/web3.js
 ```
+
+Prefer a complete runnable script over snippets? `examples/bond-watch`
+(in the repo) reads the demo bond end-to-end on SDK + web3.js only (no
+wallet, no funds) — run it first to confirm your toolchain sees the
+chain before opening channels or locking funds.
 
 ## 1. Gate on collateral (offline + one read)
 
@@ -14,8 +34,9 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { bondPda, decodeBond } from "@infantmen-labs/harbor-sdk";
 
 const connection = new Connection("https://api.devnet.solana.com");
-const merchant = new PublicKey("<merchant>");
-const mint = new PublicKey("<tUSDC-mint>");
+// Demo merchant + tUSDC mint on devnet (table above for the rest):
+const merchant = new PublicKey("GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ");
+const mint = new PublicKey("HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54");
 
 // Derived offline — no RPC call to start.
 const [bond] = bondPda(merchant, mint);
@@ -39,7 +60,9 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@infantmen-labs/harbor-sdk";
 
-const channelProgram = new PublicKey("<channels-program>");
+const channelProgram = new PublicKey(
+  "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX" // devnet channels program
+);
 const salt = BigInt(Date.now() % 1_000_000);
 const openSlot = BigInt(await connection.getSlot()); // must be recent
 const { channel } = deriveChannel(
@@ -82,6 +105,13 @@ const ix = openChannelIx({
 
 ## 3. Buy units, verify before paying for the next
 
+Each unit is a voucher POSTed to the merchant server. Before that you
+need a session: `POST /session {channel, channelProgram, deposit,
+authorizedSigner}` returns `{binding}` — the Harbor binding PDA for
+your channel. The merchant's unit price comes from `GET /info`
+(`pricePerToken`). Your payer ATA must hold enough of the bond mint to
+cover the channel deposit plus any later claim stake.
+
 ```ts
 import {
   assertVoucherCoversQuote,
@@ -114,8 +144,13 @@ if (!ok) throw new Error("bad receipt: stop buying");
 // A valid signature is billing-ack only — accept output bytes yourself.
 ```
 
+`lastCumulative` starts at `0n` and tracks the previous voucher;
+`voucherCumulative` is `lastCumulative + quotedCost` per unit.
 `meterHash` / `outputHash` are `sha256(input)` / `sha256(output)`;
-`binding` is the merchant's session binding for your channel.
+`binding` is the `{binding}` your `/session` call returned. The
+merchant returns `cumulativeSpend`, `nonce` (strictly +1 per unit —
+the server rejects anything else), `expirySlot`, `signer`, and
+`signature` with each receipt — verify them, don't construct them.
 
 ## 4. Dispute genuine non-delivery
 
@@ -123,10 +158,13 @@ A 500 with no receipt, after escrow lock, is disputable:
 
 ```ts
 import {
+  ataFor,
+  bondPda,
   claimPda,
   disputePda,
   openDisputeIx,
   suggestClaimSpend,
+  vaultAta,
 } from "@infantmen-labs/harbor-sdk";
 
 const { claimSpend, nonce } = await suggestClaimSpend(connection, {
@@ -135,10 +173,31 @@ const { claimSpend, nonce } = await suggestClaimSpend(connection, {
   mint,
 });
 if (claimSpend === 0n) throw new Error("no safe claim: walk away");
+const [bond] = bondPda(merchant, mint);
 const [dispute] = disputePda(binding, nonce);
 const [claim] = claimPda(binding, nonce);
-// ... openDisputeIx(programId, payer, bond, binding, channel, dispute,
-//   claim, mint, claimantAta, vault, nonce, 1, claimSpend) ...
+const claimantAta = ataFor(payer, mint);
+const vault = vaultAta(bond, mint);
+// reason 1 = TIMEOUT (full table: [Receipt schema](./receipt-schema));
+const ix = openDisputeIx(
+  programId,
+  payer,
+  bond,
+  binding,
+  channel,
+  dispute,
+  claim,
+  mint,
+  claimantAta,
+  vault,
+  nonce,
+  1,
+  claimSpend
+);
+// Sign with the payer keypair — the claimant MUST be the channel payer
+// (strangers are rejected onchain) — and send. Your claimant ATA must
+// already hold ≥ claimSpend of the bond mint: the claim is staked, not
+// minted.
 // Any live keeper resolves past the deadline; verify the dispute
 // account closed and your +95% landed. Operate your own keeper
 // (see "Run the keeper") for production.
@@ -146,21 +205,15 @@ const [claim] = claimPda(binding, nonce);
 
 ## 5. Reclaim the remainder
 
-```ts
-import {
-  distributeIx,
-  reclaimIx,
-  requestCloseIx,
-  sealIx,
-  withdrawPayerIx,
-} from "@infantmen-labs/harbor-sdk";
-
-// requestClose (payer) → wait past grace → seal (permissionless crank)
-// → withdrawPayer (remainder home) → distribute (merchant paid, escrow
-// closed) → reclaim rent past open_slot + 1500. distribute needs the
-// upstream treasury owner for your cluster (devnet record lives in
-// Harbor's upstream pin; localnet fixtures use the sentinel default).
-```
+Closing is a fixed upstream sequence: `requestClose` (payer) → wait
+past the grace period → `seal` (permissionless crank) → `withdrawPayer`
+(remainder home) → `distribute` (merchant paid, escrow closed) →
+`reclaim` rent past open_slot + 1500. The reference agent runs this for
+you on exit (`agent/README.md`); the SDK exports every builder
+(`requestCloseIx` / `sealIx` / `withdrawPayerIx` / `distributeIx` /
+`reclaimIx`) for custom clients. `distribute` needs the upstream
+treasury owner for your cluster (devnet record lives in Harbor's
+upstream pin; localnet fixtures use the sentinel default).
 
 Next: [SDK reference](./sdk) for every builder, [Run the
 keeper](./keeper) for resolution, [Trust model](./authority) for what

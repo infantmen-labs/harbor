@@ -27,9 +27,19 @@ const PAGES = [
   { slug: "authority", title: "Trust model", file: "docs/authority.md" },
   { slug: "review", title: "Security review", file: "docs/review.md" },
   {
+    slug: "proof-bundle",
+    title: "Proof bundle",
+    file: "docs/proof-bundle.md",
+  },
+  {
     slug: "receipt-schema",
     title: "Receipt schema",
     file: "docs/receipt-schema-v0.md",
+  },
+  {
+    slug: "ui-contracts",
+    title: "UI contracts",
+    file: "docs/ui-contracts.md",
   },
   { slug: "sdk", title: "SDK reference", file: "sdk/README.md" },
   { slug: "changelog", title: "Changelog", file: "CHANGELOG.md" },

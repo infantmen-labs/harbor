@@ -26,7 +26,14 @@ function CopyButton({ text }: { text: string }) {
 
 function codeText(children: ReactNode): string {
   if (typeof children === "string") return children;
+  if (typeof children === "number") return String(children);
   if (Array.isArray(children)) return children.map(codeText).join("");
+  // Headings with `code` spans pass React elements — recurse into them
+  // so TOC anchors match the rendered text (e.g. troubleshooting's
+  // ## `EADDRINUSE` headings). Without this every such h2 got id="".
+  if (isValidElement<{ children?: ReactNode }>(children)) {
+    return codeText(children.props.children);
+  }
   return "";
 }
 

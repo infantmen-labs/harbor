@@ -51,9 +51,21 @@ const PAGES: DocPage[] = [
     group: "Understand",
   },
   {
+    slug: "proof-bundle",
+    title: "Proof bundle",
+    file: "docs/proof-bundle.md",
+    group: "Understand",
+  },
+  {
     slug: "receipt-schema",
     title: "Receipt schema",
     file: "docs/receipt-schema-v0.md",
+    group: "Reference",
+  },
+  {
+    slug: "ui-contracts",
+    title: "UI contracts",
+    file: "docs/ui-contracts.md",
     group: "Reference",
   },
   {

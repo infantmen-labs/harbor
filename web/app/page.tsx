@@ -1,6 +1,13 @@
+import Link from "next/link";
 import { PROGRAM_ID, CHANNEL_PROGRAM_ID } from "@/lib/env";
 import { explorerUrl, shorten } from "@/lib/explorer";
-import { DOC_LINKS, INSTALL_CMD, NPM_URL, REPO_URL } from "@/lib/site";
+import {
+  DOC_LINKS,
+  INSTALL_CMD,
+  NPM_URL,
+  REPO_CONFIGURED,
+  REPO_URL,
+} from "@/lib/site";
 import { getBondState } from "@/lib/bond";
 import { Faq } from "./faq";
 
@@ -111,14 +118,16 @@ export default async function Landing() {
             >
               See the live bond ↓
             </a>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-border px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium hover:bg-surface-hover"
-            >
-              GitHub ↗
-            </a>
+            {REPO_CONFIGURED && (
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-[8px] border border-border px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium hover:bg-surface-hover"
+              >
+                GitHub ↗
+              </a>
+            )}
           </div>
           <div className="mt-6 max-w-[560px] overflow-x-auto rounded-[12px] border border-border bg-ink-bg p-4">
             <p className="font-mono text-[14px] text-ink-inverse">
@@ -151,6 +160,7 @@ export default async function Landing() {
             />
           </div>
           <p className="mx-auto w-full max-w-[1280px] px-5 pb-6 font-mono text-[13px] text-muted md:px-8">
+            Amounts in base units (tUSDC · 6 decimals).{" "}
             {bond.stale ? (
               <>
                 as of slot {bond.slot.toLocaleString("en-US")} (cached snapshot)
@@ -227,10 +237,10 @@ export default async function Landing() {
             <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
               What ships in the SDK
             </p>
-            {/* Source links via unpkg .d.ts (registry, live today) until
-              the repo is public — then swap to REPO_URL/tree/master/...
-              The keeper card still needs the push (adjudicate.ts ships
-              in the next publish). Bump the pinned version per release. */}
+            {/* Source links via unpkg .d.ts (registry, live today). The
+              keeper card links to /docs/keeper instead — the operator
+              guide is what a watchtower runner needs first. Bump the
+              pinned SDK version per release. */}
             <div className="mt-8 grid gap-6 md:grid-cols-2">
               <SdkCard
                 title="PDA helpers"
@@ -253,8 +263,9 @@ export default async function Landing() {
               <SdkCard
                 title="Keeper adjudication"
                 body="Timeout-only decide() plus exact-offset account parsers. Run your own watchtower in a dozen lines."
-                href={`${REPO_URL}/tree/master/sdk/src/adjudicate.ts`}
-                path="sdk/src/adjudicate.ts"
+                href="/docs/keeper"
+                path="keeper/README.md"
+                internal
               />
               <SdkCard
                 title="Buyer helpers"
@@ -274,8 +285,6 @@ export default async function Landing() {
               </a>
               <a
                 href={DOC_LINKS.receiptSchema()}
-                target="_blank"
-                rel="noreferrer"
                 className="rounded-[8px] border border-border px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium hover:bg-surface-hover"
               >
                 Frozen receipt schema
@@ -351,8 +360,6 @@ export default async function Landing() {
                 proof bundle{" "}
                 <a
                   href={DOC_LINKS.proofBundle()}
-                  target="_blank"
-                  rel="noreferrer"
                   className="text-accent underline underline-offset-2"
                 >
                   every sig, reproduced
@@ -362,8 +369,6 @@ export default async function Landing() {
                 authority + risks{" "}
                 <a
                   href={DOC_LINKS.authority()}
-                  target="_blank"
-                  rel="noreferrer"
                   className="text-accent underline underline-offset-2"
                 >
                   disclosed, not hidden
@@ -373,8 +378,6 @@ export default async function Landing() {
                 settle-then-dispute{" "}
                 <a
                   href={DOC_LINKS.review()}
-                  target="_blank"
-                  rel="noreferrer"
                   className="text-accent underline underline-offset-2"
                 >
                   proven by an independent buyer
@@ -384,8 +387,6 @@ export default async function Landing() {
                 escrow reclaim{" "}
                 <a
                   href={DOC_LINKS.proofBundle()}
-                  target="_blank"
-                  rel="noreferrer"
                   className="text-accent underline underline-offset-2"
                 >
                   28 devnet escrows closed, exact
@@ -454,14 +455,16 @@ export default async function Landing() {
           <span className="font-display text-[15px] font-medium text-foreground">
             Harbor
           </span>
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground"
-          >
-            GitHub
-          </a>
+          {REPO_CONFIGURED && (
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-foreground"
+            >
+              GitHub
+            </a>
+          )}
           <a
             href={NPM_URL}
             target="_blank"
@@ -470,28 +473,13 @@ export default async function Landing() {
           >
             npm
           </a>
-          <a
-            href={DOC_LINKS.uiContracts()}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground"
-          >
+          <a href={DOC_LINKS.uiContracts()} className="hover:text-foreground">
             Contracts
           </a>
-          <a
-            href={DOC_LINKS.review()}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground"
-          >
+          <a href={DOC_LINKS.review()} className="hover:text-foreground">
             Security review
           </a>
-          <a
-            href={DOC_LINKS.authority()}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground"
-          >
+          <a href={DOC_LINKS.authority()} className="hover:text-foreground">
             Single-key devnet authority — no real funds
           </a>
           <span className="ml-auto">MIT · devnet demo funds only</span>
@@ -574,12 +562,37 @@ function SdkCard({
   body,
   href,
   path,
+  internal,
 }: {
   title: string;
   body: string;
   href: string;
   path?: string;
+  internal?: boolean;
 }) {
+  const inner = (
+    <>
+      <h3 className="font-display text-[24px] font-medium">
+        {title} {internal ? "→" : "↗"}
+      </h3>
+      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">
+        {body}
+      </p>
+      <p className="mt-3 font-mono text-[13px] text-muted">
+        {path ?? href.replace("https://", "").split("/").slice(1, 4).join("/")}
+      </p>
+    </>
+  );
+  if (internal) {
+    return (
+      <Link
+        href={href}
+        className="block rounded-[12px] border border-border bg-surface p-6 transition-colors hover:border-muted"
+      >
+        {inner}
+      </Link>
+    );
+  }
   return (
     <a
       href={href}
@@ -587,13 +600,7 @@ function SdkCard({
       rel="noreferrer"
       className="block rounded-[12px] border border-border bg-surface p-6 transition-colors hover:border-muted"
     >
-      <h3 className="font-display text-[24px] font-medium">{title} ↗</h3>
-      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">
-        {body}
-      </p>
-      <p className="mt-3 font-mono text-[13px] text-muted">
-        {path ?? href.replace("https://", "").split("/").slice(1, 4).join("/")}
-      </p>
+      {inner}
     </a>
   );
 }

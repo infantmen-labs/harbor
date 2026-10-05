@@ -50,7 +50,14 @@ interface CachedBond {
 }
 
 async function fetchLiveBond(): Promise<CachedBond> {
-  const conn = new Connection("https://api.devnet.solana.com", "confirmed");
+  // Server component: prefer the server-side RPC_URL (may carry an API
+  // key that must never ship to the browser) over the public
+  // NEXT_PUBLIC_RPC_URL. Hardcoded devnet endpoint is the last resort.
+  const rpc =
+    process.env["RPC_URL"] ??
+    process.env["NEXT_PUBLIC_RPC_URL"] ??
+    "https://api.devnet.solana.com";
+  const conn = new Connection(rpc, "confirmed");
   const [bond] = bondPda(MERCHANT, MINT);
   const [treasury] = treasuryPda(MINT);
   const [info, slot, tb] = await withTimeout(
