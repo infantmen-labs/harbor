@@ -38,7 +38,18 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, timeout]).finally(() => clearTimeout(timer!));
 }
 
-async function fetchLiveBond(): Promise<Omit<LiveBond, "stale">> {
+// JSON-safe: unstable_cache serializes cached values, and BigInt does
+// not survive JSON.stringify — so the cached layer carries strings and
+// getBondState converts at the boundary.
+interface CachedBond {
+  amount: string;
+  reserved: string;
+  openDisputes: string;
+  treasury: string;
+  slot: number;
+}
+
+async function fetchLiveBond(): Promise<CachedBond> {
   const conn = new Connection("https://api.devnet.solana.com", "confirmed");
   const [bond] = bondPda(MERCHANT, MINT);
   const [treasury] = treasuryPda(MINT);
@@ -53,10 +64,10 @@ async function fetchLiveBond(): Promise<Omit<LiveBond, "stale">> {
   if (info === null) throw new Error("bond account missing");
   const b = decodeBond(info.data);
   return {
-    amount: b.amount,
-    reserved: b.reserved,
-    openDisputes: b.openDisputes,
-    treasury: BigInt(tb.value.amount),
+    amount: b.amount.toString(),
+    reserved: b.reserved.toString(),
+    openDisputes: b.openDisputes.toString(),
+    treasury: tb.value.amount,
     slot,
   };
 }
@@ -70,7 +81,14 @@ const getCachedBond = unstable_cache(fetchLiveBond, ["live-bond"], {
 export async function getBondState(): Promise<LiveBond> {
   try {
     const live = await getCachedBond();
-    return { ...live, stale: false };
+    return {
+      amount: BigInt(live.amount),
+      reserved: BigInt(live.reserved),
+      openDisputes: BigInt(live.openDisputes),
+      treasury: BigInt(live.treasury),
+      slot: live.slot,
+      stale: false,
+    };
   } catch {
     return SNAPSHOT;
   }
