@@ -6,6 +6,7 @@ export * from "./tx";
 export * from "./u64";
 export * from "./channels";
 export * from "./buyer";
+export * from "./adjudicate";
 export * from "./ed25519";
 export * from "./verify";
 export * from "./harbor-ix";

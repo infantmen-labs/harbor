@@ -4,13 +4,17 @@ import { DOC_LINKS, INSTALL_CMD, NPM_URL, REPO_URL } from "@/lib/site";
 import { getBondState } from "@/lib/bond";
 
 const SNIPPET = `import {
-  bondPda, openDisputeIx, receiptMessageBytes, verifyEd25519,
+  bondPda, openChannelIx, receiptMessageBytes, verifyEd25519,
+  suggestClaimSpend, openDisputeIx,
 } from "@infantmen-labs/harbor-sdk";
 
-// 1. Locate the merchant's bond (derived, no fetch needed)
+// 1. Gate on collateral (offline), size the claim from chain
 const [bond] = bondPda(merchant, mint);
+const { claimSpend } = await suggestClaimSpend(
+  connection, { binding, claimant, mint },
+);
 
-// 2. Verify every delivery offchain before paying for the next unit
+// 2. Verify every delivery before paying for the next unit
 const msg = receiptMessageBytes({
   merchant, binding, cumulativeSpend, meterHash,
   outputHash, status, nonce, expirySlot, signer,
@@ -18,10 +22,10 @@ const msg = receiptMessageBytes({
 const ok = verifyEd25519(signer, msg, signature);
 
 // 3. Claim-staked dispute when delivery fails:
-//    locks S from your wallet, caps the refund at S
+//    locks claimSpend, caps the refund at the lock
 const ix = openDisputeIx(
-  programId, claimant, bond, binding, dispute,
-  mint, claimantAta, vault, nonce, reason, claimSpend,
+  programId, claimant, bond, binding, channel, dispute,
+  claim, mint, claimantAta, vault, nonce, reason, claimSpend,
 );`;
 
 export default async function Landing() {
@@ -156,10 +160,10 @@ export default async function Landing() {
 
       <section className="border-b border-border bg-background-secondary">
         <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
-          <HowMetric label="Problem" value="Failed API calls after payment" />
-          <HowMetric label="Today" value="Eat the loss" />
-          <HowMetric label="Harbor" value="Bonded rebate + 2x penalty" />
-          <HowMetric label="Trust model" value="Collateral, single-key" />
+          <HowMetric label="Claim 2000" value="Refund 1900 + burn 4000" />
+          <HowMetric label="Reserve lock" value="6000 — exactly 3×" />
+          <HowMetric label="Suites green" value="53 TS + 26 Rust" />
+          <HowMetric label="Buyer-validated" value="Independent, live runs" />
         </div>
       </section>
 
@@ -173,29 +177,31 @@ export default async function Landing() {
         <h2 className="mt-4 max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
           Three calls cover the whole lifecycle.
         </h2>
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <div className="overflow-x-auto rounded-[12px] border border-border bg-ink-bg p-5">
-            <pre className="font-mono text-[13px] leading-[160%] text-ink-inverse">
-              {SNIPPET}
-            </pre>
-          </div>
-          <div className="grid content-start gap-6">
-            <HowCard
-              n="01"
-              title="Bond"
-              body="The merchant locks stablecoin collateral as a performance guarantee — no legal contract, no account."
-            />
-            <HowCard
-              n="02"
-              title="Pay against receipts"
-              body="The agent streams cumulative vouchers through a payment channel. Every served unit returns a signed delivery receipt the SDK verifies."
-            />
-            <HowCard
-              n="03"
-              title="Refund on failure"
-              body="A missed deadline opens a dispute backed by a locked claim. Nobody judges it: past the challenge window any payer-bound claim auto-refunds 95% to the agent and burns 2x from the bond."
-            />
-          </div>
+        <div className="mt-8 overflow-x-auto rounded-[12px] border border-border bg-ink-bg p-5">
+          <pre className="font-mono text-[13px] leading-[160%] text-ink-inverse">
+            {SNIPPET}
+          </pre>
+        </div>
+        <div className="mt-12 grid gap-12">
+          <HowRow
+            n="01"
+            title="Bond"
+            body="The merchant locks stablecoin collateral as a performance guarantee — no legal contract, no account. The address derives offline; the health reads onchain."
+            detail="bondPda(merchant, mint) → 2G19xBTW… · 463000 bonded"
+          />
+          <HowRow
+            n="02"
+            title="Pay against receipts"
+            body="The agent streams cumulative vouchers through a payment channel. Every served unit returns a signed delivery receipt — the next unit is paid for only after the previous receipt verifies."
+            detail="cumulativeSpend: 15000 · verifyEd25519 → true"
+            flip
+          />
+          <HowRow
+            n="03"
+            title="Refund on failure"
+            body="A missed deadline opens a dispute backed by a locked claim sized from chain. Nobody judges it: past the challenge window the claim auto-refunds 95% and burns 2x from the bond."
+            detail="claim 2000 → refund 1900 · burn 4000"
+          />
         </div>
       </section>
 
@@ -207,26 +213,40 @@ export default async function Landing() {
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             What ships in the SDK
           </p>
+          {/* Source links via unpkg .d.ts (registry, live today) until
+              the repo is public — then swap to REPO_URL/tree/master/...
+              The keeper card still needs the push (adjudicate.ts ships
+              in the next publish). Bump the pinned version per release. */}
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             <SdkCard
               title="PDA helpers"
               body="bondPda · bindingPda · disputePda · receiptPda · treasuryPda. Every address is derivable offline — no RPC call to start."
-              href={`${REPO_URL}/tree/master/sdk/src/pda.ts`}
+              href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/pda.d.ts"
+              path="sdk/src/pda.ts"
             />
             <SdkCard
               title="Instruction builders"
               body="register · post / top-up / withdraw · bind · openDispute · resolveTimeout. Typed args, correct account ordering, no Anchor client needed."
-              href={`${REPO_URL}/tree/master/sdk/src/harbor-ix.ts`}
+              href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/harbor-ix.d.ts"
+              path="sdk/src/harbor-ix.ts"
             />
             <SdkCard
               title="Receipt codec + verification"
               body="185-byte Borsh receipt layout (frozen), ed25519 sign/verify, upstream voucher bytes. The same bytes the program checks."
-              href={`${REPO_URL}/tree/master/sdk/src/receipt.ts`}
+              href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/receipt.d.ts"
+              path="sdk/src/receipt.ts"
             />
             <SdkCard
               title="Keeper adjudication"
               body="Timeout-only decide() plus exact-offset account parsers. Run your own watchtower in a dozen lines."
-              href={`${REPO_URL}/tree/master/keeper/src/accounts.ts`}
+              href={`${REPO_URL}/tree/master/sdk/src/adjudicate.ts`}
+              path="sdk/src/adjudicate.ts"
+            />
+            <SdkCard
+              title="Buyer helpers"
+              body="suggestClaimSpend sizes the safe claim from chain; assertVoucherCoversQuote enforces voucher ≥ quote. Upstream channel builders included."
+              href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/buyer.d.ts"
+              path="sdk/src/buyer.ts"
             />
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -398,22 +418,35 @@ function HowMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function HowCard({
+function HowRow({
   n,
   title,
   body,
+  detail,
+  flip,
 }: {
   n: string;
   title: string;
   body: string;
+  detail: string;
+  flip?: boolean;
 }) {
   return (
-    <div className="rounded-[12px] border border-border bg-surface p-6">
-      <p className="font-mono text-[13px] text-muted">{n}</p>
-      <h3 className="mt-3 font-display text-[24px] font-medium">{title}</h3>
-      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">
-        {body}
-      </p>
+    <div className="grid items-center gap-6 md:grid-cols-2">
+      <div className={flip ? "md:order-2" : undefined}>
+        <p className="font-mono text-[13px] text-muted">{n}</p>
+        <h3 className="mt-3 font-display text-[24px] font-medium md:text-[30px]">
+          {title}
+        </h3>
+        <p className="mt-2 max-w-[52ch] text-[16px] leading-[160%] text-foreground-secondary">
+          {body}
+        </p>
+      </div>
+      <div className={flip ? "md:order-1" : undefined}>
+        <p className="overflow-x-auto rounded-[12px] border border-border bg-surface p-5 font-mono text-[13px] leading-[160%] text-foreground">
+          {detail}
+        </p>
+      </div>
     </div>
   );
 }
@@ -422,10 +455,12 @@ function SdkCard({
   title,
   body,
   href,
+  path,
 }: {
   title: string;
   body: string;
   href: string;
+  path?: string;
 }) {
   return (
     <a
@@ -439,7 +474,7 @@ function SdkCard({
         {body}
       </p>
       <p className="mt-3 font-mono text-[13px] text-muted">
-        {href.replace("https://", "").split("/").slice(1, 4).join("/")}
+        {path ?? href.replace("https://", "").split("/").slice(1, 4).join("/")}
       </p>
     </a>
   );
