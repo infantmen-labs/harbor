@@ -10,7 +10,12 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const PAGES = [
-  { slug: "quickstart", title: "Quickstart", file: "docs/setup.md" },
+  // Keep in sync with web/lib/docs-nav.ts.
+  {
+    slug: "quickstart",
+    title: "Buyer quickstart",
+    file: "docs/buyer-quickstart.md",
+  },
   { slug: "deploy", title: "Deploy to production", file: "docs/deploy.md" },
   { slug: "keeper", title: "Run the keeper", file: "keeper/README.md" },
   {
@@ -28,6 +33,11 @@ const PAGES = [
   },
   { slug: "sdk", title: "SDK reference", file: "sdk/README.md" },
   { slug: "changelog", title: "Changelog", file: "CHANGELOG.md" },
+  {
+    slug: "local-development",
+    title: "Local development",
+    file: "docs/setup.md",
+  },
 ];
 
 const parts = PAGES.map(({ slug, title, file }) => {

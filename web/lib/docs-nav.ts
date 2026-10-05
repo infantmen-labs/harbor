@@ -10,8 +10,8 @@ export interface DocPage {
 const PAGES: DocPage[] = [
   {
     slug: "quickstart",
-    title: "Quickstart",
-    file: "docs/setup.md",
+    title: "Buyer quickstart",
+    file: "docs/buyer-quickstart.md",
     group: "Start",
   },
   {
@@ -68,6 +68,14 @@ const PAGES: DocPage[] = [
     file: "CHANGELOG.md",
     group: "Reference",
   },
+  // Contributor full-stack setup (toolchain, validator, loops). Integrators
+  // start at Buyer quickstart above and never need this page.
+  {
+    slug: "local-development",
+    title: "Local development",
+    file: "docs/setup.md",
+    group: "Contribute",
+  },
 ];
 
 export const DOC_GROUPS: Array<{ label: string; pages: DocPage[] }> = [
@@ -80,6 +88,10 @@ export const DOC_GROUPS: Array<{ label: string; pages: DocPage[] }> = [
   {
     label: "Reference",
     pages: PAGES.filter((p) => p.group === "Reference"),
+  },
+  {
+    label: "Contribute",
+    pages: PAGES.filter((p) => p.group === "Contribute"),
   },
 ];
 

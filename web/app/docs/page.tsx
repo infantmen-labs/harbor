@@ -14,9 +14,9 @@ export default function DocsHome() {
         Bonded refunds, explained once and linked everywhere.
       </h1>
       <p className="mt-3 max-w-[60ch] text-[16px] leading-[150%] text-foreground-secondary">
-        Start with the quickstart, run something, then read only what you need.
-        Every page below renders from its source file in the repo — no forks, no
-        stale copies.
+        Start with the buyer quickstart — published SDK only, no clone — then
+        read only what you need. Every page below renders from its source file
+        in the repo — no forks, no stale copies.
       </p>
       <div className="mt-10 grid gap-10 md:grid-cols-2">
         {DOC_GROUPS.map((group) => (
@@ -24,6 +24,18 @@ export default function DocsHome() {
             <h2 className="font-display text-[20px] font-medium">
               {group.label}
             </h2>
+            <p className="mt-1 text-[14px] text-muted">
+              {group.label === "Start" &&
+                "Buy your first metered unit in minutes."}
+              {group.label === "Operate" &&
+                "Run the merchant and keeper sides in production."}
+              {group.label === "Understand" &&
+                "Why the mechanism is safe before you trust it."}
+              {group.label === "Reference" &&
+                "Exact layouts, builders, and release history."}
+              {group.label === "Contribute" &&
+                "Full-stack local setup for Harbor contributors."}
+            </p>
             <ul className="mt-4 space-y-1">
               {group.pages.map((page) => (
                 <li key={page.slug}>

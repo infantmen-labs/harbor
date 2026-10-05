@@ -48,7 +48,7 @@ export function Markdown({ source }: { source: string }) {
             return (
               <h2
                 id={headingId(text)}
-                className="mt-10 scroll-mt-20 font-display text-[24px] font-medium"
+                className="mt-12 scroll-mt-20 border-b border-border-subtle pb-3 font-display text-[24px] font-medium"
               >
                 {children}
               </h2>
@@ -127,13 +127,23 @@ export function Markdown({ source }: { source: string }) {
           },
           pre({ children }) {
             const codeEl = Children.toArray(children)[0];
-            const text = isValidElement<{ children?: ReactNode }>(codeEl)
-              ? codeText(codeEl.props.children)
-              : "";
+            const props = isValidElement<{
+              children?: ReactNode;
+              className?: string;
+            }>(codeEl)
+              ? codeEl.props
+              : undefined;
+            const text = codeText(props?.children);
+            const lang = /language-(\w+)/.exec(props?.className ?? "")?.[1];
             return (
-              <div className="relative mt-4 rounded-[12px] border border-border bg-ink-bg p-5">
-                <div className="absolute right-3 top-3 [&_button]:border-ink-inverse/20 [&_button]:text-ink-inverse/70">
-                  <CopyButton text={text} />
+              <div className="relative mt-4 rounded-[12px] border border-border bg-ink-bg p-5 pt-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-mono text-[12px] text-ink-inverse/50">
+                    {lang ?? "code"}
+                  </span>
+                  <span className="[&_button]:border-ink-inverse/20 [&_button]:text-ink-inverse/70">
+                    <CopyButton text={text} />
+                  </span>
                 </div>
                 <pre className="overflow-x-auto font-mono text-[13px] leading-[160%] text-ink-inverse">
                   {children}
@@ -150,6 +160,16 @@ export function Markdown({ source }: { source: string }) {
               );
             }
             return <code className={className}>{children}</code>;
+          },
+          strong({ children }) {
+            return (
+              <strong className="font-medium text-foreground">
+                {children}
+              </strong>
+            );
+          },
+          hr() {
+            return <hr className="my-10 border-border" />;
           },
         }}
       >
