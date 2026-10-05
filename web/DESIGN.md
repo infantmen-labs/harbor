@@ -4,125 +4,163 @@ Single source of truth for the dashboard UI. Code tokens live in
 `app/globals.css` (`--harbor-*` primitives → Tailwind semantic theme);
 everything below is the prose half — where tokens may be used, and what
 is forbidden. If a rule here conflicts with code, this file wins: fix
-the code.
+the code. (v0 redesign branch: dark system + hero art documented as
+shipped; deviations from the original light spec are marked ACCEPTED
+below, not silent.)
 
 ## 1. Brand
 
 Developer infrastructure for bonded API payments. Visual character:
-restrained, exact, auditable. The page should feel like an explorer
-transaction rendered as prose — numbers first, adjectives last. Never
-playful, never urgent, never glossy.
+dark, exact, auditable — terminal-native. The page should feel like an
+explorer transaction rendered as prose — numbers first, adjectives
+last. Never playful, never urgent, never glossy.
 
 ## 2. Color
 
-Neutrals (cool temperature — lavender-gray, not warm cream):
+Dark neutrals (near-black, cool):
 
-- `background` `#f5f5fa` · `surface` `#ffffff` · `surface-hover` `#f0f0f6`
-- `foreground` `#101014` · `foreground-secondary` `#373642`
-  (10.92:1 on bg ✓)
-- `muted` `#626070` (5.64:1 on bg ✓ — body-text floor, never below)
-- `border` `#d9d8e3` · hairlines only, never shadow-lifted cards
+- `background` `#08090b` · `background-secondary` `#0d0f12`
+- `surface` `#111419` · `surface-hover` `#181c21`
+- `foreground` `#f2f3f0` · `foreground-secondary` `#a6aba8`
+- `muted` `#747b78` (body-text floor on dark surfaces)
+- `border` `#252a2e` · hairlines + container rules (`border-x` page
+  rails, `border-white/[0.08–0.1]` nav/panel lines)
+- `foreground` surfaces double as the primary CTA fill (near-white
+  buttons on near-black page)
 
-Accent (exactly one): teal `#0f9d7e`, hover `#0b7d64`.
+Accent (exactly one): mint `#8fe0c6`, hover `#b8f3df` (lighter on
+hover — correct direction on dark).
 
-- Allowed surfaces: text links (ALWAYS underlined — teal-on-bg is
-  3.14:1, underline carries the affordance), primary CTA fill, section
-  markers. Pick per viewport, never all three.
-- `success` shares the teal hex. Rule resolving the collision: success
+- Allowed surfaces: text links (ALWAYS underlined), primary CTA hover
+  (fill flips accent with ink text), hero grid/glow tints, section
+  markers. Pick per viewport, never all at once.
+- `success` shares the mint hex. Rule resolving the collision: success
   is never communicated by color alone — always paired with explicit
-  copy (`refunded`, `settled`, `+1900`). Danger `#c93a2e` reserved for
+  copy (`refunded`, `settled`, `+1900`). Danger `#ed8b83` reserved for
   failures and destructive actions; warning amber for grace/deadline
   states only.
 
-Code blocks invert: ink bg `#101014`, text `#e6edf3` (16.07:1 ✓).
+Code blocks: ink bg `#050606`, text `#e9eeeb`.
 
 ## 3. Typography
 
-Three families, each with one job (documented justification: data-heavy
-infra needs tabular display numerals + a code voice; geometric display
-keeps 88px headlines from going corporate-Inter):
+Three families, each with one job (data-heavy infra needs tabular
+display numerals + a code voice; geometric display keeps 96px
+headlines from going corporate):
 
-- Display: Space Grotesk (`font-display`) — H1/H2, stats, card titles.
-  Medium only. H1 `clamp(48px, 5vw, 88px)`, tracking `-0.02em`,
-  line-height `1.0`. H2 32–40px, tracking `-0.01em`.
+- Display: Space Grotesk (`font-display`), Medium only — H1/H2, stats,
+  card titles. H1 `52px → 84px → 96px`, tracking `-0.045em`,
+  line-height `0.94`, max `12ch`. H2 32–40px, tracking `-0.01em`.
 - Body: Inter (`font-body`) — everything else, 16px minimum (hero
-  17–18px). Line-height `1.5`. Max measure `52–60ch` prose.
+  16–18px). Line-height `1.5–1.6`. Max measure `48–60ch` prose.
 - Mono: JetBrains Mono (`font-mono`) — numbers that must be exact
-  (amounts, slots, sigs), labels/eyebrows (13px uppercase
-  `tracking 0.04em`), terminal output. Tabular figures everywhere
-  numbers appear.
+  (amounts, slots, sigs), labels/eyebrows (12–13px uppercase,
+  `tracking 0.08–0.12em`), terminal output. Eyebrows use a rule
+  prefix (`—` 8-wide bar + label), not bare text.
 
-Emphasis system: **weight contrast only**. No italics anywhere (0 on
-the page today — keep it 0). No bold body. No gradient text. Max two
-weights in use (regular/medium + display medium).
+Emphasis system: **weight contrast only**. No italics anywhere. No
+bold body. No gradient text. Max two weights in use (regular/medium).
 
 ## 4. Spacing
 
-4px base. Ramp in use: 8 / 12 / 16 / 24; sections 64 / 96
-(`py-16`/`py-24`, hero `pt-20–28`). Container `max-w-[1280px]`,
-gutters `px-5` → `md:px-8`. Never a 32px section. Whitespace is the
-premium signal — asymmetric and breathing beats filling every pixel.
+4px base. Ramp in use: 8 / 12 / 16 / 24; sections 56–96 (`py-14` /
+`py-24`, hero `pt-24` + full-viewport `min-h-[calc(100svh-57px)]`).
+Container `max-w-[1280px]`, gutters `px-5` → `md:px-12`, with
+`border-x` container rails on the hero. Whitespace is the premium
+signal — asymmetric and breathing beats filling every pixel.
 
 ## 5. Components
 
-- Buttons: radius 8px. Primary = foreground fill; secondary = bordered
-  ghost. Never two equal-weight filled buttons in one viewport.
-- Cards: radius 12px, `bg-surface`, hairline border. Large panel: 16px
-  (single instance per page max). No shadows anywhere.
-- Pills: full radius, mono 13px labels.
+- Hero CTAs: **pills** (`rounded-full`, 48px min-height) — primary
+  foreground fill, secondary `border-white/20` on `white/[0.04]`.
+  All other buttons: radius 8px. Never two equal-weight filled
+  buttons in one viewport.
+- Cards: radius 12px, `bg-surface`, hairline border, hover border
+  only (no shadow, no scale). Evidence panel: square container,
+  `border-white/[0.1]`.
+- Pills: full radius, mono 11–13px labels.
 - Code/terminal blocks: radius 12px, ink theme, real output only
   (install cmd, snippet, sigs) — never decorative chrome, no macOS dots.
+- Nav: sticky, hairline bottom border, mobile collapses links
+  (`hidden sm:inline`), CTA shrinks on small screens. KNOWN ISSUE:
+  `main overflow-hidden` defeats sticky positioning — fix before this
+  ships (remove the overflow or move the nav out of `main`).
 - Every interactive element ships 6 states: default / hover / focus /
   active / disabled / loading. Focus: `:focus-visible` 2px ring with
-  3:1 contrast, never the browser default. Hover = border/color only,
-  never scale, never shadow.
+  3:1 contrast, never the browser default. Hover = fill/border/color
+  flip only, never scale, never shadow.
 
 ## 6. Layout
 
-Single-column narrative, 1280px container. Rhythm: section / breath /
-section. Alternating band backgrounds (`background-secondary` hairline
-bands) separate dense blocks — never three identical cards in a row;
-weight must equal importance (bento / definition list / 5fr-3fr split
-over equal grids). Footer dense (Vercel pattern): product links +
-contracts + security + status-equivalent, mono 13px.
+Full-viewport hero (image art + grid + stat trio anchored bottom),
+then single-column narrative at 1280px. Rhythm: section / breath /
+section. Alternating band backgrounds separate dense blocks — never
+three identical cards in a row; weight must equal importance (rows /
+definition lists over equal grids). Footer dense: product links +
+contracts + security + status-equivalent, mono 12–13px.
 
 ## 7. Voice
 
 Engineer-voice: short verbs, specific nouns, no hedge, no hype.
 Headlines state mechanism ("Bonded optimistic refunds for agent API
-payments", 7 words), never promise ("payments you can trust").
-Caveats inline, plainly ("the bond covers the rebate leg, not the
-payment leg") — disclosure is a feature. CTAs are verbs of the
-funnel stage for infra: install, read the schema, inspect the program.
-No "Get Started", no "powered by AI", no urgency ("limited beta" only
+payments"), never promise ("payments you can trust"). Caveats inline,
+plainly — disclosure is a feature. CTAs are verbs of the funnel stage
+for infra: install, read the schema, inspect the program. No
+"Get Started", no "powered by AI", no urgency ("limited beta" only
 with a real number behind it).
 
 ## 8. Motion
 
 Quiet to the point of stillness. Hero renders instantly — no entrance
-delay, no delay chains. At most one `useInView`-once sequence per page
-(chapters block); entrances vary by section or don't exist. Durations:
-100ms color, 200ms disclosure, 500ms max. Easing
+delay, no delay chains. `scroll-behavior: smooth` for anchor jumps
+(currently declared twice — unguarded copy plus a redundant
+`prefers-reduced-motion` gate; collapse to the gated form).
+Durations: 100ms color, 200ms disclosure, 500ms max. Easing
 `cubic-bezier(0.16, 1, 0.3, 1)`, never linear entrances. Everything
-non-essential gated behind `prefers-reduced-motion`. Dead keyframes
-(`harbor-fade-in`, `harbor-pulse`) were removed with the feed UI and
-must not be re-added without a use.
-Forbidden: parallax on copy, looping hero, pulse/bounce CTAs,
-fade-up on every section, motion that blocks interaction.
+non-essential gated behind `prefers-reduced-motion`.
 
-## 9. Anti-patterns (most load-bearing section)
+## 9. Imagery
+
+One image total: `public/hero-tree.png` (dark arboreal render, 1.6MB).
+Served as a background layer under gradient masks (`harbor-hero-art`),
+never as content — decorative, `aria-hidden`, opacity 0.9 desktop /
+0.62 mobile with repositioned crop. FAILED BUDGET, flagged openly:
+1.6MB exceeds the 500KB hero ceiling — compress to AVIF/WebP ≤500KB
+(or drop the layer; the grid + glow carry the composition alone)
+before this ships to production.
+
+## 10. Accepted deviations (from the original light spec)
+
+Recorded, not hidden — each was a deliberate v0 call, kept on merit:
+
+1. **Dark system over light lavender.** Rationale: terminal-native
+   audience, code blocks stop inverting, explorer continuity.
+2. **Glass nav (`bg-[#030303]/90` + `backdrop-blur-md`).** Original
+   spec said solid + hairline. Kept: on near-black with a hairline
+   rule it reads solid in practice.
+3. **Hero glow + grid + image art.** Original spec forbade decorative
+   hero treatments. Kept, bounded: tints use the accent at ≤15%
+   opacity, single image, masked; no parallax, no loop, no animation.
+4. **Pill hero CTAs vs 8px buttons elsewhere.** Radius-by-role holds
+   (pill = hero entry, 8px = everything else).
+
+Still forbidden (unchanged): indigo/violet gradients, pulse/bounce
+CTAs, scaling cards on hover, fake proof (every number links to chain
+or doesn't ship), mock data presented as live, second filled CTA per
+viewport, new fonts/accents without amending this file.
+
+## 11. Anti-patterns (still load-bearing)
 
 1. No indigo/violet `to-br` gradients, anywhere, ever.
-2. No glass nav (`backdrop-blur` + opacity). Solid + hairline.
-3. No `animate-pulse`, no bouncing CTA, no scaling cards on hover.
-4. No uniform radius (8 ≠ 12 ≠ 16; pills full).
-5. No centered long paragraphs; no 14px body copy.
-6. No fake proof: every number links to chain (explorer/tx) or it
+2. No `animate-pulse`, no bouncing CTA, no scaling cards on hover.
+3. No uniform radius (pill ≠ 8px ≠ 12px ≠ panel).
+4. No centered long paragraphs; no 14px body copy.
+5. No fake proof: every number links to chain (explorer/tx) or it
    doesn't ship. No round claims, no anonymous quotes, no logo wall.
-7. No mock data presented as live: staleness gets an "as of" label,
+6. No mock data presented as live: staleness gets an "as of" label,
    always.
-8. No second filled CTA competing with the primary per viewport.
-9. No new font, no new accent, no new radius without amending this file.
-10. No product disconnect: landing tokens = app tokens; a visitor who
-    clicks through to explorer/docs must feel continuity, not a theme
-    change.
+7. No second filled CTA competing with the primary per viewport.
+8. No new font, no new accent, no new radius without amending this file.
+9. No product disconnect: landing tokens = app tokens; a visitor who
+   clicks through to explorer/docs must feel continuity, not a theme
+   change.
