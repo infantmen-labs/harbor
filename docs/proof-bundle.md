@@ -324,6 +324,29 @@ merchant), 1 request, settled at 5000:
 - Agent balance math exact end-to-end: 1,944,499,350 − 50,000 (open)
   - 45,000 (refund) = 1,944,494,350 observed.
 
+## Devnet escrow sweep (2026-10-04, 28 channels, detached on VPS)
+
+All demo/rehearsal escrows under the loop-agent payer reclaimed in one
+resumable sweep (`scripts/lib/reclaim-sweep.mjs`, two phases so all
+7200s grace clocks start together): requestClose → seal crank →
+withdrawPayer (remainder asserted per channel) → distribute (merchant
+leg asserted) → reclaim/deallocate. Final census: **0 open
+loop-agent channels** on the canonical program.
+
+- Totals asserted in-log: payer refunds 5,325,000 + merchant payouts
+  160,000 = 5,485,000 escrow drained to the unit, every leg
+  per-channel asserted (no global averaging).
+- Agent cross-check: 1,944,499,350 − 5,000 (AjJs net) + 5,325,000 −
+  ~200 shoot-dispute dust = 1,949,819,350 observed. Reconciled.
+- Sweep bugs found and fixed live: missing `withdrawPayerIx` import
+  (killed first run after seals — clocks kept ticking, resumed clean);
+  balance baselines defaulting RPC nulls to zero (one false FAILED on a
+  correct distribute — baselines now retry-then-throw); payee ATAs that
+  never existed on ancient channels (created permissionlessly);
+  empty-escrow channels close via distribute instead of refusing.
+- Includes `9tZ7iUcy` (deposit 100000, the channel the independent
+  buyer observed as "run3" and correctly skipped — payer is our key).
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past

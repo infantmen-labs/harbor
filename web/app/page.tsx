@@ -328,6 +328,28 @@ export default async function Landing() {
                 disclosed, not hidden
               </a>
             </p>
+            <p>
+              settle-then-dispute{" "}
+              <a
+                href={DOC_LINKS.review()}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline underline-offset-2"
+              >
+                proven by an independent buyer
+              </a>
+            </p>
+            <p>
+              escrow reclaim{" "}
+              <a
+                href={DOC_LINKS.proofBundle()}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline underline-offset-2"
+              >
+                26 devnet escrows closed, exact
+              </a>
+            </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <a
