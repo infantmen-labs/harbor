@@ -4,14 +4,14 @@ Fast path first (scripted, §4). Manual path after it (§5) for debugging.
 
 ## 1. Prerequisites
 
-| Tool               | Version (tested)          | Install                                                               |
-| ------------------ | ------------------------- | --------------------------------------------------------------------- |
-| Node.js | ≥22 (`.nvmrc` pins 22, the floor; 26.7 verified locally) | https://nodejs.org — a wallet dep enforces `engines: node >= 22`. No install script here (nvm/nodesource vary); `scripts/bootstrap.sh` checks the rest |
-| yarn               | 1.22.x                    | `npm i -g yarn`                                                       |
-| Rust (stable)      | 1.89                      | https://rustup.rs                                                     |
-| solana-cli (Agave) | 3.1.14                    | https://solana.com/docs/intro/installation                            |
-| anchor-cli         | 1.0.0                     | `avm install 1.0.0` via https://www.anchor-lang.com/docs/installation |
-| git, curl          | any                       | system package manager                                                |
+| Tool               | Version (tested)                                         | Install                                                                                                                                                |
+| ------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node.js            | ≥22 (`.nvmrc` pins 22, the floor; 26.7 verified locally) | https://nodejs.org — a wallet dep enforces `engines: node >= 22`. No install script here (nvm/nodesource vary); `scripts/bootstrap.sh` checks the rest |
+| yarn               | 1.22.x                                                   | `npm i -g yarn`                                                                                                                                        |
+| Rust (stable)      | 1.89                                                     | https://rustup.rs                                                                                                                                      |
+| solana-cli (Agave) | 3.1.14                                                   | https://solana.com/docs/intro/installation                                                                                                             |
+| anchor-cli         | 1.0.0                                                    | `avm install 1.0.0` via https://www.anchor-lang.com/docs/installation                                                                                  |
+| git, curl          | any                                                      | system package manager                                                                                                                                 |
 
 CI runs the same matrix (`.github/workflows/ci.yml`). Fresh machine?
 `./scripts/bootstrap.sh` installs rustup + Solana CLI 3.1.14 + anchor
@@ -124,13 +124,9 @@ on devnet it is the canonical `CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX`.
 
 ## 6. Troubleshooting
 
-- `EADDRINUSE` — a stranger owns the port. The loop script aborts
-  rather than kill it; free the port or override `RPC_URL`/`SERVER_URL`.
-- `block height exceeded` — stale blockhash under a throttled RPC;
-  SDK `sendWithRetry` covers app paths; re-run validator-adjacent scripts.
-- `anchor build` fails — check `anchor --version` (1.0.0) and that the
-  `anchor` shim, not an old global install, is on PATH.
-- Wrong chain (high slot after `--reset`) — you are talking to someone
-  else's validator; check `--url` / `RPC_URL`.
+See `docs/troubleshooting.md` (also served at `/docs/troubleshooting`)
+— symptom → cause → fix for every failure observed live, quoted
+verbatim. If your error isn't there, it is new: record the exact
+message before changing anything.
 
 Next: `CONTRIBUTING.md` (frozen zones, commit discipline, CI).

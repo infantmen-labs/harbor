@@ -1,27 +1,34 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const display = Space_Grotesk({
+// Self-hosted latin subsets (no Google Fonts CDN dependency — offline-safe
+// builds, exact weight budget). Sources: Google Fonts, SIL OFL.
+const display = localFont({
   variable: "--font-display",
-  subsets: ["latin"],
-  // Weight budget (DESIGN.md): display ships 500 only — logos use
-  // font-medium, never bold.
-  weight: ["500"],
+  src: "./fonts/space-grotesk-500.woff2",
+  weight: "500",
+  display: "swap",
 });
 
-const body = Inter({
+const body = localFont({
   variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  src: [
+    { path: "./fonts/inter-400.woff2", weight: "400" },
+    { path: "./fonts/inter-500.woff2", weight: "500" },
+  ],
+  display: "swap",
 });
 
-const mono = JetBrains_Mono({
+const mono = localFont({
   variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  src: [
+    { path: "./fonts/jetbrains-mono-400.woff2", weight: "400" },
+    { path: "./fonts/jetbrains-mono-500.woff2", weight: "500" },
+  ],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
