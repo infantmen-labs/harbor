@@ -1,11 +1,8 @@
 /**
- * Single source of truth for every project link on the landing page.
- *
- * Docs links are internal (/docs/*) — they render the repo source file
- * verbatim, so they never 404 and never drift. REPO_URL is only for the
- * GitHub buttons: it stays a placeholder until the repo is public, and
- * the landing hides those buttons while unconfigured (see
- * REPO_CONFIGURED) so no dead link ever ships. Nothing here is secret.
+ * Single source of truth for every outbound project link on the landing
+ * page. Fill in REPO_URL the moment the public repo exists — everything
+ * else derives from it. Hidden while unconfigured (see REPO_CONFIGURED)
+ * so no dead link ever ships. Nothing here is secret.
  */
 
 // TODO(user): set the public repo URL (e.g. https://github.com/ORG/harbor).
@@ -25,10 +22,11 @@ export function repoPath(path: string): string {
 }
 
 export const DOC_LINKS = {
-  receiptSchema: () => "/docs/receipt-schema",
-  uiContracts: () => "/docs/ui-contracts",
-  proofBundle: () => "/docs/proof-bundle",
-  authority: () => "/docs/authority",
-  review: () => "/docs/review",
-  deploy: () => "/docs/deploy",
+  receiptSchema: () => repoPath("docs/receipt-schema-v0.md"),
+  uiContracts: () => repoPath("docs/ui-contracts.md"),
+  proofBundle: () => repoPath("docs/proof-bundle.md"),
+  authority: () => repoPath("docs/authority.md"),
+  review: () => repoPath("docs/review.md"),
+  deploy: () => repoPath("docs/deploy.md"),
+  business: () => repoPath("docs/business.md"),
 };

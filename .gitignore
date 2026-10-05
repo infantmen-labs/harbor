@@ -13,9 +13,6 @@ test-ledger
 # local-only
 *.log
 .env
-# generated docs artifact (rebuilt by web prebuild)
-web/public/llms.txt
-
 # editor + tooling fallout (shared launch/debug configs are committed)
 .vscode/*
 !.vscode/settings.json

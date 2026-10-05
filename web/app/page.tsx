@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PROGRAM_ID, CHANNEL_PROGRAM_ID } from "@/lib/env";
 import { explorerUrl, shorten } from "@/lib/explorer";
 import {
@@ -69,12 +68,6 @@ export default async function Landing() {
               className="text-[14px] text-muted hover:text-foreground"
             >
               FAQ
-            </a>
-            <a
-              href="/docs"
-              className="text-[14px] text-muted hover:text-foreground"
-            >
-              Docs
             </a>
             <a
               href={NPM_URL}
@@ -263,9 +256,8 @@ export default async function Landing() {
               <SdkCard
                 title="Keeper adjudication"
                 body="Timeout-only decide() plus exact-offset account parsers. Run your own watchtower in a dozen lines."
-                href="/docs/keeper"
-                path="keeper/README.md"
-                internal
+                href={`${REPO_URL}/tree/master/sdk/src/adjudicate.ts`}
+                path="sdk/src/adjudicate.ts"
               />
               <SdkCard
                 title="Buyer helpers"
@@ -562,37 +554,12 @@ function SdkCard({
   body,
   href,
   path,
-  internal,
 }: {
   title: string;
   body: string;
   href: string;
   path?: string;
-  internal?: boolean;
 }) {
-  const inner = (
-    <>
-      <h3 className="font-display text-[24px] font-medium">
-        {title} {internal ? "→" : "↗"}
-      </h3>
-      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">
-        {body}
-      </p>
-      <p className="mt-3 font-mono text-[13px] text-muted">
-        {path ?? href.replace("https://", "").split("/").slice(1, 4).join("/")}
-      </p>
-    </>
-  );
-  if (internal) {
-    return (
-      <Link
-        href={href}
-        className="block rounded-[12px] border border-border bg-surface p-6 transition-colors hover:border-muted"
-      >
-        {inner}
-      </Link>
-    );
-  }
   return (
     <a
       href={href}
@@ -600,7 +567,13 @@ function SdkCard({
       rel="noreferrer"
       className="block rounded-[12px] border border-border bg-surface p-6 transition-colors hover:border-muted"
     >
-      {inner}
+      <h3 className="font-display text-[24px] font-medium">{title} ↗</h3>
+      <p className="mt-2 text-[15px] leading-[150%] text-foreground-secondary">
+        {body}
+      </p>
+      <p className="mt-3 font-mono text-[13px] text-muted">
+        {path ?? href.replace("https://", "").split("/").slice(1, 4).join("/")}
+      </p>
     </a>
   );
 }
