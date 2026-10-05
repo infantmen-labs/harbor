@@ -67,6 +67,36 @@ body {
     radial-gradient(circle at 18% 84%, rgba(49, 84, 74, 0.12), transparent 28%);
 }
 
+.harbor-hero {
+  background: #030303;
+}
+
+.harbor-hero-art {
+  background-image: linear-gradient(90deg, rgba(3, 3, 3, 0.98) 0%, rgba(3, 3, 3, 0.82) 40%, rgba(3, 3, 3, 0.2) 74%, rgba(3, 3, 3, 0.35) 100%), url('/hero-tree.png');
+  background-position: center, center right;
+  background-size: cover, cover;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+
+.harbor-hero-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 108px 100px;
+  mask-image: linear-gradient(to bottom, black 0%, black 72%, transparent 100%);
+}
+
+@media (max-width: 767px) {
+  .harbor-hero {
+    min-height: calc(100svh - 53px);
+  }
+
+  .harbor-hero-art {
+    background-position: center, 68% center;
+    background-size: cover, auto 100%;
+    opacity: 0.62;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
