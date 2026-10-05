@@ -32,10 +32,11 @@ const ix = openDisputeIx(
 export default async function Landing() {
   const bond = await getBondState();
   return (
-    <main>
+    <>
+    <main id="main">
       <nav className="sticky top-0 z-10 border-b border-border bg-background">
         <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-3 md:px-8">
-          <span className="font-display text-[15px] font-bold text-foreground">
+          <span className="font-display text-[15px] font-medium text-foreground">
             Harbor
           </span>
           <a
@@ -94,13 +95,13 @@ export default async function Landing() {
             href={NPM_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
+            className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:opacity-90"
           >
             {INSTALL_CMD} ↗
           </a>
           <a
             href="#bond"
-            className="rounded-[8px] border border-border bg-surface px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+            className="rounded-[8px] border border-border bg-surface px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium hover:bg-surface-hover"
           >
             See the live bond ↓
           </a>
@@ -108,7 +109,7 @@ export default async function Landing() {
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-[8px] border border-border px-6 py-3 font-mono text-[15px] font-medium hover:bg-surface-hover"
+            className="rounded-[8px] border border-border px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium hover:bg-surface-hover"
           >
             GitHub ↗
           </a>
@@ -261,7 +262,7 @@ export default async function Landing() {
               href={NPM_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-[8px] bg-foreground px-6 py-3 font-mono text-[15px] font-medium text-background hover:opacity-90"
+              className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:opacity-90"
             >
               {INSTALL_CMD}
             </a>
@@ -269,7 +270,7 @@ export default async function Landing() {
               href={DOC_LINKS.receiptSchema()}
               target="_blank"
               rel="noreferrer"
-              className="rounded-[8px] border border-border px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+              className="rounded-[8px] border border-border px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium hover:bg-surface-hover"
             >
               Frozen receipt schema
             </a>
@@ -390,7 +391,7 @@ export default async function Landing() {
               href={explorerUrl("address", PROGRAM_ID)}
               target="_blank"
               rel="noreferrer"
-              className="rounded-[8px] bg-foreground px-6 py-3 text-[15px] font-medium text-background hover:opacity-90"
+              className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:opacity-90"
             >
               Program on explorer ↗
             </a>
@@ -427,13 +428,13 @@ export default async function Landing() {
               href={NPM_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-[8px] bg-foreground px-6 py-3 font-mono text-[15px] font-medium text-background hover:opacity-90"
+              className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:opacity-90"
             >
               {INSTALL_CMD} ↗
             </a>
             <a
               href="#how"
-              className="rounded-[8px] border border-border bg-surface px-6 py-3 text-[15px] font-medium hover:bg-surface-hover"
+              className="rounded-[8px] border border-border bg-surface px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium hover:bg-surface-hover"
             >
               See how it works ↑
             </a>
@@ -441,9 +442,11 @@ export default async function Landing() {
         </div>
       </section>
 
+    </main>
+
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 font-mono text-[13px] text-muted md:px-8">
-          <span className="font-display text-[15px] font-bold text-foreground">
+          <span className="font-display text-[15px] font-medium text-foreground">
             Harbor
           </span>
           <a
@@ -489,7 +492,7 @@ export default async function Landing() {
           <span className="ml-auto">MIT · devnet demo funds only</span>
         </div>
       </footer>
-    </main>
+    </>
   );
 }
 
