@@ -133,11 +133,12 @@ rAF loops, no observers, no motion deps):
 
 ## 9. Imagery
 
-One image total: `public/hero-tree.avif` (dark arboreal render,
-1376×768, AVIF q32, 96KB — down from 1.6MB PNG). Served as a
-background layer under gradient masks (`harbor-hero-art`), never as
-content — decorative, `aria-hidden`, opacity 0.9 desktop / 0.62 mobile
-with repositioned crop. Within the 500KB hero ceiling.
+Motion background: `public/hero-bg.mp4` (1280w h264, no audio, 5.2s
+loop, 213KB, faststart) rendered by `HeroMedia` — muted, `playsInline`,
+`poster="/hero-tree.avif"` (instant first paint), pauses off-screen,
+static poster under reduced motion. Decorative: `aria-hidden`, no
+controls, `tabIndex -1`. Readability gradient (`.harbor-hero-shade`)
+sits above it; `hero-tree.avif` survives only as the poster.
 
 ## 10. Accepted deviations (from the original light spec)
 
