@@ -80,8 +80,14 @@ export default async function Landing() {
           </div>
         </nav>
         <section className="harbor-hero relative mx-auto flex min-h-[calc(100svh-57px)] w-full max-w-[1280px] items-center overflow-hidden border-x border-border px-5 pb-20 pt-24 md:px-12 md:pb-24 md:pt-20">
-          <div className="harbor-hero-art absolute inset-0" aria-hidden="true" />
-          <div className="harbor-hero-grid absolute inset-0" aria-hidden="true" />
+          <div
+            className="harbor-hero-art absolute inset-0"
+            aria-hidden="true"
+          />
+          <div
+            className="harbor-hero-grid absolute inset-0"
+            aria-hidden="true"
+          />
           <div className="relative z-[1] max-w-[760px]">
             <p className="flex items-center gap-3 font-mono text-[12px] font-medium uppercase tracking-[0.12em] text-muted md:text-[13px]">
               <span className="inline-block h-px w-8 bg-muted" />
@@ -91,24 +97,53 @@ export default async function Landing() {
               Bonded optimistic refunds for agent API payments.
             </h1>
             <p className="mt-8 max-w-[48ch] text-[16px] leading-[1.55] text-foreground-secondary md:text-[18px]">
-              Harbor is a bonded-refund layer for metered APIs: a Solana program,
-              a TypeScript SDK, and a keeper. Merchants post a bond, agents pay
-              through payment channels, and claims past the challenge window
-              refund automatically — plus a penalty to the backstop.
+              Harbor is a bonded-refund layer for metered APIs: a Solana
+              program, a TypeScript SDK, and a keeper. Merchants post a bond,
+              agents pay through payment channels, and claims past the challenge
+              window refund automatically — plus a penalty to the backstop.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <a href={NPM_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center rounded-full bg-foreground px-6 text-[14px] font-medium text-background hover:bg-accent hover:text-ink-bg">
+              <a
+                href={NPM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-12 items-center rounded-full bg-foreground px-6 text-[14px] font-medium text-background hover:bg-accent hover:text-ink-bg"
+              >
                 {INSTALL_CMD} ↗
               </a>
-              <a href="#bond" className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/[0.04] px-6 text-[14px] font-medium text-foreground hover:bg-white/[0.1]">
+              <a
+                href="#bond"
+                className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/[0.04] px-6 text-[14px] font-medium text-foreground hover:bg-white/[0.1]"
+              >
                 See the live bond ↓
               </a>
             </div>
           </div>
           <div className="absolute bottom-8 left-5 z-[1] flex gap-8 md:bottom-10 md:left-12 md:gap-14">
-            <div><p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">Bonded</p><p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">merchant collateral</p></div>
-            <div><p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">Onchain</p><p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">verifiable settlement</p></div>
-            <div><p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">Automatic</p><p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">timeout refunds</p></div>
+            <div>
+              <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
+                Bonded
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                merchant collateral
+              </p>
+            </div>
+            <div>
+              <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
+                Onchain
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                verifiable settlement
+              </p>
+            </div>
+            <div>
+              <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
+                Automatic
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                timeout refunds
+              </p>
+            </div>
           </div>
         </section>
 
