@@ -71,6 +71,12 @@ export default async function Landing() {
               FAQ
             </a>
             <a
+              href="/docs"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
+            >
+              Docs
+            </a>
+            <a
               href={NPM_URL}
               target="_blank"
               rel="noreferrer"
