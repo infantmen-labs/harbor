@@ -99,6 +99,8 @@ describe("server sessions", () => {
         nonce,
         expirySlot: BigInt(receipt["expirySlot"]),
         signer: merchant.publicKey,
+        mint: appCfg.mint,
+        programId: appCfg.programId,
       });
       assert.ok(
         verifyEd25519(

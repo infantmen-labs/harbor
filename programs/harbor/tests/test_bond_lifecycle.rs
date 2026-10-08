@@ -1,7 +1,8 @@
 use {
     anchor_lang::{
-        prelude::Pubkey, solana_program::instruction::Instruction, system_program,
-        AccountDeserialize, InstructionData, ToAccountMetas,
+        prelude::Pubkey,
+        solana_program::{clock::Clock, instruction::Instruction},
+        system_program, AccountDeserialize, InstructionData, ToAccountMetas,
     },
     litesvm::LiteSVM,
     litesvm_token::{CreateAssociatedTokenAccount, CreateMint, MintTo, TOKEN_ID},
@@ -235,4 +236,165 @@ fn test_bond_lifecycle() {
     assert_eq!(bound.channel, channel);
     assert_eq!(bound.bond, bond);
     assert_eq!(bound.max_spend, 250_000);
+}
+
+#[test]
+fn test_fake_vault_rejected_on_refund() {
+    // RefundUnused closes the bond around an empty vault: owner+mint+empty
+    // checks alone accept a fake empty account naming the bond PDA, so the
+    // canonical-vault gate (same as withdraw_bond) must hold here too.
+    let program_id = harbor::id();
+    let merchant = Keypair::new();
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/harbor.so");
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
+
+    let mint_addr = CreateMint::new(&mut svm, &merchant)
+        .decimals(6)
+        .send()
+        .unwrap();
+    let mint = a2p(&mint_addr);
+    let merchant_ata_addr = CreateAssociatedTokenAccount::new(&mut svm, &merchant, &mint_addr)
+        .send()
+        .unwrap();
+    let merchant_ata = a2p(&merchant_ata_addr);
+    MintTo::new(
+        &mut svm,
+        &merchant,
+        &mint_addr,
+        &merchant_ata_addr,
+        1_000_000,
+    )
+    .send()
+    .unwrap();
+
+    let bond = bond_pda(&merchant.pubkey(), &mint);
+    let token_program = a2p(&TOKEN_ID);
+    let ata_program: Pubkey = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap();
+    let (vault, _) = Pubkey::find_program_address(
+        &[bond.as_ref(), token_program.as_ref(), mint.as_ref()],
+        &ata_program,
+    );
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            program_id,
+            &harbor::instruction::RegisterMerchant {
+                sla_bps: 50,
+                challenge_slots: 150,
+            }
+            .data(),
+            harbor::accounts::RegisterMerchant {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            program_id,
+            &harbor::instruction::PostBond { amount: 500_000 }.data(),
+            harbor::accounts::PostBond {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                merchant_ata,
+                vault,
+                token_program,
+                associated_token_program: ata_program,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+
+    // Drain past the timelock so refund_unused can run at all.
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            program_id,
+            &harbor::instruction::WithdrawBond { amount: 500_000 }.data(),
+            harbor::accounts::WithdrawBond {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                merchant_ata,
+                vault,
+                token_program,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    assert_eq!(token_balance(&svm, &vault), 0);
+
+    // Fake empty vault naming the bond PDA as owner.
+    let fake = Keypair::new();
+    svm.airdrop(&fake.pubkey(), 10_000_000).unwrap();
+    let mut acc = svm.get_account(&fake.pubkey()).unwrap();
+    let mut data = vec![0u8; 165];
+    data[0..32].copy_from_slice(mint.as_ref());
+    data[32..64].copy_from_slice(bond.as_ref());
+    data[108] = 1; // Tokenkeg AccountState::Initialized
+    acc.data = data;
+    acc.owner = token_program;
+    svm.set_account(fake.pubkey(), acc).unwrap();
+
+    svm.warp_to_slot(svm.get_sysvar::<Clock>().slot + 500);
+    let r = send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            program_id,
+            &harbor::instruction::RefundUnused {}.data(),
+            harbor::accounts::RefundUnused {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                vault: fake.pubkey(),
+                merchant_ata,
+                token_program,
+            }
+            .to_account_metas(None),
+        )],
+    );
+    assert!(r.is_err());
+    assert!(r.unwrap_err().contains("InvalidVault"));
+    // Bond survives the rejected refund.
+    assert!(svm.get_account(&bond).is_some());
+
+    // Real vault closes cleanly.
+    send(
+        &mut svm,
+        &merchant,
+        vec![Instruction::new_with_bytes(
+            program_id,
+            &harbor::instruction::RefundUnused {}.data(),
+            harbor::accounts::RefundUnused {
+                merchant: merchant.pubkey(),
+                bond,
+                mint,
+                vault,
+                merchant_ata,
+                token_program,
+            }
+            .to_account_metas(None),
+        )],
+    )
+    .unwrap();
+    assert!(svm.get_account(&bond).is_none());
+    assert!(svm.get_account(&vault).is_none());
 }

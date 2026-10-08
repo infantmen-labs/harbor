@@ -358,6 +358,8 @@ fn submit(
         nonce,
         expiry_slot,
         &s.merchant.pubkey(),
+        &s.mint,
+        &harbor::id(),
     );
     let ix_sysvar: Pubkey = "Sysvar1nstructions1111111111111111111111111"
         .parse()

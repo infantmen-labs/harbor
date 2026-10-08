@@ -11,6 +11,9 @@ export interface ReceiptFields {
   nonce: bigint;
   expirySlot: bigint;
   signer: PublicKey;
+  /** v1 domain separators (appended — every v0 offset unchanged). */
+  mint: PublicKey;
+  programId: PublicKey;
 }
 
 function assertLen(b: Uint8Array, n: number, name: string): void {
@@ -21,7 +24,7 @@ function assertLen(b: Uint8Array, n: number, name: string): void {
 export function receiptMessageBytes(f: ReceiptFields): Buffer {
   assertLen(f.meterHash, 32, "meterHash");
   assertLen(f.outputHash, 32, "outputHash");
-  const out = Buffer.alloc(185);
+  const out = Buffer.alloc(249);
   let o = 0;
   f.merchant.toBuffer().copy(out, o);
   o += 32;
@@ -41,13 +44,18 @@ export function receiptMessageBytes(f: ReceiptFields): Buffer {
   o += 8;
   f.signer.toBuffer().copy(out, o);
   o += 32;
+  f.mint.toBuffer().copy(out, o);
+  o += 32;
+  f.programId.toBuffer().copy(out, o);
+  o += 32;
   return out;
 }
 
-export const RECEIPT_MESSAGE_LEN = 185;
+export const RECEIPT_MESSAGE_LEN = 249;
 
 /**
- * Byte offset of expirySlot in the 185-byte receipt message
+ * Byte offset of expirySlot in the 249-byte receipt message (unchanged
+ * from v0 — domain separators were appended after signer)
  * (merchant 32 | binding 32 | cumulative 8 | meter 32 | output 32 |
  * status 1 | nonce 8 | expiry 8 | signer 32).
  */

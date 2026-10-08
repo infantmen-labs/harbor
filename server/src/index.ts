@@ -235,6 +235,8 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
       nonce,
       expirySlot,
       signer: cfg.merchant.publicKey,
+      mint: cfg.mint,
+      programId: cfg.programId,
     });
     const signature = Buffer.from(
       signEd25519(cfg.merchant.secretKey, msg)

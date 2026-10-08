@@ -13,6 +13,7 @@ import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import {
   ATA_PROGRAM_ID,
   CHANNEL_PROGRAM_ID,
+  HARBOR_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   buildEd25519Ix,
   channelVoucherBytes,
@@ -211,6 +212,8 @@ async function main(): Promise<void> {
       nonce,
       expirySlot: BigInt(receipt["expirySlot"]),
       signer: merchant,
+      mint,
+      programId: HARBOR_PROGRAM_ID,
     });
     const ok = verifyEd25519(
       merchant,

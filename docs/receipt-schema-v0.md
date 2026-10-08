@@ -1,6 +1,9 @@
 # Harbor Receipt Schema v0 (FROZEN)
 
-Status: frozen. Any change requires a version bump to v1 plus a migration note.
+Status: frozen, superseded by `receipt-schema-v1.md` for all new
+receipts (F-8 domain separators). This file is history — do not edit
+except this pointer. Any change requires a version bump to v1 plus a
+migration note.
 Scope: one merchant, one agent, one metered API.
 
 ## HarborReceipt (Borsh, exact field order)

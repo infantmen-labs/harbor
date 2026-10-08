@@ -24,6 +24,9 @@ pub struct ReceiptMessage {
     pub nonce: u64,
     pub expiry_slot: u64,
     pub signer: Pubkey,
+    /// v1 domain separators (F-8): appended so every v0 offset is unchanged.
+    pub mint: Pubkey,
+    pub program_id: Pubkey,
 }
 
 /// Args mirror the receipt consensus layout 1:1; bundling them would
@@ -39,6 +42,8 @@ pub fn receipt_message_bytes(
     nonce: u64,
     expiry_slot: u64,
     signer: &Pubkey,
+    mint: &Pubkey,
+    program_id: &Pubkey,
 ) -> Vec<u8> {
     to_vec(&ReceiptMessage {
         merchant: *merchant,
@@ -50,6 +55,8 @@ pub fn receipt_message_bytes(
         nonce,
         expiry_slot,
         signer: *signer,
+        mint: *mint,
+        program_id: *program_id,
     })
     .unwrap()
 }
@@ -152,6 +159,8 @@ pub fn handle_submit_receipt(
         nonce,
         expiry_slot,
         &signer,
+        &ctx.accounts.bond.mint,
+        &crate::ID,
     );
     verify_ed25519_proof(&ctx.accounts.ix_sysvar.to_account_info(), &signer, &message)?;
 

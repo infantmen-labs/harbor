@@ -1,4 +1,4 @@
-use crate::{constants::*, error::HarborError, state::*};
+use crate::{constants::*, error::HarborError, mint_guard, state::*};
 use anchor_lang::{
     prelude::*,
     solana_program::{
@@ -46,6 +46,19 @@ pub fn handle_refund_unused(ctx: Context<RefundUnused>) -> Result<()> {
         .checked_add(WITHDRAW_DELAY_SLOTS)
         .ok_or(HarborError::ArithmeticOverflow)?;
     require!(Clock::get()?.slot > unlock, HarborError::TimelockNotPassed);
+
+    // Canonical-vault gate (matches withdraw_bond): owner+mint checks alone
+    // do not bind the protocol vault — anyone can initialize an empty
+    // token account naming the bond PDA as owner.
+    require!(
+        ctx.accounts.vault.key()
+            == mint_guard::expected_vault_key(
+                &ctx.accounts.bond.key(),
+                &ctx.accounts.token_program.key(),
+                &ctx.accounts.mint.key(),
+            ),
+        HarborError::InvalidVault
+    );
 
     // Close the empty vault ATA (Tokenkeg/Token-2022 close discriminant: 9).
     let merchant_key = ctx.accounts.merchant.key();

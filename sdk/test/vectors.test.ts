@@ -50,6 +50,8 @@ describe("receipt layout", () => {
       nonce: 7n,
       expirySlot: 999n,
       signer: P(1),
+      mint: P(5),
+      programId: P(6),
     };
     const got = receiptMessageBytes(f);
     assert.equal(got.length, RECEIPT_MESSAGE_LEN);
@@ -77,6 +79,9 @@ describe("receipt layout", () => {
         return b;
       })(),
       Buffer.alloc(32, 1),
+      // v1 domain separators (appended — v0 prefix above unchanged).
+      Buffer.alloc(32, 5),
+      Buffer.alloc(32, 6),
     ]);
     assert.ok(got.equals(exp));
   });
@@ -93,6 +98,8 @@ describe("receipt layout", () => {
       nonce: 1n,
       expirySlot: 100n,
       signer: new PublicKey(kp.publicKey),
+      mint: P(5),
+      programId: P(6),
     });
     const sig = signEd25519(kp.secretKey, msg);
     assert.ok(verifyEd25519(new PublicKey(kp.publicKey), msg, sig));
@@ -582,6 +589,8 @@ describe("receipt expiry readers", () => {
     nonce: 7n,
     expirySlot: 999n,
     signer: P(1),
+    mint: P(5),
+    programId: P(6),
   };
 
   it("reads back the encoded expiry slot", () => {

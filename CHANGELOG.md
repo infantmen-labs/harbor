@@ -11,6 +11,15 @@ workspaces version together. Full history: `git log`.
   open-slot window); `reclaim-proof.mjs` takes `TREASURY_OWNER` (env);
   mapping method + probe costs recorded in `docs/upstream-pin.md` and
   `docs/proof-bundle.md`.
+- Security: `refund_unused` enforces the canonical-vault gate like every
+  other fund path (F-7); `test_fake_vault_rejected_on_refund` covers it.
+- Receipt schema v1: `mint` + `program_id` appended (185 → 249 bytes,
+  all v0 offsets unchanged); see `docs/receipt-schema-v1.md` migration
+  note. Server/agent/SDK/tests moved together.
+- `test_adversarial_settle_then_dispute`: merchant settles an
+  unrendered-service voucher then distributes (escrow captured), while
+  the bond dispute still resolves per math — F-1 codified as tested
+  behavior, not shadow.
 
 ## 0.6.0 (SDK + server + agent + keeper; program/web/log unchanged)
 
