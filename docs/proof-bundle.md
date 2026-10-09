@@ -347,6 +347,43 @@ loop-agent channels** on the canonical program.
 - Includes `9tZ7iUcy` (deposit 100000, the channel the independent
   buyer observed as "run3" and correctly skipped — payer is our key).
 
+## Security upgrade: vault gate + receipt v1 (live on devnet, 2026-10-09)
+
+- Reason: hostile audit F-7 (`refund_unused` lacked the canonical-vault
+  gate) and F-8 (receipt message without mint/program domain
+  separators). Both fixed; receipt schema v1 appends `mint` +
+  `program_id` (185 → 249 bytes, all v0 offsets unchanged — see
+  `docs/receipt-schema-v1.md` migration note).
+- Binary 370,464 → 393,920 bytes. Programdata already sized 443,485
+  (no extension, no funding needed). Upgrade sig
+  `5v73CDpfWpjL4RvP2pgrk7Ns5vcp9V3961NFdVhoSMkzjVFm92Jit1pczeJ7YhSDHQCAw2r1mrMPPLS3wqQWk7L1`
+  (byte-verified head+tail against the local build; deployed slot
+  508925008). Buffer closed after. IDL unchanged (no ix/account/error
+  shape changed — verified by diff).
+- Upgrade friction, honestly recorded: the stock finalize path
+  simulation-failed in a retry loop (truncated loader message, root
+  cause undetermined — authorities, sizes, and the ix itself all
+  verified correct afterwards); a direct `Upgrade` ix simulated clean
+  and confirmed first try. Helius simulation flakiness under load is
+  the leading suspect, not the instruction.
+- Re-proof, local: full `./scripts/local-loop.sh --fast` LOOP PASS on
+  the new binary (bond 496,000 / treasury 4,100 exact).
+- Re-proof, devnet (hosted server, redeployed first — old 185-byte
+  receipts would fail submit): happy channel
+  `7yNScsp7UcdcwrXpVBMWuVuwkgsNUHgBsXE4mBjuNMp` (3 requests, settled,
+  all 3 v1 receipts confirmed onchain) → fail channel
+  `Gn4d95vFktGoCGSEauyQpPWEovj7W1GgFxTCSeDaYv3H` → dispute
+  `EZb6PF9kytWFXjVWU5G82K1Sqd9MFFTxeQAxDM6TcB8U` (claim 2,000, open sig
+  `5pbjR2rYLku64z2vdXq1ZuQGW1eSk6zLobcHN9r3ZBWwefFJfLf78oRySFvjyC7CdtGpyNHNfayzo6LegvPFeqvP`).
+  The always-on VPS keeper resolved it unprompted (`resolved=1`,
+  21:33 UTC): dispute closed, bond 463,000 → 459,000, treasury →
+  42,025 (+4,100). A manual keeper run minutes later correctly found
+  nothing (`resolved=0 pending=0`).
+- New LiteSVM coverage in this build: `test_fake_vault_rejected_on_refund`
+  and `test_adversarial_settle_then_dispute` (adversarial settle +
+  distribute captured the escrow while the bond dispute resolved per
+  math — F-1 codified as tested behavior).
+
 ## Notes
 
 - This validator ran without transaction-history retention, so past
