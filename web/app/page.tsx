@@ -467,6 +467,12 @@ export default async function Landing() {
               >
                 See how it works ↑
               </a>
+              <a
+                href="/docs#endpoint"
+                className="rounded-[8px] border border-border bg-surface px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium hover:bg-surface-hover"
+              >
+                Live demo endpoint →
+              </a>
             </div>
           </div>
         </section>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CodeBlock } from "./code-block";
+import { LiveEndpoint } from "./live-endpoint";
 
 export const metadata: Metadata = {
   title: "Harbor docs — integrate the SDK",
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
 };
 
 const SECTIONS = [
+  { id: "endpoint", label: "Live endpoint" },
   { id: "install", label: "Install" },
   { id: "gate", label: "1 · Gate on collateral" },
   { id: "open", label: "2 · Open a channel" },
@@ -82,6 +84,10 @@ export default function DocsHome() {
         </nav>
 
         <div className="grid min-w-0 gap-16">
+          <Section id="endpoint" eyebrow="Try it" title="Live demo merchant">
+            <LiveEndpoint />
+          </Section>
+
           <Section id="install" eyebrow="Setup" title="Install">
             <p>
               Two packages. The buyer keypair is any funded Solana keypair — it
