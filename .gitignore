@@ -12,7 +12,10 @@ test-ledger
 .surfpool
 # local-only
 *.log
+*.jsonl
+*.tgz
 .env
+.env.local
 # editor + tooling fallout (shared launch/debug configs are committed)
 .vscode/*
 !.vscode/settings.json
