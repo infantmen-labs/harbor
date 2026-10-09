@@ -26,29 +26,190 @@
 }
 
 :root {
-  --harbor-background: #f5f5fa;
-  --harbor-background-secondary: #ffffff;
-  --harbor-surface: #ffffff;
-  --harbor-surface-hover: #f0f0f6;
-  --harbor-foreground: #101014;
-  --harbor-foreground-secondary: #373642;
-  --harbor-muted: #626070;
-  --harbor-border: #d9d8e3;
-  --harbor-border-subtle: #e7e6ee;
-  --harbor-accent: #0f9d7e;
-  --harbor-accent-hover: #0b7d64;
-  --harbor-success: #0f9d7e;
-  --harbor-warning: #d99b00;
-  --harbor-warning-bg: #fff2cf;
-  --harbor-error: #c93a2e;
-  --harbor-error-bg: #fdecea;
-  --harbor-ink-inverse: #e6edf3;
-  --harbor-ink-bg: #101014;
+  --harbor-background: #08090b;
+  --harbor-background-secondary: #0d0f12;
+  --harbor-surface: #111419;
+  --harbor-surface-hover: #181c21;
+  --harbor-foreground: #f2f3f0;
+  --harbor-foreground-secondary: #a6aba8;
+  --harbor-muted: #747b78;
+  --harbor-border: #252a2e;
+  --harbor-border-subtle: #1a1e22;
+  --harbor-accent: #8fe0c6;
+  --harbor-accent-hover: #b8f3df;
+  --harbor-success: #8fe0c6;
+  --harbor-warning: #d8ad68;
+  --harbor-warning-bg: #2c2417;
+  --harbor-error: #ed8b83;
+  --harbor-error-bg: #301918;
+  --harbor-ink-inverse: #e9eeeb;
+  --harbor-ink-bg: #050606;
+}
+
+html {
+  background: var(--harbor-background);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--harbor-background);
+  background: radial-gradient(
+      circle at 12% 18%,
+      rgba(143, 224, 198, 0.045),
+      transparent 22rem
+    ),
+    radial-gradient(
+      circle at 88% 62%,
+      rgba(89, 130, 190, 0.035),
+      transparent 28rem
+    ),
+    var(--harbor-background);
   color: var(--harbor-foreground);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  opacity: 0.18;
+  background-image: radial-gradient(
+    rgba(242, 243, 240, 0.45) 0.5px,
+    transparent 0.5px
+  );
+  background-size: 5px 5px;
+  mask-image: linear-gradient(to bottom, black, transparent 75%);
+}
+
+.harbor-scroll-reveal {
+  animation: harbor-rise linear both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 24%;
+}
+
+@keyframes harbor-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes harbor-scan {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  15%,
+  75% {
+    opacity: 0.35;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.harbor-grid {
+  background-image: linear-gradient(
+      rgba(143, 224, 198, 0.055) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(143, 224, 198, 0.055) 1px, transparent 1px);
+  background-size: 108px 108px;
+}
+
+.harbor-glow {
+  background: radial-gradient(
+      circle at 78% 38%,
+      rgba(87, 158, 137, 0.15),
+      transparent 34%
+    ),
+    radial-gradient(circle at 18% 84%, rgba(49, 84, 74, 0.12), transparent 28%);
+}
+
+.harbor-hero {
+  background: #030303;
+}
+
+.harbor-hero-shade {
+  background-image: linear-gradient(
+      90deg,
+      rgba(3, 3, 3, 0.72) 0%,
+      rgba(3, 3, 3, 0.55) 40%,
+      rgba(3, 3, 3, 0.25) 74%,
+      rgba(3, 3, 3, 0.35) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(3, 3, 3, 0.2) 0%,
+      transparent 40%,
+      rgba(3, 3, 3, 0.6) 100%
+    );
+}
+
+.harbor-hero-grid {
+  overflow: hidden;
+  background-image: linear-gradient(
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 108px 100px;
+  mask-image: linear-gradient(to bottom, black 0%, black 72%, transparent 100%);
+}
+
+.harbor-hero-grid::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(143, 224, 198, 0.16),
+    transparent
+  );
+  animation: harbor-scan 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .harbor-scroll-reveal,
+  .harbor-hero-grid::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .harbor-hero {
+    min-height: calc(100svh - 53px);
+  }
+}
+
+@media (max-width: 767px) {
+  nav a[href*="npm"] {
+    margin-left: auto;
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  section[id] {
+    scroll-margin-top: 4.5rem;
+  }
+
+  pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* Designed focus ring (DESIGN.md §5): 2px accent clears 3:1 against

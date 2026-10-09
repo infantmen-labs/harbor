@@ -9,6 +9,7 @@ import {
 } from "@/lib/site";
 import { getBondState } from "@/lib/bond";
 import { Faq } from "./faq";
+import { HeroMedia } from "./hero-media";
 
 const SNIPPET = `import {
   bondPda, openChannelIx, receiptMessageBytes, verifyEd25519,
@@ -40,99 +41,126 @@ export default async function Landing() {
   return (
     <>
       <main id="main">
-        <nav className="sticky top-0 z-10 border-b border-border bg-background">
-          <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-3 md:px-8">
+        <nav className="sticky top-0 z-10 border-b border-white/[0.08] bg-[#030303]/90 backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-[1280px] items-center gap-x-6 px-5 py-4 md:px-12">
             <span className="font-display text-[15px] font-medium text-foreground">
               Harbor
             </span>
             <a
               href="#how"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               How
             </a>
             <a
               href="#sdk"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               SDK
             </a>
             <a
               href="#evidence"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               Evidence
             </a>
             <a
               href="#faq"
-              className="text-[14px] text-muted hover:text-foreground"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
             >
               FAQ
+            </a>
+            <a
+              href="/docs"
+              className="hidden text-[13px] text-muted transition-colors hover:text-foreground sm:inline"
+            >
+              Docs
             </a>
             <a
               href={NPM_URL}
               target="_blank"
               rel="noreferrer"
-              className="ml-auto rounded-[8px] bg-foreground px-4 py-2 text-[14px] font-medium text-background hover:opacity-90"
+              className="ml-auto rounded-[8px] bg-foreground px-4 py-2 text-[14px] font-medium text-background hover:bg-accent hover:text-ink-bg"
             >
               {INSTALL_CMD}
             </a>
           </div>
         </nav>
-        <section className="mx-auto w-full max-w-[1280px] px-5 pb-16 pt-20 md:px-8 md:pb-24 md:pt-28">
-          <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
-            Developer infrastructure for bonded API payments
-          </p>
-          <h1 className="mt-4 max-w-[16ch] font-display text-[48px] font-medium leading-[100%] tracking-[-0.02em] md:text-[88px]">
-            Bonded optimistic refunds for agent API payments.
-          </h1>
-          <p className="mt-6 max-w-[52ch] text-[17px] leading-[150%] text-foreground-secondary md:text-[18px]">
-            Harbor is a bonded-refund layer for metered APIs: a Solana program,
-            a TypeScript SDK, and a keeper. Merchants post a bond, agents pay
-            through payment channels, and claims past the challenge window
-            refund automatically — plus a penalty to the backstop.
-          </p>
-          <p className="mt-3 max-w-[52ch] text-[14px] leading-[150%] text-muted">
-            Caveat, stated plainly: failed-voucher escrow still settles upstream
-            — the bond covers the rebate leg, not the payment leg.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a
-              href={NPM_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:opacity-90"
-            >
-              {INSTALL_CMD} ↗
-            </a>
-            <a
-              href="#bond"
-              className="rounded-[8px] border border-border bg-surface px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium hover:bg-surface-hover"
-            >
-              See the live bond ↓
-            </a>
-            {REPO_CONFIGURED && (
+        <section className="harbor-hero relative mx-auto flex min-h-[calc(100svh-57px)] w-full max-w-[1280px] items-center overflow-hidden border-x border-border px-5 pb-20 pt-24 md:px-12 md:pb-24 md:pt-20">
+          <HeroMedia />
+          <div
+            className="harbor-hero-shade absolute inset-0"
+            aria-hidden="true"
+          />
+          <div
+            className="harbor-hero-grid absolute inset-0"
+            aria-hidden="true"
+          />
+          <div className="relative z-[1] max-w-[760px]">
+            <p className="flex items-center gap-3 font-mono text-[12px] font-medium uppercase tracking-[0.12em] text-muted md:text-[13px]">
+              <span className="inline-block h-px w-8 bg-muted" />
+              Developer infrastructure for bonded API payments
+            </p>
+            <h1 className="mt-7 max-w-[12ch] font-display text-[52px] font-medium leading-[0.94] tracking-[-0.045em] text-foreground md:text-[84px] lg:text-[96px]">
+              Bonded optimistic refunds for agent API payments.
+            </h1>
+            <p className="mt-8 max-w-[48ch] text-[16px] leading-[1.55] text-foreground-secondary md:text-[18px]">
+              Harbor is a bonded-refund layer for metered APIs: a Solana
+              program, a TypeScript SDK, and a keeper. Merchants post a bond,
+              agents pay through payment channels, and claims past the challenge
+              window refund automatically — plus a penalty to the backstop.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
               <a
-                href={REPO_URL}
+                href={NPM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] border border-border px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium hover:bg-surface-hover"
+                className="inline-flex min-h-12 items-center rounded-full bg-foreground px-6 text-[14px] font-medium text-background transition-colors duration-200 hover:bg-accent hover:text-ink-bg"
               >
-                GitHub ↗
+                {INSTALL_CMD} ↗
               </a>
-            )}
+              <a
+                href="#bond"
+                className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-white/[0.04] px-6 text-[14px] font-medium text-foreground transition-colors duration-200 hover:bg-white/[0.1]"
+              >
+                See the live bond ↓
+              </a>
+            </div>
           </div>
-          <div className="mt-6 max-w-[560px] overflow-x-auto rounded-[12px] border border-border bg-ink-bg p-4">
-            <p className="font-mono text-[14px] text-ink-inverse">
-              <span className="opacity-50">$ </span>
-              {INSTALL_CMD}
-            </p>
+        </section>
+
+        <section className="border-b border-border">
+          <div className="mx-auto flex w-full max-w-[1280px] flex-wrap gap-x-14 gap-y-8 px-5 py-12 md:px-12">
+            <div>
+              <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
+                Bonded
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                merchant collateral
+              </p>
+            </div>
+            <div>
+              <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
+                Onchain
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                verifiable settlement
+              </p>
+            </div>
+            <div>
+              <p className="font-display text-[28px] tracking-[-0.04em] text-foreground md:text-[34px]">
+                Automatic
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted">
+                timeout refunds
+              </p>
+            </div>
           </div>
         </section>
 
         <section
           id="bond"
-          className="border-y border-border bg-background-secondary"
+          className="harbor-scroll-reveal border-y border-border bg-background-secondary"
         >
           <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
             <BondMetric
@@ -175,7 +203,7 @@ export default async function Landing() {
           </p>
         </section>
 
-        <section className="border-b border-border bg-background-secondary">
+        <section className="harbor-scroll-reveal border-b border-border bg-background-secondary">
           <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-8 px-5 py-12 md:grid-cols-4 md:px-8">
             <HowMetric label="Claim 2000" value="Refund 1900 + burn 4000" />
             <HowMetric label="Reserve lock" value="6000 — exactly 3×" />
@@ -186,7 +214,7 @@ export default async function Landing() {
 
         <section
           id="how"
-          className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24"
+          className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24"
         >
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Integrate in an afternoon
@@ -224,9 +252,9 @@ export default async function Landing() {
 
         <section
           id="sdk"
-          className="border-y border-border bg-background-secondary"
+          className="harbor-scroll-reveal border-y border-border bg-background-secondary"
         >
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+          <div className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
             <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
               What ships in the SDK
             </p>
@@ -271,7 +299,7 @@ export default async function Landing() {
                 href={NPM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:opacity-90"
+                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
               >
                 {INSTALL_CMD}
               </a>
@@ -285,7 +313,7 @@ export default async function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+        <section className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Cost model
           </p>
@@ -314,16 +342,18 @@ export default async function Landing() {
 
         <section
           id="evidence"
-          className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
+          className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 pb-20 pt-16 md:px-8 md:pt-24 md:pb-28"
         >
-          <div className="rounded-[16px] border border-border bg-surface p-6 md:p-10">
+          <div className="border border-white/[0.1] bg-surface p-5 md:p-10">
             <h2 className="font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
               Built for the adversarial case first.
             </h2>
             <p className="mt-3 max-w-[60ch] text-[16px] text-foreground-secondary">
               Every other agent-payments demo shows the happy path. Harbor
               starts with the failure: kill the API mid-job and watch the bond
-              make the agent whole.
+              pay its side bet — 95% of the locked claim back, 2x burned from
+              the bond. The upstream escrow settles to the merchant regardless;
+              the bond never touches it. Two pools, stated plainly.
             </p>
             <div className="mt-6 grid gap-3 font-mono text-[13px] text-muted md:grid-cols-2">
               <p>
@@ -390,7 +420,7 @@ export default async function Landing() {
                 href={explorerUrl("address", PROGRAM_ID)}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:opacity-90"
+                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
               >
                 Program on explorer ↗
               </a>
@@ -400,7 +430,7 @@ export default async function Landing() {
 
         <section
           id="faq"
-          className="mx-auto w-full max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28"
+          className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 pb-20 md:px-8 md:pb-28"
         >
           <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-muted">
             Objections, answered
@@ -413,8 +443,8 @@ export default async function Landing() {
           </div>
         </section>
 
-        <section className="border-t border-border bg-background-secondary">
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-16 md:px-8 md:py-24">
+        <section className="harbor-scroll-reveal border-t border-border bg-background-secondary">
+          <div className="harbor-scroll-reveal mx-auto w-full max-w-[1280px] px-5 py-14 md:px-12 md:py-24">
             <h2 className="max-w-[20ch] font-display text-[32px] font-medium tracking-[-0.01em] md:text-[40px]">
               Bond your first merchant endpoint this afternoon.
             </h2>
@@ -427,7 +457,7 @@ export default async function Landing() {
                 href={NPM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:opacity-90"
+                className="rounded-[8px] bg-foreground px-6 py-3 min-h-[48px] inline-flex items-center font-mono text-[15px] font-medium text-background hover:bg-accent hover:text-ink-bg"
               >
                 {INSTALL_CMD} ↗
               </a>
@@ -443,7 +473,7 @@ export default async function Landing() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 font-mono text-[13px] text-muted md:px-8">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-col items-start gap-4 px-5 py-7 font-mono text-[12px] text-muted sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 md:px-12">
           <span className="font-display text-[15px] font-medium text-foreground">
             Harbor
           </span>
