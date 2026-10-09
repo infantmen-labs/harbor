@@ -266,19 +266,19 @@ export default async function Landing() {
               <SdkCard
                 title="PDA helpers"
                 body="bondPda · bindingPda · disputePda · receiptPda · treasuryPda. Every address is derivable offline — no RPC call to start."
-                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/pda.d.ts"
+                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.7.0/dist/src/pda.d.ts"
                 path="sdk/src/pda.ts"
               />
               <SdkCard
                 title="Instruction builders"
                 body="register · post / top-up / withdraw · bind · openDispute · resolveTimeout. Typed args, correct account ordering, no Anchor client needed."
-                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/harbor-ix.d.ts"
+                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.7.0/dist/src/harbor-ix.d.ts"
                 path="sdk/src/harbor-ix.ts"
               />
               <SdkCard
                 title="Receipt codec + verification"
-                body="185-byte Borsh receipt layout (frozen), ed25519 sign/verify, upstream voucher bytes. The same bytes the program checks."
-                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/receipt.d.ts"
+                body="249-byte v1 receipt layout (mint + program domain separators; all v0 offsets unchanged), ed25519 sign/verify, upstream voucher bytes. The same bytes the program checks."
+                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.7.0/dist/src/receipt.d.ts"
                 path="sdk/src/receipt.ts"
               />
               <SdkCard
@@ -290,7 +290,7 @@ export default async function Landing() {
               <SdkCard
                 title="Buyer helpers"
                 body="suggestClaimSpend sizes the safe claim from chain; assertVoucherCoversQuote enforces voucher ≥ quote. Upstream channel builders included."
-                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.6.0/dist/src/buyer.d.ts"
+                href="https://unpkg.com/@infantmen-labs/harbor-sdk@0.7.0/dist/src/buyer.d.ts"
                 path="sdk/src/buyer.ts"
               />
             </div>

@@ -60,7 +60,7 @@ export default function DocsHome() {
         Every snippet below typechecks against
         <span className="font-mono text-[15px]">
           {" "}
-          @infantmen-labs/harbor-sdk@0.6.0
+          @infantmen-labs/harbor-sdk@0.7.0
         </span>{" "}
         and the read paths run live against devnet.
       </p>

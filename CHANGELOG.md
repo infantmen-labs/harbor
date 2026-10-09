@@ -13,13 +13,19 @@ workspaces version together. Full history: `git log`.
   `docs/proof-bundle.md`.
 - Security: `refund_unused` enforces the canonical-vault gate like every
   other fund path (F-7); `test_fake_vault_rejected_on_refund` covers it.
+
+## 0.7.0 (SDK + server + agent; keeper/web unchanged; program = v1 binary live on devnet)
+
 - Receipt schema v1: `mint` + `program_id` appended (185 → 249 bytes,
   all v0 offsets unchanged); see `docs/receipt-schema-v1.md` migration
-  note. Server/agent/SDK/tests moved together.
+  note. Server/agent/SDK moved together — buyers pass the two new
+  fields. Independent buyer migrated + re-proven live (3/3 v1 receipts
+  onchain, eighth consecutive exact 95%/2x settlement).
 - `test_adversarial_settle_then_dispute`: merchant settles an
   unrendered-service voucher then distributes (escrow captured), while
   the bond dispute still resolves per math — F-1 codified as tested
   behavior, not shadow.
+- Live on npm; dashboard SDK cards + install snippet re-pinned.
 
 ## 0.6.0 (SDK + server + agent + keeper; program/web/log unchanged)
 
