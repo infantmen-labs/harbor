@@ -79,4 +79,6 @@ merchant server + keeper only — this page is the only web deploy doc).
 3. Deploy. `/api/*` rewrites to the server are baked at build time —
    the backend needs its public URL first, so deploy the server
    before the web app; if the server URL ever changes, update the var
-   and redeploy web.
+   and redeploy web. The web `build` script compiles the SDK workspace
+   first, so no root-level build step is needed regardless of the
+   Root Directory setting.
