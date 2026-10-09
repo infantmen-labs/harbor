@@ -351,7 +351,9 @@ export default async function Landing() {
             <p className="mt-3 max-w-[60ch] text-[16px] text-foreground-secondary">
               Every other agent-payments demo shows the happy path. Harbor
               starts with the failure: kill the API mid-job and watch the bond
-              make the agent whole.
+              pay its side bet — 95% of the locked claim back, 2x burned from
+              the bond. The upstream escrow settles to the merchant regardless;
+              the bond never touches it. Two pools, stated plainly.
             </p>
             <div className="mt-6 grid gap-3 font-mono text-[13px] text-muted md:grid-cols-2">
               <p>
