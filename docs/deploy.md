@@ -77,29 +77,29 @@ sh -c 'echo "$OPERATOR_KEYPAIR_B64" | base64 -d > /tmp/operator.json && OPERATOR
 `HARBOR_PROGRAM_ID` and `UPSTREAM_PROGRAM_ALLOWLIST` default to the
 correct devnet addresses; set them explicitly only if the programs move.
 
-## 3. Server + keeper (VPS, alternative to Railway)
+## 3. Server + keeper (self-hosted VPS, alternative to Railway)
 
-Live on Ubuntu 22.04 (user `harbor`, Node 22, code at `/opt/harbor` from
-`git archive HEAD` — tracked files only, secrets never in the tree):
+Any recent Ubuntu/Debian host with Node ≥22 (wallet-standard dep
+engines gate). Paths below are examples — substitute your own layout;
+ship code with `git archive HEAD` (tracked files only, secrets never
+in the tree):
 
-- Secrets in `/etc/harbor/` (`harbor:harbor`, `600`): `merchant.json`,
-  `operator.json`, `server.env`, `keeper.env`. Key envs: `PORT=3100`
-  (3000 is taken by another app on the box), `RPC_URL`, `MINT`,
-  `PRICE_PER_TOKEN=10`, `KILL_TOKEN`, `UPSTREAM_PROGRAM_ALLOWLIST`,
-  `STORE_PATH=/var/lib/harbor/store.json` (server), `MODE=live`,
-  `POLL_MS=30000`, `LOG_PATH=/var/lib/harbor/keeper.jsonl` (keeper).
+- Secrets in a root-only env dir (e.g. `/etc/harbor/`, mode `600`):
+  `merchant.json`, `operator.json`, `server.env`, `keeper.env`. Key
+  envs: `PORT` (default 3000 — pick any free port), `RPC_URL`,
+  `MINT`, `PRICE_PER_TOKEN=10`, `KILL_TOKEN`,
+  `UPSTREAM_PROGRAM_ALLOWLIST`, `STORE_PATH` (server, persistent
+  path), `MODE=live`, `POLL_MS`, `LOG_PATH` (keeper, persistent path).
+  Run services as a dedicated non-root user.
 - systemd units `harbor-server` + `harbor-keeper` (`Restart=always`,
-  enabled; both survive reboot — verified).
-- Firewall: `ufw` allow 22/80/443 only. Caddy already serves another
-  app — do NOT touch `/etc/caddy/Caddyfile`; public API needs a NEW
-  domain with DNS pointing here, then append:
-  `api.<domain> { reverse_proxy 127.0.0.1:3100 }` (Caddy gets TLS
-  automatically). Until then the API is loopback-only; reach it via
-  `ssh -L 3100:127.0.0.1:3100 ubuntu@<vps>` for tests/demos.
-- Redeploys: `git archive HEAD` → extract to `/opt/harbor` →
-  `yarn install --frozen-lockfile && yarn build` →
-  `systemctl restart harbor-server harbor-keeper`. VPS needs Node ≥22
-  (wallet-standard dep engines gate).
+  enabled; verify with a reboot test).
+- Firewall: allow 22/80/443 only. Put a TLS reverse proxy in front
+  for the public API (e.g. Caddy with a domain whose DNS points at
+  the box: `api.<domain> { reverse_proxy 127.0.0.1:<port> }`). Until
+  then the API is loopback-only; reach it via an SSH tunnel
+  (`ssh -L <port>:127.0.0.1:<port> <user>@<host>`) for tests/demos.
+- Redeploys: `git archive HEAD` → extract → `yarn install
+--frozen-lockfile && yarn build` → restart both units.
 - Keeper startup log redacts the RPC query string (hosted keys live
   there). If a key ever hits journals, rotate it in the Helius
   dashboard + both consumers (`/etc/harbor/server.env`,
