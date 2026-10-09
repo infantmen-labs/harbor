@@ -7,10 +7,12 @@ into its `/api` proxy at build time.
 
 Live deployment record (fill in as you go):
 
-| Service          | URL                                       |
-| ---------------- | ----------------------------------------- |
-| Server (Railway) | _pending_                                 |
-| Keeper (Railway) | runs inside Railway, no public URL needed |
+| Service          | URL                                                                               |
+| ---------------- | --------------------------------------------------------------------------------- |
+| Server (Railway) | _pending_ (VPS is the live backend, §3)                                           |
+| Keeper (Railway) | runs inside Railway, no public URL needed                                         |
+| Server (VPS, §3) | loopback-only; public via tunnel origin, fronted by the site's `/api/*` (see §3)  |
+| Keeper (VPS, §3) | runs on VPS, no public URL needed                                                 |
 
 Chain artifacts (devnet):
 
@@ -98,6 +100,18 @@ in the tree):
   the box: `api.<domain> { reverse_proxy 127.0.0.1:<port> }`). Until
   then the API is loopback-only; reach it via an SSH tunnel
   (`ssh -L <port>:127.0.0.1:<port> <user>@<host>`) for tests/demos.
+- Public origin (current mechanism): a Cloudflare quick tunnel,
+  outbound-only so no firewall ports open. Install `cloudflared`, run
+  `cloudflared tunnel --url http://127.0.0.1:<port> --no-autoupdate`
+  as the dedicated user under systemd (`cloudflared-harbor`,
+  `Restart=always`, enabled). The site build takes this origin as
+  `NEXT_PUBLIC_SERVER_URL` and fronts it at its own `/api/*` — visitors
+  never see the tunnel hostname. Caveat: quick-tunnel hostnames change
+  when the tunnel restarts — re-fetch with
+  `journalctl -u cloudflared-harbor | grep -oE 'https://[A-Za-z0-9.-]+\.trycloudflare\.com'`,
+  update the web env var, and redeploy web (the rewrite target bakes at
+  build time). Stable upgrades, both drop-in: a named tunnel (one-time
+  Cloudflare login) or `api.<domain>` via Caddy.
 - Redeploys: `git archive HEAD` → extract → `yarn install
 --frozen-lockfile && yarn build` → restart both units.
 - Keeper startup log redacts the RPC query string (hosted keys live

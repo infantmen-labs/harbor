@@ -3,8 +3,8 @@
 You need Node 22+, nothing else — no repo clone, no validator, no anchor.
 Steps 1–2 below read the live devnet program directly. Steps 3–5 buy
 against a merchant server: run your own (`server/README.md`) or point
-at a deployed one — there is no public demo server yet (see
-[Deploy to production](./deploy)).
+at a deployed one — the demo site exposes the live merchant at its
+`/api/*` routes (same API, site domain; see [Deploy to production](./deploy)).
 
 Live devnet endpoints (also in [Deploy to production](./deploy)):
 
