@@ -6,7 +6,7 @@ import {
 } from "node:http";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
-  createAssociatedTokenAccountInstruction,
+  createAssociatedTokenAccountIdempotentInstructionWithDerivation,
   createTransferInstruction,
 } from "@solana/spl-token";
 import {
@@ -348,7 +348,6 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {  async
       throw httpErr(400, "cannot drip to the faucet");
     const connection = conn ?? connectionFor(cfg);
     const ata = ataFor(to, cfg.mint);
-    const faucetAta = ataFor(faucet.publicKey, cfg.mint);
     const existing = await connection
       .getTokenAccountBalance(ata)
       .then((b) => BigInt(b.value.amount))
@@ -365,28 +364,46 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {  async
       (ts) => now - ts < 86_400_000
     );
     if (hits.length >= ipCap) throw httpErr(429, "ip daily cap reached");
-    const pot = await connection
-      .getTokenAccountBalance(faucetAta)
-      .then((b) => BigInt(b.value.amount))
-      .catch(() => 0n);
-    if (pot < topUp) throw httpErr(503, "faucet empty");
+    // Pot discovery by owner+mint (never a hardcoded ATA): the funds may
+    // sit in any token account the faucet owns (plain or associated).
+    // Source = richest account; keep the pot consolidated.
+    type Funded = Awaited<
+      ReturnType<Connection["getParsedTokenAccountsByOwner"]>
+    >["value"][number];
+    const funded: Funded[] = await connection
+      .getParsedTokenAccountsByOwner(faucet.publicKey, { mint: cfg.mint })
+      .then((r) => r.value)
+      .catch(() => []);
+    let faucetAta: PublicKey | null = null;
+    let pot = 0n;
+    for (const a of funded) {
+      const amt = BigInt(
+        a.account.data.parsed.info.tokenAmount.amount as string
+      );
+      if (amt > pot) {
+        pot = amt;
+        faucetAta = a.pubkey;
+      }
+    }
+    if (faucetAta === null || pot < topUp)
+      throw httpErr(503, "faucet empty");
     const sol = await connection.getBalance(faucet.publicKey).catch(() => 0);
     if (sol < 10_000000) throw httpErr(503, "faucet low on SOL");
-    const ataInfo = await connection.getAccountInfo(ata);
     const buildTx = () => {
       const tx = new Transaction();
-      if (ataInfo === null) {
-        tx.add(
-          createAssociatedTokenAccountInstruction(
-            faucet.publicKey,
-            ata,
-            to,
-            cfg.mint
-          )
-        );
-      }
+      // Idempotent create covers both cases: missing ATA (created, faucet
+      // pays rent) and existing ATA (onchain no-op). allowOwnerOffCurve
+      // lets PDA owners receive too — plain wallets take the default path.
       tx.add(
-        createTransferInstruction(faucetAta, ata, faucet.publicKey, topUp)
+        createAssociatedTokenAccountIdempotentInstructionWithDerivation(
+          faucet.publicKey,
+          to,
+          cfg.mint,
+          !PublicKey.isOnCurve(to.toBuffer())
+        )
+      );
+      tx.add(
+        createTransferInstruction(faucetAta as PublicKey, ata, faucet.publicKey, topUp)
       );
       return tx;
     };

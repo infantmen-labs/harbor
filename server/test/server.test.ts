@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { AddressInfo } from "node:net";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
@@ -468,19 +468,19 @@ describe("server sessions", () => {
   });
 });
 
+
 describe("faucet", () => {
   const DRIP = 50_000000n;
   const CAP = 100_000000n;
   let base = "";
   let mint: PublicKey;
   let faucet: Keypair;
-  let faucetAta: PublicKey;
   let store: Store;
   let server: ReturnType<typeof createApp>;
   let baseCfg: Config;
   const stub = {
     balances: {} as Record<string, bigint>,
-    exists: {} as Record<string, boolean>,
+    pot: [] as Array<{ ata: string; amount: bigint }>,
     sol: 1_000_000_000,
     sent: [] as string[],
   };
@@ -506,8 +506,6 @@ describe("faucet", () => {
   before(async () => {
     mint = Keypair.generate().publicKey;
     faucet = Keypair.generate();
-    faucetAta = ataFor(faucet.publicKey, mint);
-    stub.balances[faucetAta.toBase58()] = 1_000_000000n;
     store = new Store();
     const conn = {
       getTokenAccountBalance: async (pk: PublicKey) => {
@@ -517,8 +515,17 @@ describe("faucet", () => {
           value: { amount: a.toString(), decimals: 6, uiAmount: Number(a) / 1e6 },
         };
       },
-      getAccountInfo: async (pk: PublicKey) =>
-        stub.exists[pk.toBase58()] ? { data: Buffer.alloc(0) } : null,
+      getParsedTokenAccountsByOwner: async () => ({
+        value: stub.pot.map((p) => ({
+          pubkey: new PublicKey(p.ata),
+          account: {
+            data: {
+              parsed: { info: { tokenAmount: { amount: p.amount.toString() } } },
+            },
+          },
+        })),
+      }),
+      getAccountInfo: async () => null,
       getBalance: async () => stub.sol,
       getLatestBlockhash: async () => ({
         blockhash: "11111111111111111111111111111111",
@@ -552,6 +559,14 @@ describe("faucet", () => {
     server = createApp(baseCfg, store, conn);
     await new Promise<void>((resolve) => server.listen(0, resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  beforeEach(() => {
+    stub.balances = {};
+    stub.pot = [{ ata: Keypair.generate().publicKey.toBase58(), amount: 1_000_000000n }];
+    stub.sol = 1_000_000_000;
+    stub.sent.length = 0;
+    store.faucetHits.clear();
   });
 
   after(async () => {
@@ -608,11 +623,9 @@ describe("faucet", () => {
       { "x-forwarded-for": "9.9.9.9" }
     );
     assert.equal(other.status, 200);
-    store.faucetHits.clear();
   });
 
   it("drips the full amount to an empty address and records the hit", async () => {
-    stub.sent.length = 0;
     const to = Keypair.generate().publicKey;
     const r = await post(base, "/faucet", { address: to.toBase58() });
     assert.equal(r.status, 200);
@@ -621,7 +634,6 @@ describe("faucet", () => {
     assert.equal(r.json["ata"], ataFor(to, mint).toBase58());
     assert.equal(stub.sent.length, 1);
     assert.equal(store.faucetHits.get("::ffff:127.0.0.1")?.length, 1);
-    store.faucetHits.clear();
   });
 
   it("tops up only to the lifetime cap", async () => {
@@ -630,16 +642,33 @@ describe("faucet", () => {
     const r = await post(base, "/faucet", { address: to.toBase58() });
     assert.equal(r.status, 200);
     assert.equal(r.json["amount"], (CAP - 60_000000n).toString());
-    store.faucetHits.clear();
   });
 
-  it("503s when the pot cannot cover the top-up", async () => {
-    stub.balances[faucetAta.toBase58()] = 10_000000n;
+  it("503s when no funded faucet account exists", async () => {
+    stub.pot = [];
     const r = await post(base, "/faucet", {
       address: Keypair.generate().publicKey.toBase58(),
     });
     assert.equal(r.status, 503);
-    stub.balances[faucetAta.toBase58()] = 1_000_000000n;
+  });
+
+  it("503s when the richest account cannot cover the top-up", async () => {
+    stub.pot = [{ ata: Keypair.generate().publicKey.toBase58(), amount: 10_000000n }];
+    const r = await post(base, "/faucet", {
+      address: Keypair.generate().publicKey.toBase58(),
+    });
+    assert.equal(r.status, 503);
+  });
+
+  it("sources from the richest account when several exist", async () => {
+    stub.pot = [
+      { ata: Keypair.generate().publicKey.toBase58(), amount: 10_000000n },
+      { ata: Keypair.generate().publicKey.toBase58(), amount: 700_000000n },
+    ];
+    const to = Keypair.generate().publicKey;
+    const r = await post(base, "/faucet", { address: to.toBase58() });
+    assert.equal(r.status, 200);
+    assert.equal(r.json["amount"], DRIP.toString());
   });
 
   it("503s when the faucet is low on SOL", async () => {
