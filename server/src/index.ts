@@ -6,6 +6,11 @@ import {
 } from "node:http";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
+} from "@solana/spl-token";
+import {
+  ataFor,
   bindChannelIx,
   bindingPda,
   bondPda,
@@ -36,8 +41,7 @@ function json(res: ServerResponse, code: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
-  return new Promise((resolve, reject) => {
+function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {  return new Promise((resolve, reject) => {
     let raw = "";
     req.on("data", (c) => (raw += c));
     req.on("end", () => {
@@ -52,8 +56,40 @@ function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
-export function createApp(cfg: Config, store: Store, conn?: Connection) {
-  async function ensureBinding(session: Session): Promise<void> {
+/** Status-carrying handler error; the outer catch maps it (default 400). */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly extra?: Record<string, unknown>
+  ) {
+    super(message);
+  }
+}
+
+function httpErr(
+  status: number,
+  message: string,
+  extra?: Record<string, unknown>
+): HttpError {
+  return new HttpError(status, message, extra);
+}
+
+/**
+ * Client IP for faucet rate-limiting. Behind the site proxy every caller
+ * shares the edge egress, so the first x-forwarded-for hop (client-set,
+ * fine for limiting — never for auth) wins; direct callers fall back to
+ * the socket address.
+ */
+export function clientIp(req: IncomingMessage): string {
+  const fwd = req.headers["x-forwarded-for"];
+  const first = Array.isArray(fwd) ? fwd[0] : fwd?.split(",")[0]?.trim();
+  return first !== undefined && first !== ""
+    ? first
+    : req.socket.remoteAddress || "unknown";
+}
+
+export function createApp(cfg: Config, store: Store, conn?: Connection) {  async function ensureBinding(session: Session): Promise<void> {
     if (cfg.skipChain) return;
     const connection = conn ?? connectionFor(cfg);
     const [binding] = bindingPda(session.channel);
@@ -289,6 +325,83 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
     };
   }
 
+  /**
+   * tUSDC drip faucet. The mint is closed (no mint authority), so this
+   * spends a pre-funded `cfg.faucet` balance — tops the address UP TO
+   * `faucetLifetimeCap` lifetime (never a flat re-drip), gated by a
+   * per-IP rolling-24h cap and a pot/SOL guard. Null faucet = 503.
+   */
+  async function handleFaucet(body: Record<string, unknown>, ip: string) {
+    const faucet = cfg.faucet ?? null;
+    if (faucet === null) throw httpErr(503, "faucet disabled");
+    const drip = cfg.faucetDrip ?? 50_000000n;
+    const cap = cfg.faucetLifetimeCap ?? 100_000000n;
+    const ipCap = cfg.faucetIpDayCap ?? 5;
+    let to: PublicKey;
+    try {
+      to = new PublicKey(body["address"] as string);
+    } catch {
+      throw httpErr(400, "invalid address");
+    }
+    if (to.equals(cfg.mint)) throw httpErr(400, "cannot drip to the mint");
+    if (to.equals(faucet.publicKey))
+      throw httpErr(400, "cannot drip to the faucet");
+    const connection = conn ?? connectionFor(cfg);
+    const ata = ataFor(to, cfg.mint);
+    const faucetAta = ataFor(faucet.publicKey, cfg.mint);
+    const existing = await connection
+      .getTokenAccountBalance(ata)
+      .then((b) => BigInt(b.value.amount))
+      .catch(() => 0n);
+    const topUp = cap > existing ? (drip < cap - existing ? drip : cap - existing) : 0n;
+    if (topUp <= 0n) {
+      throw httpErr(409, "address already funded", {
+        ata: ata.toBase58(),
+        balance: existing.toString(),
+      });
+    }
+    const now = Date.now();
+    const hits = (store.faucetHits.get(ip) ?? []).filter(
+      (ts) => now - ts < 86_400_000
+    );
+    if (hits.length >= ipCap) throw httpErr(429, "ip daily cap reached");
+    const pot = await connection
+      .getTokenAccountBalance(faucetAta)
+      .then((b) => BigInt(b.value.amount))
+      .catch(() => 0n);
+    if (pot < topUp) throw httpErr(503, "faucet empty");
+    const sol = await connection.getBalance(faucet.publicKey).catch(() => 0);
+    if (sol < 10_000000) throw httpErr(503, "faucet low on SOL");
+    const ataInfo = await connection.getAccountInfo(ata);
+    const buildTx = () => {
+      const tx = new Transaction();
+      if (ataInfo === null) {
+        tx.add(
+          createAssociatedTokenAccountInstruction(
+            faucet.publicKey,
+            ata,
+            to,
+            cfg.mint
+          )
+        );
+      }
+      tx.add(
+        createTransferInstruction(faucetAta, ata, faucet.publicKey, topUp)
+      );
+      return tx;
+    };
+    const signature = await sendWithRetry(connection, buildTx, [faucet]);
+    hits.push(now);
+    store.faucetHits.set(ip, hits);
+    store.save();
+    return {
+      ok: true as const,
+      ata: ata.toBase58(),
+      amount: topUp.toString(),
+      signature,
+    };
+  }
+
   const server: Server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://x");
@@ -309,6 +422,8 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
         const r = s?.receipts.get(nonce ?? "");
         if (r === undefined) json(res, 404, { error: "no receipt" });
         else json(res, 200, r);
+      } else if (req.method === "POST" && url.pathname === "/faucet") {
+        json(res, 200, await handleFaucet(await readBody(req), clientIp(req)));
       } else if (req.method === "POST" && url.pathname === "/admin/kill") {
         const body = await readBody(req);
         const killing = body["killed"] !== false;
@@ -329,6 +444,10 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {
         json(res, 404, { error: "not found" });
       }
     } catch (e) {
+      if (e instanceof HttpError) {
+        json(res, e.status, { error: e.message, ...(e.extra ?? {}) });
+        return;
+      }
       json(res, 400, { error: e instanceof Error ? e.message : "bad request" });
     }
   });

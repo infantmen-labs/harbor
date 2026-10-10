@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CodeBlock } from "./code-block";
-import { LiveEndpoint } from "./live-endpoint";
+import { FaucetCard, LiveEndpoint } from "./live-endpoint";
 
 export const metadata: Metadata = {
   title: "Harbor docs — integrate the SDK",
@@ -86,6 +86,7 @@ export default function DocsHome() {
         <div className="grid min-w-0 gap-16">
           <Section id="endpoint" eyebrow="Try it" title="Live demo merchant">
             <LiveEndpoint />
+            <FaucetCard />
           </Section>
 
           <Section id="install" eyebrow="Setup" title="Install">

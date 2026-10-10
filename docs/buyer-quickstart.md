@@ -18,6 +18,23 @@ Live devnet endpoints (also in [Deploy to production](./deploy)):
 
 Amounts are mint base units throughout (6 decimals: `1_000_000` = 1 tUSDC).
 
+## Faucet (devnet tUSDC)
+
+The mint is closed (no mint authority, 6,000 fixed supply), so test funds
+come from a pre-funded drip wallet on the demo merchant — 50 tUSDC per
+drip, topped up to 100 lifetime per address, 5 drips/day per IP:
+
+```sh
+curl -X POST https://<site>/api/faucet \
+  -H 'content-type: application/json' \
+  -d '{"address":"<your-wallet-base58>"}'
+# → {"ok":true,"ata":"…","amount":"50000000","signature":"…"}
+```
+
+Or use the faucet card on the docs site (no curl needed). Devnet SOL
+still comes from https://faucet.solana.com. Already at/over the lifetime
+cap answers 409 `address already funded`; an empty pot answers 503.
+
 ```sh
 npm i @infantmen-labs/harbor-sdk @solana/web3.js
 ```

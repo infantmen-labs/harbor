@@ -29,6 +29,7 @@ export interface Session {
 
 export class Store {
   readonly sessions = new Map<string, Session>();
+  readonly faucetHits = new Map<string, number[]>();
   killed = false;
 
   constructor(private readonly path: string | null = null) {}
@@ -56,7 +57,17 @@ export class Store {
       lastNonce: s.lastNonce.toString(),
       receipts: [...s.receipts.values()],
     }));
-    writeFileSync(this.path, JSON.stringify({ killed: this.killed, sessions }));
+    writeFileSync(
+      this.path,
+      JSON.stringify({
+        killed: this.killed,
+        sessions,
+        faucet: [...this.faucetHits.entries()].map(([ip, hits]) => ({
+          ip,
+          hits,
+        })),
+      })
+    );
   }
 
   static load(path: string): Store | null {
@@ -74,9 +85,17 @@ export class Store {
           lastNonce: string;
           receipts: StoredReceipt[];
         }>;
+        faucet?: Array<{ ip: unknown; hits: unknown }>;
       };
       const store = new Store(path);
       store.killed = raw.killed === true;
+      for (const f of raw.faucet ?? []) {
+        if (typeof f?.ip !== "string" || !Array.isArray(f?.hits)) continue;
+        const hits = f.hits.filter(
+          (n): n is number => typeof n === "number" && Number.isFinite(n)
+        );
+        store.faucetHits.set(f.ip, hits);
+      }
       for (const s of raw.sessions) {
         store.sessions.set(s.channel, {
           channel: new PublicKey(s.channel),

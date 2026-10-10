@@ -30,6 +30,20 @@ export interface Config {
    * ID; localnet rehearsals override with the fixture program ID.
    */
   channelProgramAllowlist: string[];
+  /**
+   * tUSDC drip wallet for `POST /faucet`. Optional on purpose: hand-built
+   * configs in tests predate it, and local rehearsals leave it unset
+   * (faucet disabled). Null = disabled; the route answers 503.
+   * The mint itself is closed (no mint authority), so this spends a
+   * pre-funded balance — never mints.
+   */
+  faucet?: Keypair | null;
+  /** Per-drip amount in base units (default 50 tUSDC). */
+  faucetDrip?: bigint;
+  /** Lifetime top-up target per address in base units (default 100 tUSDC). */
+  faucetLifetimeCap?: bigint;
+  /** Drips per client IP per rolling 24h (default 5). */
+  faucetIpDayCap?: number;
 }
 
 function loadKeypair(path: string): Keypair {
@@ -69,6 +83,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       .split(",")
       .map((s) => s.trim())
       .filter((s) => s.length > 0),
+    faucet: env["FAUCET_KEYPAIR"] ? loadKeypair(env["FAUCET_KEYPAIR"]) : null,
+    faucetDrip:
+      env["FAUCET_DRIP_AMOUNT"] !== undefined &&
+      env["FAUCET_DRIP_AMOUNT"] !== ""
+        ? BigInt(env["FAUCET_DRIP_AMOUNT"] as string)
+        : 50_000000n,
+    faucetLifetimeCap:
+      env["FAUCET_LIFETIME_CAP"] !== undefined &&
+      env["FAUCET_LIFETIME_CAP"] !== ""
+        ? BigInt(env["FAUCET_LIFETIME_CAP"] as string)
+        : 100_000000n,
+    faucetIpDayCap: Number(env["FAUCET_IP_DAY_CAP"] ?? 5),
   };
 }
 
