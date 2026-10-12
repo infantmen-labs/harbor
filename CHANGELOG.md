@@ -14,6 +14,12 @@ workspaces version together. Full history: `git log`.
 - Security: `refund_unused` enforces the canonical-vault gate like every
   other fund path (F-7); `test_fake_vault_rejected_on_refund` covers it.
 
+## 0.7.1 (SDK only; docs/metadata patch)
+
+- README now ships in the npm tarball (`files` included it out before);
+  content brought current: receipt-v1 layout (249 bytes, migration from
+  0.4.x), live devnet endpoints table, faucet instructions, docs links.
+
 ## 0.7.0 (SDK + server + agent; keeper/web unchanged; program = v1 binary live on devnet)
 
 - Receipt schema v1: `mint` + `program_id` appended (185 → 249 bytes,
