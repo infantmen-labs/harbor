@@ -1,4 +1,4 @@
-# harbor-sdk
+# @infantmen-labs/harbor-sdk
 
 TypeScript SDK for Harbor bonded refunds on Solana: PDA helpers,
 instruction builders, receipt codec, ed25519 verify, account decoders.
@@ -28,8 +28,9 @@ const ok = verifyEd25519(signer, receiptMessageBytes(receipt), signature);
 
 What it covers: `bondPda` / `bindingPda` / `disputePda` / `receiptPda` /
 `treasuryPda` / `claimPda`, instruction builders for all 11 program
-entrypoints, the frozen 185-byte receipt layout, voucher bytes, and
-zero-dependency account decoders. See `examples/bond-watch` for a
+entrypoints, the receipt-v1 layout (249 bytes; `mint` + `programId`
+domain separators appended — all v0 offsets unchanged), voucher bytes,
+and zero-dependency account decoders. See `examples/bond-watch` for a
 complete third-party monitor built on SDK + web3.js only.
 
 ## Buyer patterns (demand-side integration)
@@ -56,3 +57,35 @@ The proven demand-side flow:
 4. **Resolve via any live keeper.** Any keeper watching the program
    resolves matured disputes; verify onchain (dispute account closed,
    claimant +95%). Operate your own for production (see keeper README).
+
+## Live devnet endpoints
+
+All on Solana devnet, live today — the docs site exposes the demo
+merchant at its own /api (see harbor-orch.vercel.app/docs):
+
+| What | Address |
+|---|---|
+| Harbor program | BuRyKLqCsTLcyLVFEjxTjmF4DryCT3LmVDjwqhduvB4H |
+| Channels program | CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX |
+| tUSDC mint | HDwpthFfTBi4YyGo1zgd7zxyonE5CZsCizpVqURHGD54 |
+| Demo merchant | GQyf8wvGfpaLZvfvbXonpdiEfAGRvRXz2P6PkWxQ4rLJ |
+| Demo bond | 2G19xBTWXTYM8y6rQCs9ucMkQr36RDX1FucMf22jFLuP |
+
+Devnet tUSDC for testing: POST https://harbor-orch.vercel.app/api/faucet
+with {"address":"<wallet>"} — 50 per drip, 100 lifetime per address,
+5/day per IP (the mint is closed, so this spends a funded pot).
+
+## Receipt v1 migration (from 0.4.x)
+
+receiptMessageBytes now requires two extra fields — mint and programId —
+appended after signer (249 bytes total; every v0 offset unchanged).
+Verification of a v0 receipt fails against the deployed v1 program by
+construction, so migrate when you upgrade. Full layout:
+docs/receipt-schema-v1.md in the repo.
+
+## Docs
+
+- Repo: https://github.com/infantmen-labs/harbor
+- Buyer quickstart + live endpoints: docs/buyer-quickstart.md (repo)
+- On-site integration guide: https://harbor-orch.vercel.app/docs
+- Proof bundle (every claim explorer-clickable): docs/proof-bundle.md (repo)
