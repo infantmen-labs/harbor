@@ -1,8 +1,10 @@
 # Harbor web app
 
-Next.js App Router + Tailwind v4 + wallet adapter. Single route: `/`
-(landing). The `/live` mission-control and `/merchant` onboarding pages
-were retired; the dashboard UI is being rebuilt from this landing page.
+Next.js App Router + Tailwind v4 + wallet adapter (providers only; no
+wallet UI on current routes). Routes: `/` (landing) and `/docs`
+(integration guide, live demo merchant, faucet card). The old `/live`
+mission-control and `/merchant` onboarding pages were retired; the
+dashboard UI is being rebuilt from this landing page.
 
 ## Quickstart (local dev)
 

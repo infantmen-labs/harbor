@@ -31,8 +31,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-24">
-      <p className="font-mono text-[12px] font-medium uppercase tracking-[0.12em] text-muted">
+    <section
+      id={id}
+      className="group scroll-mt-24 border-t border-border-subtle pt-10 first:border-t-0 first:pt-0"
+    >
+      <p className="font-mono text-[12px] font-medium uppercase tracking-[0.12em] text-muted transition-colors group-hover:text-accent">
         {eyebrow}
       </p>
       <h2 className="mt-3 font-display text-[28px] font-medium tracking-[-0.01em] md:text-[34px]">
@@ -83,7 +86,7 @@ export default function DocsHome() {
           </ul>
         </nav>
 
-        <div className="grid min-w-0 gap-16">
+        <div className="grid min-w-0 gap-14 md:gap-20">
           <Section id="endpoint" eyebrow="Try it" title="Live demo merchant">
             <LiveEndpoint />
             <FaucetCard />

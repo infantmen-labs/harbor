@@ -41,7 +41,8 @@ function json(res: ServerResponse, code: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {  return new Promise((resolve, reject) => {
+function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
     let raw = "";
     req.on("data", (c) => (raw += c));
     req.on("end", () => {
@@ -89,7 +90,8 @@ export function clientIp(req: IncomingMessage): string {
     : req.socket.remoteAddress || "unknown";
 }
 
-export function createApp(cfg: Config, store: Store, conn?: Connection) {  async function ensureBinding(session: Session): Promise<void> {
+export function createApp(cfg: Config, store: Store, conn?: Connection) {
+  async function ensureBinding(session: Session): Promise<void> {
     if (cfg.skipChain) return;
     const connection = conn ?? connectionFor(cfg);
     const [binding] = bindingPda(session.channel);
@@ -352,7 +354,8 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {  async
       .getTokenAccountBalance(ata)
       .then((b) => BigInt(b.value.amount))
       .catch(() => 0n);
-    const topUp = cap > existing ? (drip < cap - existing ? drip : cap - existing) : 0n;
+    const topUp =
+      cap > existing ? (drip < cap - existing ? drip : cap - existing) : 0n;
     if (topUp <= 0n) {
       throw httpErr(409, "address already funded", {
         ata: ata.toBase58(),
@@ -385,8 +388,7 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {  async
         faucetAta = a.pubkey;
       }
     }
-    if (faucetAta === null || pot < topUp)
-      throw httpErr(503, "faucet empty");
+    if (faucetAta === null || pot < topUp) throw httpErr(503, "faucet empty");
     const sol = await connection.getBalance(faucet.publicKey).catch(() => 0);
     if (sol < 10_000000) throw httpErr(503, "faucet low on SOL");
     const buildTx = () => {
@@ -403,7 +405,12 @@ export function createApp(cfg: Config, store: Store, conn?: Connection) {  async
         )
       );
       tx.add(
-        createTransferInstruction(faucetAta as PublicKey, ata, faucet.publicKey, topUp)
+        createTransferInstruction(
+          faucetAta as PublicKey,
+          ata,
+          faucet.publicKey,
+          topUp
+        )
       );
       return tx;
     };

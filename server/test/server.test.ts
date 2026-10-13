@@ -468,7 +468,6 @@ describe("server sessions", () => {
   });
 });
 
-
 describe("faucet", () => {
   const DRIP = 50_000000n;
   const CAP = 100_000000n;
@@ -512,7 +511,11 @@ describe("faucet", () => {
         const a = stub.balances[pk.toBase58()];
         if (a === undefined) throw new Error("could not find account");
         return {
-          value: { amount: a.toString(), decimals: 6, uiAmount: Number(a) / 1e6 },
+          value: {
+            amount: a.toString(),
+            decimals: 6,
+            uiAmount: Number(a) / 1e6,
+          },
         };
       },
       getParsedTokenAccountsByOwner: async () => ({
@@ -520,7 +523,9 @@ describe("faucet", () => {
           pubkey: new PublicKey(p.ata),
           account: {
             data: {
-              parsed: { info: { tokenAmount: { amount: p.amount.toString() } } },
+              parsed: {
+                info: { tokenAmount: { amount: p.amount.toString() } },
+              },
             },
           },
         })),
@@ -563,7 +568,9 @@ describe("faucet", () => {
 
   beforeEach(() => {
     stub.balances = {};
-    stub.pot = [{ ata: Keypair.generate().publicKey.toBase58(), amount: 1_000_000000n }];
+    stub.pot = [
+      { ata: Keypair.generate().publicKey.toBase58(), amount: 1_000_000000n },
+    ];
     stub.sol = 1_000_000_000;
     stub.sent.length = 0;
     store.faucetHits.clear();
@@ -588,7 +595,10 @@ describe("faucet", () => {
   });
 
   it("refuses invalid and reserved addresses", async () => {
-    assert.equal((await post(base, "/faucet", { address: "nope" })).status, 400);
+    assert.equal(
+      (await post(base, "/faucet", { address: "nope" })).status,
+      400
+    );
     assert.equal(
       (await post(base, "/faucet", { address: mint.toBase58() })).status,
       400
@@ -653,7 +663,9 @@ describe("faucet", () => {
   });
 
   it("503s when the richest account cannot cover the top-up", async () => {
-    stub.pot = [{ ata: Keypair.generate().publicKey.toBase58(), amount: 10_000000n }];
+    stub.pot = [
+      { ata: Keypair.generate().publicKey.toBase58(), amount: 10_000000n },
+    ];
     const r = await post(base, "/faucet", {
       address: Keypair.generate().publicKey.toBase58(),
     });

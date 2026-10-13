@@ -11,7 +11,7 @@ Live deployment record (fill in as you go):
 | ---------------- | --------------------------------------------------------------------------------- |
 | Server (Railway) | _pending_ (VPS is the live backend, §3)                                           |
 | Keeper (Railway) | runs inside Railway, no public URL needed                                         |
-| Server (VPS, §3) | loopback-only; public via tunnel origin, fronted by the site's `/api/*` (see §3)  |
+| Server (VPS, §3) | loopback-only; public via tunnel origin, fronted by the site's `/api/*` (see §3). Faucet (`/faucet`) served by the same unit (`FAUCET_KEYPAIR` env) |
 | Keeper (VPS, §3) | runs on VPS, no public URL needed                                                 |
 
 Chain artifacts (devnet):
@@ -92,7 +92,12 @@ in the tree):
   `MINT`, `PRICE_PER_TOKEN=10`, `KILL_TOKEN`,
   `UPSTREAM_PROGRAM_ALLOWLIST`, `STORE_PATH` (server, persistent
   path), `MODE=live`, `POLL_MS`, `LOG_PATH` (keeper, persistent path).
-  Run services as a dedicated non-root user.
+  Optional faucet env on the server unit: `FAUCET_KEYPAIR` (path to
+  the drip wallet, root-only like the others), `FAUCET_DRIP_AMOUNT`,
+  `FAUCET_LIFETIME_CAP`, `FAUCET_IP_DAY_CAP` (defaults 50/100/5
+  per day). Fund the faucet wallet with tUSDC + SOL once; the closed
+  mint means it spends a pot, never mints. Run services as a
+  dedicated non-root user.
 - systemd units `harbor-server` + `harbor-keeper` (`Restart=always`,
   enabled; verify with a reboot test).
 - Firewall: allow 22/80/443 only. Put a TLS reverse proxy in front

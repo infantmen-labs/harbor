@@ -17,8 +17,8 @@ export function LiveEndpoint() {
   return (
     <>
       <p>
-        The demo merchant is live on devnet behind this site. Point any
-        buyer at it — no repo clone, no local server:
+        The demo merchant is live on devnet behind this site. Point any buyer at
+        it — no repo clone, no local server:
       </p>
       <CodeBlock lang="sh" code={`SERVER_URL="${base}"`} />
       <p className="mt-4">Health check, straight at the merchant:</p>
@@ -33,7 +33,10 @@ export function LiveEndpoint() {
 export function FaucetCard() {
   const [addr, setAddr] = useState("");
   const [state, setState] = useState<
-    { kind: "idle" } | { kind: "busy" } | { kind: "ok"; msg: string; sig: string } | { kind: "err"; msg: string }
+    | { kind: "idle" }
+    | { kind: "busy" }
+    | { kind: "ok"; msg: string; sig: string }
+    | { kind: "err"; msg: string }
   >({ kind: "idle" });
   async function req() {
     const address = addr.trim();
@@ -47,7 +50,10 @@ export function FaucetCard() {
       });
       const j = (await r.json()) as Record<string, unknown>;
       if (!r.ok) {
-        setState({ kind: "err", msg: typeof j.error === "string" ? j.error : `HTTP ${r.status}` });
+        setState({
+          kind: "err",
+          msg: typeof j.error === "string" ? j.error : `HTTP ${r.status}`,
+        });
       } else {
         setState({
           kind: "ok",
@@ -56,7 +62,10 @@ export function FaucetCard() {
         });
       }
     } catch (e) {
-      setState({ kind: "err", msg: e instanceof Error ? e.message : "request failed" });
+      setState({
+        kind: "err",
+        msg: e instanceof Error ? e.message : "request failed",
+      });
     }
   }
   return (
@@ -88,7 +97,9 @@ export function FaucetCard() {
         </p>
       )}
       {state.kind === "err" && (
-        <p className="mt-3 font-mono text-[13px] text-foreground">drip refused: {state.msg}</p>
+        <p className="mt-3 font-mono text-[13px] text-foreground">
+          drip refused: {state.msg}
+        </p>
       )}
       <p className="mt-3 text-[13px] text-muted">
         50 per drip · 100 lifetime per address · 5/day per IP · devnet only.

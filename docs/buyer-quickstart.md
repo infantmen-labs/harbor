@@ -20,7 +20,7 @@ Amounts are mint base units throughout (6 decimals: `1_000_000` = 1 tUSDC).
 
 ## Faucet (devnet tUSDC)
 
-The mint is closed (no mint authority, 6,000 fixed supply), so test funds
+The mint is closed (no mint authority, 7,000 fixed supply), so test funds
 come from a pre-funded drip wallet on the demo merchant — 50 tUSDC per
 drip, topped up to 100 lifetime per address, 5 drips/day per IP:
 

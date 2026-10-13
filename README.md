@@ -81,7 +81,7 @@ stays in `./.loop-run` (gitignored, override with `LOOP_DIR`).
   (`agent/README.md`)
 - `keeper` — dispute watcher/resolver, dry-run + live
   (`keeper/README.md`)
-- `web` — landing + mission control + merchant onboarding
+- `web` — landing + docs + live-endpoint/faucet cards
   (`web/README.md`); dev on `:3101`, the server owns `:3000`
 - `examples/bond-watch` — third-party read-only bond monitor
 - `scripts/local-loop.sh` — one-command localnet full loop
